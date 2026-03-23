@@ -150,8 +150,8 @@ BENCH_UPPER_ARM_FRAC: float = 0.56  # shoulder to elbow (anatomical ~48% + shoul
 BENCH_FOREARM_FRAC: float = 0.38  # elbow to wrist (anatomical ~38%)
 
 BENCH_PRESS_JOINT_LIMITS: dict[str, tuple[float, float]] = {
-    "shoulder": (np.radians(-10), np.radians(100)),
-    "elbow": (np.radians(-140), np.radians(10)),
+    "shoulder": (np.radians(-5), np.radians(95)),  # main driver of the press
+    "elbow": (np.radians(-110), np.radians(5)),  # tighter: lockout to ~110 deg flexion
     "wrist": (np.radians(-1), np.radians(1)),  # effectively locked straight
 }
 

@@ -420,8 +420,14 @@ class TrajectoryOptimizer:
             + self._endpoint_damping_cost(qd, qdd)
         )
 
-        # Bench press: no balance cost (lifter is on a bench)
-        if self.exercise_type != "bench_press":
+        if self.exercise_type == "bench_press":
+            # Bar-path verticality: penalise horizontal drift from shoulder joint.
+            # In bench FK, origin=shoulder, segments are upper_arm→forearm→hand.
+            # hand_x = sum of L[i]*sin(q[i]) — should stay near zero (bar above shoulder).
+            L = self.dynamics.L
+            hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
+            total += 500.0 * float(np.sum(hand_x**2)) * self.dt
+        else:
             com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
             total += self._balance_cost(com_x)
 

@@ -1077,10 +1077,13 @@ class ExerciseTab(QWidget):
             )
 
         # Bar at hand position (end of chain)
-        BarbellRenderer.draw(ax, (arm_joints[-1][0], arm_joints[-1][1]))
+        bar_pos = arm_joints[-1]
+        BarbellRenderer.draw(ax, (bar_pos[0], bar_pos[1]))
 
-        # Bar trace
-        BodyRenderer.draw_bar_trace(ax, result.bar, fi)
+        # Bar trace — offset the FK-based trace to bench coordinates
+        bar_trace_offset = arm_base - fk_points[0]
+        bench_bar_traj = result.bar + bar_trace_offset
+        BodyRenderer.draw_bar_trace(ax, bench_bar_traj, fi)
 
         ax.set_title(
             f"{self.name}  t={t_now:.2f}s  |  "
