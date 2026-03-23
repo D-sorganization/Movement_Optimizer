@@ -150,9 +150,9 @@ BENCH_UPPER_ARM_FRAC: float = 0.45
 BENCH_FOREARM_FRAC: float = 0.55
 
 BENCH_PRESS_JOINT_LIMITS: dict[str, tuple[float, float]] = {
-    "shoulder": (np.radians(-10), np.radians(90)),
-    "elbow": (np.radians(-140), np.radians(-5)),
-    "wrist": (np.radians(-5), np.radians(5)),
+    "shoulder": (np.radians(-10), np.radians(100)),
+    "elbow": (np.radians(-140), np.radians(10)),
+    "wrist": (np.radians(-15), np.radians(15)),
 }
 
 BENCH_PRESS_JOINT_NAMES: tuple[str, ...] = ("shoulder", "elbow", "wrist")

@@ -70,3 +70,24 @@ class TestBenchPressConfig:
         # and all joints should have positive y component for a press
         assert fk_start["shoulder"][1] > 0, "Bar should be above body at start"
         assert fk_end["shoulder"][1] > 0, "Bar should be above body at end"
+
+    def test_bench_start_is_lockout(self, default_body: BodyModel) -> None:
+        """q_start should have shoulder near 0 degrees (arms vertical/lockout)."""
+        _dyn, qs, _qe, _qb, _q_via = make_bench_press_config(default_body, 60.0)
+        shoulder_deg = np.degrees(qs[0])
+        assert abs(shoulder_deg) < 5, (
+            f"At lockout shoulder should be near 0 deg, got {shoulder_deg:.1f}"
+        )
+
+    def test_bench_via_is_chest(self, default_body: BodyModel) -> None:
+        """q_via should have shoulder near 80 degrees (upper arm horizontal)."""
+        _dyn, _qs, _qe, _qb, q_via = make_bench_press_config(default_body, 60.0)
+        shoulder_deg = np.degrees(q_via[0])
+        assert 70 < shoulder_deg < 95, (
+            f"At chest touch shoulder should be ~80 deg, got {shoulder_deg:.1f}"
+        )
+
+    def test_bench_full_rep(self, default_body: BodyModel) -> None:
+        """q_start should equal q_end (full rep returns to lockout)."""
+        _dyn, qs, qe, _qb, _q_via = make_bench_press_config(default_body, 60.0)
+        np.testing.assert_allclose(qs, qe, atol=1e-12)
