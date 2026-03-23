@@ -1,0 +1,46 @@
+# Label definitions for actions/labeler@v5
+# Maps labels to file path glob patterns
+
+python:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/**/*.py"
+          - "tests/**/*.py"
+          - "pyproject.toml"
+
+rust:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "rust_core/**"
+          - "rust_core/Cargo.toml"
+          - "rust_core/Cargo.lock"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "**/*.md"
+          - "LICENSE"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "pyproject.toml"
+          - "rust_core/Cargo.toml"
+          - ".github/**/*.yml"
+          - ".gitignore"
+
+core:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/movement_optimizer/**"

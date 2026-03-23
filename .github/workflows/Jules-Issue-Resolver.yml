@@ -1,0 +1,116 @@
+name: Jules Issue Resolver
+on:
+  schedule:
+    - cron: "0 10 * * 1"   # Monday 10am UTC
+    - cron: "0 10 * * 4"   # Thursday 10am UTC
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Specific issue number to resolve (or blank for auto-select)"
+        required: false
+        type: string
+      max_issues:
+        description: "Maximum issues to resolve in one run"
+        required: false
+        default: "3"
+        type: string
+
+concurrency:
+  group: jules-issue-resolver
+  cancel-in-progress: false
+
+jobs:
+  resolve-issues:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Gather target issues
+        id: issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const specificIssue = '${{ github.event.inputs.issue_number }}';
+            const maxIssues = parseInt('${{ github.event.inputs.max_issues }}' || '3');
+
+            let issues = [];
+
+            if (specificIssue) {
+              const { data: issue } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(specificIssue)
+              });
+              issues = [issue];
+            } else {
+              // Fetch high-priority and good-first-issue labeled issues
+              const highPriority = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'priority:high',
+                per_page: maxIssues,
+                sort: 'created',
+                direction: 'desc'
+              });
+
+              const goodFirst = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'good first issue',
+                per_page: maxIssues,
+                sort: 'created',
+                direction: 'desc'
+              });
+
+              // Deduplicate and limit
+              const seen = new Set();
+              for (const issue of [...highPriority.data, ...goodFirst.data]) {
+                if (!seen.has(issue.number) && !issue.pull_request) {
+                  seen.add(issue.number);
+                  issues.push(issue);
+                }
+                if (issues.length >= maxIssues) break;
+              }
+            }
+
+            const summary = issues.map(i =>
+              `#${i.number}: ${i.title}\nLabels: ${i.labels.map(l => l.name).join(', ')}\nBody: ${(i.body || '').substring(0, 500)}`
+            ).join('\n---\n');
+
+            core.setOutput('summary', summary);
+            core.setOutput('count', issues.length.toString());
+            core.setOutput('numbers', issues.map(i => i.number).join(','));
+
+      - name: Resolve issues with Jules
+        if: steps.issues.outputs.count != '0'
+        uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            You are the Issue Resolver for Movement-Optimizer. Resolve the following issues:
+
+            ${{ steps.issues.outputs.summary }}
+
+            For each issue:
+            1. Analyze the issue description and any referenced code.
+            2. Create a fix branch named jules/fix-<issue-number>.
+            3. Implement the fix with proper error handling and type hints.
+            4. Add or update tests to cover the fix.
+            5. Submit a PR with title "fix: resolve #<number> - <short description>".
+            6. Include "Closes #<number>" in the PR body.
+            7. Label the PR with "jules" and "automated-fix".
+
+            If an issue is too complex or ambiguous, create a comment on the issue
+            explaining what was attempted and what needs human guidance.
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Issue Resolver Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "Targeted issues: ${{ steps.issues.outputs.numbers }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Count: ${{ steps.issues.outputs.count }}" >> "$GITHUB_STEP_SUMMARY"

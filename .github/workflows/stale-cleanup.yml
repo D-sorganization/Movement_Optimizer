@@ -1,0 +1,44 @@
+name: Stale Cleanup
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Monday 6am UTC
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Stale issues
+          days-before-stale: 30
+          days-before-close: 14
+          stale-issue-label: "stale"
+          stale-issue-message: >
+            This issue has been automatically marked as stale because it has not had
+            recent activity. It will be closed in 14 days if no further activity occurs.
+            If this issue is still relevant, please comment or remove the stale label.
+          close-issue-message: >
+            This issue has been automatically closed due to inactivity. Feel free to
+            reopen if this is still relevant.
+
+          # Stale PRs
+          stale-pr-label: "stale"
+          stale-pr-message: >
+            This pull request has been automatically marked as stale because it has not
+            had recent activity. It will be closed in 14 days if no further activity occurs.
+            Please rebase and update if this PR is still needed.
+          close-pr-message: >
+            This pull request has been automatically closed due to inactivity. Feel free
+            to reopen with updated changes.
+
+          # Exemptions
+          exempt-issue-labels: "pinned,priority:high,in-progress"
+          exempt-pr-labels: "pinned,priority:high,in-progress"
+          exempt-all-milestones: true
+
+          # Limits
+          operations-per-run: 60

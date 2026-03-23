@@ -1,0 +1,91 @@
+name: Jules PR Compiler
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview groupings without merging"
+        required: false
+        default: "false"
+        type: boolean
+
+concurrency:
+  group: jules-pr-compiler
+  cancel-in-progress: false
+
+jobs:
+  compile-prs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Gather open Jules PRs
+        id: gather
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 50
+            });
+
+            const julesPRs = prs.data.filter(p =>
+              p.user.login.includes('jules') ||
+              p.labels.some(l => l.name === 'jules') ||
+              p.title.toLowerCase().includes('[jules]')
+            );
+
+            const categories = { fixes: [], refactors: [], docs: [], tests: [], other: [] };
+            for (const pr of julesPRs) {
+              const labels = pr.labels.map(l => l.name);
+              if (labels.includes('bug') || labels.includes('fix')) categories.fixes.push(pr);
+              else if (labels.includes('refactor')) categories.refactors.push(pr);
+              else if (labels.includes('documentation')) categories.docs.push(pr);
+              else if (labels.includes('test')) categories.tests.push(pr);
+              else categories.other.push(pr);
+            }
+
+            const summary = Object.entries(categories)
+              .filter(([_, prs]) => prs.length > 0)
+              .map(([cat, prs]) => `${cat}: ${prs.map(p => `#${p.number} (${p.title})`).join(', ')}`)
+              .join('\n');
+
+            core.setOutput('summary', summary);
+            core.setOutput('count', julesPRs.length.toString());
+
+      - name: Compile compatible PRs
+        if: steps.gather.outputs.count != '0'
+        uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            You are the PR Compiler for Movement-Optimizer. Here are the open Jules PRs
+            grouped by category:
+
+            ${{ steps.gather.outputs.summary }}
+
+            Dry run mode: ${{ github.event.inputs.dry_run }}
+
+            Instructions:
+            1. For each category with 2+ PRs, check if changes are compatible (no conflicts).
+            2. If dry_run is true, create a comment on each PR describing the proposed grouping.
+            3. If dry_run is false:
+               a. Create a combined branch for each compatible group.
+               b. Cherry-pick or merge changes from each PR into the combined branch.
+               c. Run tests to verify the combination works.
+               d. Open a single combined PR per category.
+               e. Comment on original PRs linking to the combined PR.
+            4. Leave solo PRs (categories with only 1 PR) untouched.
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## PR Compiler Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "Found ${{ steps.gather.outputs.count }} Jules PRs" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.gather.outputs.summary }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

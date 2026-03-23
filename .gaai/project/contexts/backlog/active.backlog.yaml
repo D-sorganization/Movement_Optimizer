@@ -1,0 +1,11 @@
+# Active backlog for Movement-Optimizer
+# Auto-populated by GAAI discovery daemon
+version: "1.0"
+repo: D-sorganization/Movement-Optimizer
+items: []
+metadata:
+  created_at: "2026-03-22T00:00:00Z"
+  last_updated: "2026-03-22T00:00:00Z"
+  total_stories: 0
+  done: 0
+  failed: 0

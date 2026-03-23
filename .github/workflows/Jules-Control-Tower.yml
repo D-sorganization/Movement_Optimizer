@@ -1,0 +1,233 @@
+name: Jules Control Tower
+on:
+  schedule:
+    - cron: "0 8 * * 1"   # Monday 8am UTC
+    - cron: "0 8 * * 4"   # Thursday 8am UTC
+  workflow_dispatch:
+    inputs:
+      worker:
+        description: "Specific worker to dispatch (or 'all')"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - auto-repair
+          - assessment-generator
+          - code-quality-reviewer
+          - completist
+          - documentation-auditor
+          - sentinel
+          - auto-refactor
+          - issue-resolver
+          - pr-compiler
+
+concurrency:
+  group: jules-control-tower
+  cancel-in-progress: false
+
+jobs:
+  auto-repair:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'auto-repair'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Scan the repository for broken imports, missing dependencies, syntax errors,
+            and failing test fixtures. Fix any issues found and submit a PR with the repairs.
+            Focus on src/movement_optimizer/ and tests/ directories.
+
+  assessment-generator:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'assessment-generator'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Assess the current state of the repository. Evaluate code quality, test coverage,
+            documentation completeness, and architecture health. Create an issue summarizing
+            findings with actionable recommendations for improvement.
+
+  code-quality-reviewer:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'code-quality-reviewer'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Review all Python and Rust source code for quality issues: dead code, overly complex
+            functions, missing error handling, inconsistent naming, and anti-patterns. Submit a
+            PR with improvements or create issues for larger refactors.
+
+  completist:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'completist'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Find incomplete implementations: TODO comments, stub functions, placeholder values,
+            partial test coverage, and missing docstrings. Complete the most impactful items
+            and submit a PR. Prioritize test completeness and core module docstrings.
+
+  documentation-auditor:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'documentation-auditor'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Audit all documentation: docstrings, README accuracy, inline comments, and type
+            hints. Identify stale or missing documentation. Submit a PR to fix the most
+            critical gaps, focusing on public API docstrings and module-level documentation.
+
+  sentinel:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'sentinel'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Perform a security and dependency audit. Check for known vulnerabilities in
+            dependencies, hardcoded secrets, unsafe patterns, and outdated packages.
+            Create issues for any findings with severity labels. Fix trivial issues via PR.
+
+  auto-refactor:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'auto-refactor'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Identify refactoring opportunities: duplicated code, functions exceeding 50 lines,
+            deeply nested logic, and modules with too many responsibilities. Perform safe
+            refactors that preserve behavior and submit a PR. Include before/after complexity
+            metrics in the PR description.
+
+  issue-resolver:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'issue-resolver'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: actions/github-script@v7
+        id: find-issues
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'priority:high,good first issue',
+              per_page: 5,
+              sort: 'created',
+              direction: 'desc'
+            });
+            const summaries = issues.data.map(i => `#${i.number}: ${i.title}`).join('\n');
+            core.setOutput('issues', summaries);
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Resolve the following open issues by implementing fixes on a new branch:
+            ${{ steps.find-issues.outputs.issues }}
+
+            For each issue: read the description, implement the fix, add or update tests,
+            and submit a PR referencing the issue number with "Closes #<number>".
+
+  pr-compiler:
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.worker == 'all' ||
+      github.event.inputs.worker == 'pr-compiler'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: actions/github-script@v7
+        id: find-prs
+        with:
+          script: |
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 20
+            });
+            const julesPRs = prs.data.filter(p => p.user.login.includes('jules') || p.labels.some(l => l.name === 'jules'));
+            const summaries = julesPRs.map(p => `#${p.number}: ${p.title} [${p.labels.map(l => l.name).join(',')}]`).join('\n');
+            core.setOutput('prs', summaries);
+      - uses: google/jules-editor@beta
+        with:
+          model: "gemini-2.5-pro"
+          platform: "github"
+          task: |
+            Review and consolidate these open Jules PRs:
+            ${{ steps.find-prs.outputs.prs }}
+
+            Group compatible PRs by category (fixes, refactors, docs, tests). For each
+            compatible group, create a single combined PR that merges all changes cleanly.
+            Close the individual PRs with a comment linking to the combined PR.
