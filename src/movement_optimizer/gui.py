@@ -53,6 +53,7 @@ from PyQt6.QtWidgets import (
 from .constants import BAR_MASS_KG, PLATE_RADIUS_STD_M, trapezoid
 from .models import (
     BodyModel,
+    make_bench_press_config,
     make_deadlift_config,
     make_full_squat_config,
     make_squat_config,
@@ -893,6 +894,7 @@ class MainWindow(QMainWindow):
         ("Bottoms Up Squat", "squat"),
         ("Full Squat", "full_squat"),
         ("Deadlift", "deadlift"),
+        ("Bench Press", "bench_press"),
     )
 
     def __init__(self) -> None:
@@ -1013,6 +1015,8 @@ class MainWindow(QMainWindow):
             elif etype == "full_squat":
                 dyn, qs, qe, qb, q_via = make_full_squat_config(body, bar)
                 dur = max(dur, 3.0)
+            elif etype == "bench_press":
+                dyn, qs, qe, qb = make_bench_press_config(body, bar)
             else:
                 dyn, qs, qe, qb = make_deadlift_config(body, bar)
 

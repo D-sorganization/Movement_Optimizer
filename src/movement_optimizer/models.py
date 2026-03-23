@@ -16,8 +16,23 @@ from numpy.typing import NDArray
 
 from .backend import PhysicsBackend
 from .constants import (
+    BENCH_FOREARM_FRAC,
+    BENCH_PRESS_HILL_OPTIMAL_ANGLES,
+    BENCH_PRESS_JOINT_LIMITS,
+    BENCH_PRESS_JOINT_NAMES,
+    BENCH_PRESS_MAX_JOINT_TORQUES,
+    BENCH_UPPER_ARM_FRAC,
     BOS_INNER_FRACTION,
     COM_FRAC,
+    DEFAULT_MAX_JOINT_TORQUES,
+    HILL_ANGLE_WIDTH,
+    HILL_ECCENTRIC_FACTOR,
+    HILL_K_SHAPE,
+    HILL_MAX_ANGULAR_VELOCITY,
+    HILL_MAX_ECCENTRIC_RATIO,
+    HILL_OPTIMAL_ANGLES,
+    JOINT_LIMITS,
+    JOINT_NAMES,
     LENGTH_FRAC,
     MASS_FRAC,
     PLATE_RADIUS_STD_M,
@@ -137,6 +152,337 @@ class BodyModel:
     def _compute_inertias(self) -> None:
         self.I_squat = (1.0 / 12.0) * self.m_squat * self.L**2
         self.I_deadlift = (1.0 / 12.0) * self.m_deadlift * self.L**2
+
+
+def clamp_joint_angles(
+    q: NDArray,
+    joint_limits: dict[str, tuple[float, float]] | None = None,
+    joint_names: tuple[str, ...] | None = None,
+) -> NDArray:
+    """Clamp joint angles to their anatomical limits.
+
+    Returns a copy with each angle clamped to [lo, hi].
+    Handles the math gracefully: no NaN, no inf, no out-of-range.
+
+    Preconditions:
+        q is a 1-D array of length len(joint_names)
+        joint_limits keys must include all joint_names
+    """
+    limits = joint_limits or JOINT_LIMITS
+    names = joint_names or JOINT_NAMES
+    assert len(q) == len(names), f"q length {len(q)} != {len(names)} joint names"
+    q_clamped = q.copy()
+    for i, name in enumerate(names):
+        lo, hi = limits[name]
+        q_clamped[i] = np.clip(q_clamped[i], lo, hi)
+    return q_clamped
+
+
+def joint_angles_within_limits(
+    q: NDArray,
+    joint_limits: dict[str, tuple[float, float]] | None = None,
+    joint_names: tuple[str, ...] | None = None,
+    tol: float = 1e-6,
+) -> bool:
+    """Check whether all joint angles are within anatomical limits.
+
+    Preconditions:
+        q is a 1-D array of length len(joint_names)
+    """
+    limits = joint_limits or JOINT_LIMITS
+    names = joint_names or JOINT_NAMES
+    assert len(q) == len(names), f"q length {len(q)} != {len(names)} joint names"
+    for i, name in enumerate(names):
+        lo, hi = limits[name]
+        if q[i] < lo - tol or q[i] > hi + tol:
+            return False
+    return True
+
+
+class HillTorqueModel:
+    """Hill-type torque-angle-velocity model for a joint.
+
+    Computes the maximum available torque at a joint given its angle
+    and angular velocity:
+
+        τ_avail = τ_max · f_angle(q) · f_velocity(qd)
+
+    f_angle is a Gaussian curve centered at the optimal angle.
+    f_velocity follows Hill's force-velocity relationship.
+
+    Preconditions:
+        tau_max > 0
+        angle_width > 0
+        v_max > 0
+    """
+
+    def __init__(
+        self,
+        tau_max: float,
+        q_optimal: float,
+        angle_width: float = HILL_ANGLE_WIDTH,
+        v_max: float = HILL_MAX_ANGULAR_VELOCITY,
+        k_shape: float = HILL_K_SHAPE,
+        ecc_factor: float = HILL_ECCENTRIC_FACTOR,
+        max_ecc_ratio: float = HILL_MAX_ECCENTRIC_RATIO,
+    ) -> None:
+        assert tau_max > 0, "tau_max must be positive"
+        assert angle_width > 0, "angle_width must be positive"
+        assert v_max > 0, "v_max must be positive"
+
+        self.tau_max = tau_max
+        self.q_optimal = q_optimal
+        self.angle_width = angle_width
+        self.v_max = v_max
+        self.k_shape = k_shape
+        self.ecc_factor = ecc_factor
+        self.max_ecc_ratio = max_ecc_ratio
+
+    def torque_angle_factor(self, q: float | NDArray) -> NDArray:
+        """Gaussian torque-angle scaling factor in [0, 1]."""
+        return np.exp(-(((np.asarray(q) - self.q_optimal) / self.angle_width) ** 2))
+
+    def torque_velocity_factor(self, qd: float | NDArray) -> NDArray:
+        """Hill-type force-velocity scaling factor.
+
+        Concentric (shortening, same sign as torque direction):
+            f = (v_max - |qd|) / (v_max + |qd| / k_shape)
+        Eccentric (lengthening):
+            f = (1 + ecc_factor * |qd|) / (1 + |qd| / k_shape)
+
+        Clamped to [0, max_ecc_ratio].
+        """
+        qd = np.asarray(qd)
+        speed = np.abs(qd)
+        # Concentric branch
+        conc = (self.v_max - speed) / (self.v_max + speed / self.k_shape)
+        # Eccentric branch
+        ecc = (1.0 + self.ecc_factor * speed) / (1.0 + speed / self.k_shape)
+        # Use concentric when speed < v_max, eccentric otherwise
+        # Actually: concentric when the muscle is shortening (speed < v_max)
+        # eccentric when lengthening (always positive factor)
+        # We select based on whether concentric factor is still positive
+        f = np.where(conc > 0, conc, ecc)
+        return np.clip(f, 0.0, self.max_ecc_ratio)
+
+    def available_torque(self, q: float | NDArray, qd: float | NDArray) -> NDArray:
+        """Maximum torque the joint can produce at given angle and velocity.
+
+        Returns τ_max * f_angle(q) * f_velocity(qd), always >= 0.
+        """
+        return self.tau_max * self.torque_angle_factor(q) * self.torque_velocity_factor(qd)
+
+
+class JointTorqueSet:
+    """Collection of Hill torque models for all joints in a chain.
+
+    Provides batch evaluation of torque capacity and identification
+    of the limiting joint (sticking point).
+
+    Preconditions:
+        joint_names and max_torques must have the same keys
+        optimal_angles must have the same keys
+    """
+
+    def __init__(
+        self,
+        joint_names: tuple[str, ...],
+        max_torques: dict[str, float],
+        optimal_angles: dict[str, float],
+        angle_width: float = HILL_ANGLE_WIDTH,
+        v_max: float = HILL_MAX_ANGULAR_VELOCITY,
+    ) -> None:
+        assert all(n in max_torques for n in joint_names), "max_torques must cover all joints"
+        assert all(n in optimal_angles for n in joint_names), "optimal_angles must cover all joints"
+
+        self.joint_names = joint_names
+        self._models: dict[str, HillTorqueModel] = {}
+        for name in joint_names:
+            self._models[name] = HillTorqueModel(
+                tau_max=max_torques[name],
+                q_optimal=optimal_angles[name],
+                angle_width=angle_width,
+                v_max=v_max,
+            )
+
+    def set_max_torque(self, joint_name: str, tau_max: float) -> None:
+        """Update the maximum isometric torque for a joint.
+
+        Preconditions:
+            joint_name is a valid joint in this set
+            tau_max > 0
+        """
+        assert joint_name in self._models, f"Unknown joint: {joint_name}"
+        assert tau_max > 0, "tau_max must be positive"
+        self._models[joint_name].tau_max = tau_max
+
+    def get_max_torque(self, joint_name: str) -> float:
+        """Return current max isometric torque for a joint."""
+        assert joint_name in self._models, f"Unknown joint: {joint_name}"
+        return self._models[joint_name].tau_max
+
+    def available_torques(self, q: NDArray, qd: NDArray) -> NDArray:
+        """Compute available torque at each joint for a single pose.
+
+        Returns array of shape (n_joints,) with positive values.
+        """
+        result = np.empty(len(self.joint_names))
+        for i, name in enumerate(self.joint_names):
+            result[i] = self._models[name].available_torque(q[i], qd[i])
+        return result
+
+    def available_torques_batch(self, q: NDArray, qd: NDArray) -> NDArray:
+        """Compute available torque at each joint for N poses.
+
+        Parameters:
+            q, qd: shape (N, n_joints)
+        Returns:
+            shape (N, n_joints) with positive values
+        """
+        n = q.shape[0]
+        result = np.empty((n, len(self.joint_names)))
+        for i, name in enumerate(self.joint_names):
+            result[:, i] = self._models[name].available_torque(q[:, i], qd[:, i])
+        return result
+
+    def torque_utilization(self, q: NDArray, qd: NDArray, required_torques: NDArray) -> NDArray:
+        """Ratio of required torque to available torque.
+
+        Parameters:
+            q, qd: shape (N, n_joints)
+            required_torques: shape (N, n_joints)
+        Returns:
+            shape (N, n_joints) — values > 1.0 mean the joint is overloaded
+        """
+        available = self.available_torques_batch(q, qd)
+        # Avoid division by zero
+        safe_avail = np.maximum(available, 1e-10)
+        return np.abs(required_torques) / safe_avail
+
+    def find_sticking_point(
+        self, q: NDArray, qd: NDArray, required_torques: NDArray
+    ) -> tuple[int, str, float]:
+        """Find the time step and joint where torque utilization is highest.
+
+        Returns:
+            (time_index, joint_name, peak_utilization)
+
+        The sticking point is the moment in the lift where the lifter
+        is closest to (or exceeds) their torque capacity.
+        """
+        utilization = self.torque_utilization(q, qd, required_torques)
+        flat_idx = int(np.argmax(utilization))
+        time_idx, joint_idx = np.unravel_index(flat_idx, utilization.shape)
+        return (
+            int(time_idx),
+            self.joint_names[joint_idx],
+            float(utilization[time_idx, joint_idx]),
+        )
+
+
+def make_default_torque_set() -> JointTorqueSet:
+    """Create a JointTorqueSet with default parameters for the standing chain."""
+    return JointTorqueSet(
+        joint_names=JOINT_NAMES,
+        max_torques=DEFAULT_MAX_JOINT_TORQUES,
+        optimal_angles=HILL_OPTIMAL_ANGLES,
+    )
+
+
+def make_bench_press_torque_set() -> JointTorqueSet:
+    """Create a JointTorqueSet with bench press parameters."""
+    return JointTorqueSet(
+        joint_names=BENCH_PRESS_JOINT_NAMES,
+        max_torques=BENCH_PRESS_MAX_JOINT_TORQUES,
+        optimal_angles=BENCH_PRESS_HILL_OPTIMAL_ANGLES,
+    )
+
+
+def compute_max_load(
+    dynamics_factory,
+    body: BodyModel,
+    torque_set: JointTorqueSet,
+    exercise_type: str,
+    load_range: tuple[float, float] = (0.0, 500.0),
+    tol: float = 0.5,
+    n_eval: int = 40,
+) -> tuple[float, int, str, float]:
+    """Binary search for the maximum load a lifter can handle.
+
+    Uses the torque model to find the heaviest bar_mass where peak
+    torque utilization stays <= 1.0 across the optimized trajectory.
+
+    Parameters:
+        dynamics_factory: callable(body, bar_mass) -> (dyn, qs, qe, qb[, q_via])
+        body: BodyModel instance
+        torque_set: JointTorqueSet with current max torques
+        exercise_type: "squat", "deadlift", "bench_press", etc.
+        load_range: (min_load, max_load) search bounds in kg
+        tol: convergence tolerance in kg
+        n_eval: number of evaluation points for the trajectory
+
+    Returns:
+        (max_load_kg, sticking_time_idx, sticking_joint, peak_utilization)
+
+    Preconditions:
+        load_range[0] >= 0
+        load_range[1] > load_range[0]
+        tol > 0
+    """
+    from .trajectory import TrajectoryOptimizer
+
+    assert load_range[0] >= 0, "min load must be non-negative"
+    assert load_range[1] > load_range[0], "max must exceed min"
+    assert tol > 0, "tolerance must be positive"
+
+    lo, hi = load_range
+
+    def _is_feasible(bar_mass: float) -> tuple[bool, int, str, float]:
+        """Check if bar_mass is liftable; return sticking point info."""
+        config = dynamics_factory(body, bar_mass)
+        if len(config) == 5:
+            dyn, qs, qe, qb, q_via = config
+        else:
+            dyn, qs, qe, qb = config
+            q_via = None
+
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,
+            exercise_type,
+            bar_mass,
+            qs,
+            qe,
+            qb,
+            q_via=q_via,
+            duration=2.0,
+            n_waypoints=8,
+            n_eval=n_eval,
+            n_starts=1,
+        )
+        result = opt.optimize()
+        if not result.success:
+            return False, 0, "", float("inf")
+
+        time_idx, joint_name, peak_util = torque_set.find_sticking_point(
+            result.q, result.qd, result.torques
+        )
+        return peak_util <= 1.0, time_idx, joint_name, peak_util
+
+    best_time_idx, best_joint, best_util = 0, "", 0.0
+    last_feasible_load = lo
+
+    while hi - lo > tol:
+        mid = (lo + hi) / 2.0
+        feasible, t_idx, j_name, util = _is_feasible(mid)
+        if feasible:
+            lo = mid
+            last_feasible_load = mid
+            best_time_idx, best_joint, best_util = t_idx, j_name, util
+        else:
+            hi = mid
+
+    return last_feasible_load, best_time_idx, best_joint, best_util
 
 
 class LagrangianDynamics(PhysicsBackend):
@@ -494,3 +840,103 @@ def _deadlift_start_angles(body: BodyModel) -> NDArray:
     cos_q1 = np.clip(needed / body.L[1], -1, 1)
     q1 = -np.arccos(cos_q1)
     return np.array([q0, q1, q2])
+
+
+# ==============================================================
+# Bench Press Configuration
+# ==============================================================
+
+
+class BenchPressModel:
+    """Anthropometric model for the bench press arm chain.
+
+    Maps the 3-link model to: shoulder, elbow, wrist.
+    Segment lengths are derived from the full body arm length.
+
+    Preconditions:
+        body is a valid BodyModel
+    """
+
+    def __init__(self, body: BodyModel) -> None:
+        arm_len = body.L_arm
+        self.L = np.array(
+            [
+                BENCH_UPPER_ARM_FRAC * arm_len,
+                BENCH_FOREARM_FRAC * arm_len,
+                0.05,  # wrist segment (negligible)
+            ]
+        )
+        self.body_mass = body.body_mass
+        # Arm segment masses: split arm mass into upper arm, forearm, hand
+        arm_mass = MASS_FRAC["arms"] * body.body_mass
+        self.m = np.array(
+            [
+                0.50 * arm_mass,  # upper arm
+                0.35 * arm_mass,  # forearm
+                0.15 * arm_mass,  # hand/wrist
+            ]
+        )
+        self.d = np.array(
+            [
+                0.436 * self.L[0],  # upper arm COM
+                0.430 * self.L[1],  # forearm COM
+                0.500 * self.L[2],  # hand COM
+            ]
+        )
+        self.I = (1.0 / 12.0) * self.m * self.L**2
+        self.g = body.g
+        self.inner_heel = body.inner_heel
+        self.inner_toe = body.inner_toe
+        self.inner_center = body.inner_center
+        self.height = body.height
+
+
+def make_bench_press_config(
+    body: BodyModel, bar_mass: float
+) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
+    """Create dynamics and trajectory config for bench press.
+
+    The bench press is modelled as a supine press: gravity acts along
+    the vertical axis while the lifter pushes the bar upward from chest
+    level.  The 3-link chain represents shoulder→elbow→wrist.
+
+    Returns:
+        (dynamics, q_start, q_end, q_bounds)
+    """
+    bp = BenchPressModel(body)
+
+    # Create a dynamics object using arm segment properties
+    # For bench press, the load (bar) is at the end of the chain (hands)
+    dyn = LagrangianDynamics(body, bp.m.copy(), bp.I.copy(), bar_mass)
+    # Override segment lengths for arm chain
+    dyn.L = bp.L
+    dyn.d = bp.d
+
+    # Recompute coupling coefficients for arm geometry
+    m = bp.m
+    d = bp.d
+    L = bp.L
+    dyn._a01 = (m[1] * d[1] + (m[2] + bar_mass) * L[1]) * L[0]
+    dyn._a02 = (m[2] * d[2] + bar_mass * L[2]) * L[0]
+    dyn._a12 = (m[2] * d[2] + bar_mass * L[2]) * L[1]
+    dyn._M00 = m[0] * d[0] ** 2 + (m[1] + m[2] + bar_mass) * L[0] ** 2 + bp.I[0]
+    dyn._M11 = m[1] * d[1] ** 2 + (m[2] + bar_mass) * L[1] ** 2 + bp.I[1]
+    dyn._M22 = m[2] * d[2] ** 2 + bar_mass * L[2] ** 2 + bp.I[2]
+    dyn._g0 = body.g * (m[0] * d[0] + (m[1] + m[2] + bar_mass) * L[0])
+    dyn._g1 = body.g * (m[1] * d[1] + (m[2] + bar_mass) * L[1])
+    dyn._g2 = body.g * (m[2] * d[2] + bar_mass * L[2])
+
+    # Start: bar at chest (arms flexed)
+    q_start = np.array([np.radians(10), np.radians(-120), np.radians(0)])
+    # End: arms extended (lockout)
+    q_end = np.array([np.radians(80), np.radians(-10), np.radians(0)])
+
+    q_bounds = np.array(
+        [
+            [BENCH_PRESS_JOINT_LIMITS["shoulder"][0], BENCH_PRESS_JOINT_LIMITS["shoulder"][1]],
+            [BENCH_PRESS_JOINT_LIMITS["elbow"][0], BENCH_PRESS_JOINT_LIMITS["elbow"][1]],
+            [BENCH_PRESS_JOINT_LIMITS["wrist"][0], BENCH_PRESS_JOINT_LIMITS["wrist"][1]],
+        ]
+    )
+
+    return dyn, q_start, q_end, q_bounds
