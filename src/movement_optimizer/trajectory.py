@@ -294,15 +294,11 @@ class TrajectoryOptimizer:
 
         if self.q_via is not None:
             n_half = self.n_waypoints // 2
-            q_all = np.vstack(
-                [self.q_start, wp[:n_half], self.q_via, wp[n_half:], self.q_end]
-            )
+            q_all = np.vstack([self.q_start, wp[:n_half], self.q_via, wp[n_half:], self.q_end])
         else:
             q_all = np.vstack([self.q_start, wp, self.q_end])
 
-        return [
-            CubicSpline(self.t_ctrl, q_all[:, j], bc_type="clamped") for j in range(3)
-        ]
+        return [CubicSpline(self.t_ctrl, q_all[:, j], bc_type="clamped") for j in range(3)]
 
     def eval_trajectory(
         self, splines: list[CubicSpline]
@@ -499,9 +495,7 @@ class TrajectoryOptimizer:
         if self.q_via is not None:
             n_half = self.n_waypoints // 2
             for j in range(3):
-                wp[:n_half, j] = np.linspace(
-                    self.q_start[j], self.q_via[j], n_half + 2
-                )[1:-1]
+                wp[:n_half, j] = np.linspace(self.q_start[j], self.q_via[j], n_half + 2)[1:-1]
                 wp[n_half:, j] = np.linspace(
                     self.q_via[j],
                     self.q_end[j],
@@ -509,9 +503,7 @@ class TrajectoryOptimizer:
                 )[1:-1]
         else:
             for j in range(3):
-                wp[:, j] = np.linspace(
-                    self.q_start[j], self.q_end[j], self.n_waypoints + 2
-                )[1:-1]
+                wp[:, j] = np.linspace(self.q_start[j], self.q_end[j], self.n_waypoints + 2)[1:-1]
         return wp
 
     def _perturbed_guess(self, seed: int) -> NDArray:
@@ -621,8 +613,7 @@ class TrajectoryOptimizer:
         else:
             with ThreadPoolExecutor(max_workers=n_workers) as pool:
                 futures = {
-                    pool.submit(self._run_single_start, seed): seed
-                    for seed in range(self.n_starts)
+                    pool.submit(self._run_single_start, seed): seed for seed in range(self.n_starts)
                 }
 
                 # Report progress from the primary start periodically
@@ -653,13 +644,12 @@ class TrajectoryOptimizer:
             raise CancelledError("All optimization starts were cancelled")
 
         # Pick the best result
-        best_res, best_evals = min(results, key=lambda r: float(r[0].fun))
+        best_res, _best_evals = min(results, key=lambda r: float(r[0].fun))
         elapsed = time.monotonic() - self._start_time
         total_evals_sum = sum(n for _, n in results)
 
         logger.info(
-            "Optimisation finished: best_cost=%.2f, total_evals=%d, "
-            "n_starts=%d, time=%.1fs",
+            "Optimisation finished: best_cost=%.2f, total_evals=%d, n_starts=%d, time=%.1fs",
             best_res.fun,
             total_evals_sum,
             len(results),
@@ -707,10 +697,7 @@ class TrajectoryOptimizer:
             ]
         )
         bar_traj = np.array(
-            [
-                self.dynamics.bar_position(q[n], self.exercise_type)
-                for n in range(self.n_eval)
-            ]
+            [self.dynamics.bar_position(q[n], self.exercise_type) for n in range(self.n_eval)]
         )
 
         com_x = com_traj[:, 0]

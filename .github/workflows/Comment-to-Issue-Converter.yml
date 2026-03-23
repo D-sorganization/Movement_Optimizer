@@ -1,0 +1,94 @@
+name: Comment to Issue Converter
+on:
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  convert-comment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: >-
+      contains(github.event.comment.body, '/issue') ||
+      contains(github.event.comment.body, 'TODO') ||
+      contains(github.event.comment.body, 'FIXME') ||
+      contains(github.event.comment.body, 'HACK')
+    steps:
+      - name: Extract comment details
+        id: extract
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment;
+            const pr = context.payload.pull_request;
+
+            const body = comment.body;
+            const file = comment.path || 'unknown';
+            const line = comment.line || comment.original_line || 'N/A';
+            const author = comment.user.login;
+            const prNumber = pr.number;
+            const prTitle = pr.title;
+            const commentUrl = comment.html_url;
+
+            // Determine labels based on content
+            const labels = ['from-review'];
+            if (body.includes('FIXME') || body.includes('bug')) labels.push('bug');
+            if (body.includes('TODO')) labels.push('enhancement');
+            if (body.includes('HACK')) labels.push('tech-debt');
+            if (body.includes('security') || body.includes('SECURITY')) labels.push('security');
+
+            // Extract title: use text after /issue if present, otherwise first line
+            let title;
+            const issueMatch = body.match(/\/issue\s+(.+?)(\n|$)/);
+            if (issueMatch) {
+              title = issueMatch[1].trim();
+            } else {
+              title = body.split('\n')[0].substring(0, 80);
+            }
+
+            const issueBody = [
+              `## Origin`,
+              `- **PR:** #${prNumber} (${prTitle})`,
+              `- **File:** \`${file}\` (line ${line})`,
+              `- **Author:** @${author}`,
+              `- **Comment:** ${commentUrl}`,
+              ``,
+              `## Description`,
+              body.replace(/\/issue\s*/, '').trim(),
+              ``,
+              `---`,
+              `*Auto-generated from PR review comment.*`
+            ].join('\n');
+
+            core.setOutput('title', title);
+            core.setOutput('body', issueBody);
+            core.setOutput('labels', labels.join(','));
+            core.setOutput('comment_url', commentUrl);
+            core.setOutput('pr_number', prNumber.toString());
+
+      - name: Create issue
+        id: create
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `${{ steps.extract.outputs.title }}`,
+              body: `${{ steps.extract.outputs.body }}`,
+              labels: '${{ steps.extract.outputs.labels }}'.split(',')
+            });
+
+            core.setOutput('issue_number', issue.number.toString());
+            core.setOutput('issue_url', issue.html_url);
+
+      - name: Reply to comment with issue link
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.pulls.createReplyForReviewComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: parseInt('${{ steps.extract.outputs.pr_number }}'),
+              comment_id: context.payload.comment.id,
+              body: `Created issue #${{ steps.create.outputs.issue_number }}: ${{ steps.create.outputs.issue_url }}`
+            });

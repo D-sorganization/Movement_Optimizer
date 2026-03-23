@@ -1,0 +1,107 @@
+name: CI Failure Digest
+on:
+  schedule:
+    - cron: "0 9 * * 1"   # Monday 9am UTC
+  workflow_dispatch:
+
+jobs:
+  failure-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Gather CI failure data
+        id: failures
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+            // Get workflow runs from the past week
+            const runs = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              status: 'failure',
+              created: `>=${oneWeekAgo.toISOString().split('T')[0]}`,
+              per_page: 100
+            });
+
+            const failures = runs.data.workflow_runs;
+
+            if (failures.length === 0) {
+              core.setOutput('has_failures', 'false');
+              core.setOutput('summary', 'No CI failures in the past week.');
+              return;
+            }
+
+            // Group by workflow name
+            const grouped = {};
+            for (const run of failures) {
+              const name = run.name;
+              if (!grouped[name]) grouped[name] = [];
+              grouped[name].push({
+                id: run.id,
+                branch: run.head_branch,
+                sha: run.head_sha.substring(0, 7),
+                date: run.created_at,
+                url: run.html_url,
+                conclusion: run.conclusion
+              });
+            }
+
+            let markdown = `## CI Failure Digest\n`;
+            markdown += `**Period:** ${oneWeekAgo.toISOString().split('T')[0]} to ${new Date().toISOString().split('T')[0]}\n`;
+            markdown += `**Total failures:** ${failures.length}\n\n`;
+
+            for (const [workflow, runs] of Object.entries(grouped)) {
+              markdown += `### ${workflow} (${runs.length} failures)\n`;
+              markdown += `| Branch | SHA | Date | Link |\n`;
+              markdown += `|--------|-----|------|------|\n`;
+              for (const run of runs.slice(0, 10)) {
+                const date = new Date(run.date).toLocaleDateString();
+                markdown += `| ${run.branch} | \`${run.sha}\` | ${date} | [Run](${run.url}) |\n`;
+              }
+              if (runs.length > 10) {
+                markdown += `| ... | ... | ... | +${runs.length - 10} more |\n`;
+              }
+              markdown += '\n';
+            }
+
+            // Top failing branches
+            const branchCounts = {};
+            for (const run of failures) {
+              branchCounts[run.head_branch] = (branchCounts[run.head_branch] || 0) + 1;
+            }
+            const topBranches = Object.entries(branchCounts)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5);
+
+            markdown += `### Top Failing Branches\n`;
+            for (const [branch, count] of topBranches) {
+              markdown += `- **${branch}**: ${count} failures\n`;
+            }
+
+            core.setOutput('has_failures', 'true');
+            core.setOutput('summary', markdown);
+            core.setOutput('count', failures.length.toString());
+
+      - name: Create digest issue
+        if: steps.failures.outputs.has_failures == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date().toISOString().split('T')[0];
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `CI Failure Digest - Week of ${today}`,
+              body: `${{ steps.failures.outputs.summary }}\n\n---\n*Auto-generated weekly CI failure digest.*`,
+              labels: ['ci-digest', 'automated']
+            });
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## CI Failure Digest" >> "$GITHUB_STEP_SUMMARY"
+          echo "Failures found: ${{ steps.failures.outputs.has_failures }}" >> "$GITHUB_STEP_SUMMARY"

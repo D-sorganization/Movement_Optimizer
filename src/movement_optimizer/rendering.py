@@ -89,19 +89,25 @@ class BodyRenderer:
     def draw_ground(cls, ax: Axes, heel_x: float, toe_x: float) -> None:
         ax.plot([-0.7, 0.7], [0, 0], color=Palette.FG_DIM, lw=2, alpha=0.3)
         ax.plot(
-            [heel_x, toe_x], [0, 0],
-            color=Palette.ORANGE, lw=4, solid_capstyle="round", alpha=0.5,
+            [heel_x, toe_x],
+            [0, 0],
+            color=Palette.ORANGE,
+            lw=4,
+            solid_capstyle="round",
+            alpha=0.5,
         )
 
     @classmethod
-    def draw_ghost(
-        cls, ax: Axes, joints: dict[str, NDArray], alpha: float = 0.10
-    ) -> None:
+    def draw_ghost(cls, ax: Axes, joints: dict[str, NDArray], alpha: float = 0.10) -> None:
         pts = [joints["ankle"], joints["knee"], joints["hip"], joints["shoulder"]]
         for k in range(3):
             ax.plot(
-                [pts[k][0], pts[k + 1][0]], [pts[k][1], pts[k + 1][1]],
-                "-", color=Palette.FG, lw=2, alpha=alpha,
+                [pts[k][0], pts[k + 1][0]],
+                [pts[k][1], pts[k + 1][1]],
+                "-",
+                color=Palette.FG,
+                lw=2,
+                alpha=alpha,
             )
 
     @classmethod
@@ -109,21 +115,34 @@ class BodyRenderer:
         pts = [joints["ankle"], joints["knee"], joints["hip"], joints["shoulder"]]
         for k in range(3):
             ax.plot(
-                [pts[k][0], pts[k + 1][0]], [pts[k][1], pts[k + 1][1]],
-                "-", color=Palette.SEG_COLORS[k], lw=5, solid_capstyle="round",
+                [pts[k][0], pts[k + 1][0]],
+                [pts[k][1], pts[k + 1][1]],
+                "-",
+                color=Palette.SEG_COLORS[k],
+                lw=5,
+                solid_capstyle="round",
             )
         for pt in pts:
             ax.plot(
-                pt[0], pt[1], "o",
-                color=Palette.FG, ms=7, markeredgecolor="#333", markeredgewidth=1.2,
+                pt[0],
+                pt[1],
+                "o",
+                color=Palette.FG,
+                ms=7,
+                markeredgecolor="#333",
+                markeredgewidth=1.2,
             )
 
     @classmethod
     def draw_arms(cls, ax: Axes, shoulder: NDArray, arm_length: float) -> None:
         hand_y = shoulder[1] - arm_length
         ax.plot(
-            [shoulder[0], shoulder[0]], [shoulder[1], hand_y],
-            "-", color="#b0b0b0", lw=3, solid_capstyle="round",
+            [shoulder[0], shoulder[0]],
+            [shoulder[1], hand_y],
+            "-",
+            color="#b0b0b0",
+            lw=3,
+            solid_capstyle="round",
         )
         ax.plot(shoulder[0], hand_y, "o", color=Palette.FG, ms=5)
 
@@ -131,20 +150,32 @@ class BodyRenderer:
     def draw_com_marker(cls, ax: Axes, com: NDArray) -> None:
         ax.plot(com[0], com[1], "+", color=Palette.YELLOW, ms=12, mew=2)
         ax.annotate(
-            "COM", (com[0], com[1]),
-            xytext=(8, -4), textcoords="offset points",
-            fontsize=7, color=Palette.YELLOW,
+            "COM",
+            (com[0], com[1]),
+            xytext=(8, -4),
+            textcoords="offset points",
+            fontsize=7,
+            color=Palette.YELLOW,
         )
 
     @classmethod
     def draw_bar_trace(cls, ax: Axes, bar_traj: NDArray, current_idx: int) -> None:
         ax.plot(
-            bar_traj[:, 0], bar_traj[:, 1],
-            "-", color=Palette.ORANGE, lw=1, alpha=0.25,
+            bar_traj[:, 0],
+            bar_traj[:, 1],
+            "-",
+            color=Palette.ORANGE,
+            lw=1,
+            alpha=0.25,
         )
         ax.plot(
-            bar_traj[current_idx, 0], bar_traj[current_idx, 1],
-            "x", color=Palette.ORANGE, ms=6, mew=1.5, alpha=0.7,
+            bar_traj[current_idx, 0],
+            bar_traj[current_idx, 1],
+            "x",
+            color=Palette.ORANGE,
+            ms=6,
+            mew=1.5,
+            alpha=0.7,
         )
 
 

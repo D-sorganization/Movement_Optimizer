@@ -4,7 +4,9 @@
 //! pre-computed coupling coefficients.  Uses rayon for parallel
 //! iteration over timesteps when N is large.
 
-use numpy::ndarray::{Array1, Array2, ArrayView2, Axis};
+#![allow(clippy::too_many_arguments)]
+
+use numpy::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray2};
 use pyo3::prelude::*;
 use rayon::prelude::*;
@@ -85,7 +87,6 @@ fn inverse_dynamics_batch_rs<'py>(
     };
 
     if n >= PAR_THRESHOLD {
-        // Parallel: collect results then copy
         let rows: Vec<[f64; 3]> = (0..n).into_par_iter().map(compute_row).collect();
         for (i, row) in rows.iter().enumerate() {
             tau[[i, 0]] = row[0];
@@ -93,7 +94,6 @@ fn inverse_dynamics_batch_rs<'py>(
             tau[[i, 2]] = row[2];
         }
     } else {
-        // Sequential for small N (avoids rayon overhead)
         for i in 0..n {
             let row = compute_row(i);
             tau[[i, 0]] = row[0];
@@ -102,7 +102,7 @@ fn inverse_dynamics_batch_rs<'py>(
         }
     }
 
-    tau.into_pyarray(py).into()
+    tau.into_pyarray_bound(py)
 }
 
 /// Compute COM x-coordinate for all timesteps.
@@ -122,9 +122,15 @@ fn inverse_dynamics_batch_rs<'py>(
 fn com_x_batch_rs<'py>(
     py: Python<'py>,
     q: PyReadonlyArray2<'py, f64>,
-    l0: f64, l1: f64, l2: f64,
-    d0: f64, d1: f64, d2: f64,
-    m0: f64, m1: f64, m2: f64,
+    l0: f64,
+    l1: f64,
+    l2: f64,
+    d0: f64,
+    d1: f64,
+    d2: f64,
+    m0: f64,
+    m1: f64,
+    m2: f64,
     m_feet: f64,
     foot_com_x: f64,
     bar_mass: f64,
@@ -166,7 +172,7 @@ fn com_x_batch_rs<'py>(
         (0..n).map(compute_one).collect()
     };
 
-    Array1::from_vec(result).into_pyarray(py).into()
+    Array1::from_vec(result).into_pyarray_bound(py)
 }
 
 #[pymodule]
