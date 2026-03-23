@@ -20,7 +20,8 @@ def default_body() -> BodyModel:
 @pytest.fixture()
 def custom_body() -> BodyModel:
     return BodyModel(
-        80.0, 1.80,
+        80.0,
+        1.80,
         seg_multipliers={"lower_leg": 1.1, "upper_leg": 0.9, "torso": 1.05},
     )
 

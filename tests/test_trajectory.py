@@ -31,8 +31,17 @@ def squat_optimizer():
     body = BodyModel(75.0, 1.75)
     dyn, qs, qe, qb = make_squat_config(body, 60.0)
     opt = TrajectoryOptimizer(
-        body, dyn, "squat", 60.0, qs, qe, qb,
-        duration=2.0, n_waypoints=6, n_eval=20, n_starts=1,
+        body,
+        dyn,
+        "squat",
+        60.0,
+        qs,
+        qe,
+        qb,
+        duration=2.0,
+        n_waypoints=6,
+        n_eval=20,
+        n_starts=1,
     )
     return opt, body, dyn, qs, qe
 
@@ -42,8 +51,18 @@ def full_squat_optimizer():
     body = BodyModel(75.0, 1.75)
     dyn, qs, qe, qb, q_via = make_full_squat_config(body, 60.0)
     opt = TrajectoryOptimizer(
-        body, dyn, "full_squat", 60.0, qs, qe, qb,
-        q_via=q_via, duration=4.0, n_waypoints=8, n_eval=20, n_starts=1,
+        body,
+        dyn,
+        "full_squat",
+        60.0,
+        qs,
+        qe,
+        qb,
+        q_via=q_via,
+        duration=4.0,
+        n_waypoints=8,
+        n_eval=20,
+        n_starts=1,
     )
     return opt, body, dyn
 
@@ -59,7 +78,14 @@ class TestConstruction:
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
         with pytest.raises(AssertionError, match="waypoints"):
             TrajectoryOptimizer(
-                body, dyn, "squat", 60.0, qs, qe, qb, n_waypoints=2,
+                body,
+                dyn,
+                "squat",
+                60.0,
+                qs,
+                qe,
+                qb,
+                n_waypoints=2,
             )
 
     def test_bad_bounds_shape_raises(self) -> None:
@@ -68,7 +94,13 @@ class TestConstruction:
         bad_bounds = np.zeros((2, 2))
         with pytest.raises(AssertionError, match="q_bounds"):
             TrajectoryOptimizer(
-                body, dyn, "squat", 60.0, qs, qe, bad_bounds,
+                body,
+                dyn,
+                "squat",
+                60.0,
+                qs,
+                qe,
+                bad_bounds,
             )
 
     def test_inner_bos_stored(self, squat_optimizer) -> None:
@@ -145,8 +177,16 @@ class TestCostTerms:
         body = BodyModel(75.0, 1.75)
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
         opt = TrajectoryOptimizer(
-            body, dyn, "squat", 60.0, qs, qe, qb,
-            n_waypoints=6, n_eval=20, n_starts=1,
+            body,
+            dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=1,
         )
         qd = np.zeros((20, 3))
         qdd = np.zeros((20, 3))
@@ -240,8 +280,17 @@ class TestOptimization:
         body = BodyModel(75.0, 1.75)
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
         opt = TrajectoryOptimizer(
-            body, dyn, "squat", 60.0, qs, qe, qb,
-            duration=2.0, n_waypoints=12, n_eval=40, n_starts=1,
+            body,
+            dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=12,
+            n_eval=40,
+            n_starts=1,
         )
         result = opt.optimize()
         assert result.cost < float("inf")
@@ -252,15 +301,22 @@ class TestOptimization:
         body = BodyModel(75.0, 1.75)
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
         opt = TrajectoryOptimizer(
-            body, dyn, "squat", 60.0, qs, qe, qb,
-            duration=2.0, n_waypoints=12, n_eval=40, n_starts=2,
+            body,
+            dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=12,
+            n_eval=40,
+            n_starts=2,
         )
         result = opt.optimize()
         # At standing (end of ascent), COM should be near the ankle
         com_x_end = result.com[-1, 0]
-        assert abs(com_x_end) < 0.05, (
-            f"COM at standing too far from ankle: {com_x_end:.4f}"
-        )
+        assert abs(com_x_end) < 0.05, f"COM at standing too far from ankle: {com_x_end:.4f}"
         # COM should move forward (toward foot) as the squat ascends
         com_x_start = result.com[0, 0]
         assert com_x_end > com_x_start, "COM should move forward during ascent"
@@ -297,8 +353,17 @@ class TestMultiStart:
         body = BodyModel(75.0, 1.75)
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
         opt = TrajectoryOptimizer(
-            body, dyn, "squat", 60.0, qs, qe, qb,
-            duration=2.0, n_waypoints=6, n_eval=20, n_starts=3,
+            body,
+            dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=3,
         )
         result = opt.optimize()
         assert isinstance(result, OptimizationResult)
@@ -323,8 +388,16 @@ class TestCancellation:
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
         cancel = threading.Event()
         opt = TrajectoryOptimizer(
-            body, dyn, "squat", 60.0, qs, qe, qb,
-            n_waypoints=6, n_eval=20, n_starts=1,
+            body,
+            dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=1,
             cancel_event=cancel,
         )
         call_count = [0]
@@ -354,8 +427,16 @@ class TestProgressReporting:
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
         reports: list[ProgressReport] = []
         opt = TrajectoryOptimizer(
-            body, dyn, "squat", 60.0, qs, qe, qb,
-            n_waypoints=6, n_eval=20, n_starts=1,
+            body,
+            dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=1,
             progress_cb=lambda r: reports.append(r),
         )
         opt.optimize()
@@ -365,7 +446,7 @@ class TestProgressReporting:
     def test_stall_detection_flat_cost(self, squat_optimizer) -> None:
         opt, _, _, _, _ = squat_optimizer
         opt._cost_history = [100.0] * 100
-        is_stalled, reason = opt._detect_stall()
+        is_stalled, _reason = opt._detect_stall()
         assert is_stalled
 
     def test_stall_detection_improving(self, squat_optimizer) -> None:
@@ -390,10 +471,16 @@ class TestSolutionCache:
         cache = SolutionCache()
         n = 10
         dummy = OptimizationResult(
-            t=np.zeros(n), q=np.zeros((n, 3)), qd=np.zeros((n, 3)),
-            qdd=np.zeros((n, 3)), torques=np.zeros((n, 3)),
-            power=np.zeros((n, 3)), com=np.zeros((n, 2)),
-            bar=np.zeros((n, 2)), success=True, cost=42.0,
+            t=np.zeros(n),
+            q=np.zeros((n, 3)),
+            qd=np.zeros((n, 3)),
+            qdd=np.zeros((n, 3)),
+            torques=np.zeros((n, 3)),
+            power=np.zeros((n, 3)),
+            com=np.zeros((n, 2)),
+            bar=np.zeros((n, 2)),
+            success=True,
+            cost=42.0,
             com_horizontal_range_cm=1.5,
         )
         mults = {"lower_leg": 1.0, "upper_leg": 1.0, "torso": 1.0}
@@ -406,10 +493,16 @@ class TestSolutionCache:
         cache = SolutionCache()
         n = 10
         dummy = OptimizationResult(
-            t=np.zeros(n), q=np.zeros((n, 3)), qd=np.zeros((n, 3)),
-            qdd=np.zeros((n, 3)), torques=np.zeros((n, 3)),
-            power=np.zeros((n, 3)), com=np.zeros((n, 2)),
-            bar=np.zeros((n, 2)), success=True, cost=42.0,
+            t=np.zeros(n),
+            q=np.zeros((n, 3)),
+            qd=np.zeros((n, 3)),
+            qdd=np.zeros((n, 3)),
+            torques=np.zeros((n, 3)),
+            power=np.zeros((n, 3)),
+            com=np.zeros((n, 2)),
+            bar=np.zeros((n, 2)),
+            success=True,
+            cost=42.0,
             com_horizontal_range_cm=1.5,
         )
         mults = {"lower_leg": 1.0, "upper_leg": 1.0, "torso": 1.0}
