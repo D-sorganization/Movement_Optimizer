@@ -37,6 +37,7 @@ from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from PyQt6.QtCore import QSettings, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
@@ -56,6 +57,24 @@ from PyQt6.QtWidgets import (
 from .comparison import ComparisonStore, comparison_metrics
 from .constants import BAR_MASS_KG, PLATE_RADIUS_STD_M, trapezoid
 from .exercises import make_clean_config, make_jerk_config, make_snatch_config
+from .exercises_3d import (
+    make_bench_config_3d as make_bench_3d,
+)
+from .exercises_3d import (
+    make_clean_config_3d as make_clean_3d,
+)
+from .exercises_3d import (
+    make_deadlift_config_3d as make_deadlift_3d,
+)
+from .exercises_3d import (
+    make_jerk_config_3d as make_jerk_3d,
+)
+from .exercises_3d import (
+    make_snatch_config_3d as make_snatch_3d,
+)
+from .exercises_3d import (
+    make_squat_config_3d as make_squat_3d,
+)
 from .export import export_animation_gif, export_plots_pdf, export_plots_png
 from .models import (
     BodyModel,
@@ -72,6 +91,7 @@ from .rendering import (
     style_axis,
 )
 from .spine_loads import NIOSH_COMPRESSION_LIMIT, spinal_compression, spinal_shear
+from .three_d.body3d import BodyModel3D
 from .trajectory import (
     CancelledError,
     OptimizationResult,
@@ -365,6 +385,15 @@ class ParameterSidebar(QScrollArea):
     def _build_optimization(self) -> None:
         grp = QGroupBox("Optimization")
         lay = QVBoxLayout(grp)
+
+        # 2D/3D model selector
+        model_row = QHBoxLayout()
+        model_row.addWidget(QLabel("Model:"))
+        self.model_combo = QComboBox()
+        self.model_combo.addItems(["2D Sagittal", "3D Bilateral"])
+        model_row.addWidget(self.model_combo)
+        lay.addLayout(model_row)
+
         self.dur_slider = LabelledSlider("Duration", 0.5, 5.0, 2.0, "s", 1)
         self.smooth_slider = LabelledSlider("Smoothness", 0.1, 5.0, 1.0, "x", 1)
         hint = QLabel("Higher = smoother torques")
@@ -373,6 +402,10 @@ class ParameterSidebar(QScrollArea):
         lay.addWidget(self.smooth_slider)
         lay.addWidget(hint)
         self.main_layout.addWidget(grp)
+
+    def is_3d_mode(self) -> bool:
+        """Return True if the 3D model is selected."""
+        return self.model_combo.currentIndex() == 1
 
     def _build_buttons(self) -> None:
         self.opt_btn = QPushButton("\u25b6  Optimize Current Tab")
@@ -1365,8 +1398,13 @@ class MainWindow(QMainWindow):
             smoothness = self.sidebar.smooth_slider.value()
             _, etype = self.EXERCISE_CONFIGS[idx]
 
+            use_3d = self.sidebar.is_3d_mode()
             q_via = None
-            if etype == "squat":
+
+            if use_3d:
+                body3d = BodyModel3D(body.body_mass, body.height)
+                dyn, qs, qe, qb, q_via = self._get_3d_config(etype, body3d, bar)
+            elif etype == "squat":
                 dyn, qs, qe, qb = make_squat_config(body, bar)
             elif etype == "full_squat":
                 dyn, qs, qe, qb, q_via = make_full_squat_config(body, bar)
@@ -1452,6 +1490,27 @@ class MainWindow(QMainWindow):
 
     # _ensure_idle removed: signals guarantee delivery to the main thread,
     # so _on_done / _on_cancelled / _on_err always fire reliably.
+
+    @staticmethod
+    def _get_3d_config(etype: str, body3d: BodyModel3D, bar: float) -> tuple:
+        """Dispatch to the correct 3D exercise config factory.
+
+        Returns (dyn, qs, qe, qb, q_via) — q_via may be None.
+        """
+        configs = {
+            "squat": make_squat_3d,
+            "full_squat": make_squat_3d,
+            "deadlift": make_deadlift_3d,
+            "bench_press": make_bench_3d,
+            "clean": make_clean_3d,
+            "jerk": make_jerk_3d,
+            "snatch": make_snatch_3d,
+        }
+        factory = configs.get(etype, make_squat_3d)
+        result = factory(body3d, bar)
+        if len(result) == 4:
+            return (*result, None)
+        return result
 
     def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
         def cb(report: ProgressReport) -> None:
