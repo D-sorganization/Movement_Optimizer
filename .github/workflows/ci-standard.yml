@@ -2,10 +2,10 @@ name: CI Standard
 on:
   push:
     branches: [main, staging]
-    paths-ignore: ["docs/**", "**.md", "LICENSE", ".gitignore", ".github/**"]
+    paths-ignore: ["docs/**", "**.md", "LICENSE", ".gitignore"]
   pull_request:
     types: [opened, synchronize, reopened]
-    paths-ignore: ["docs/**", "**.md", "LICENSE", ".gitignore", ".github/**"]
+    paths-ignore: ["docs/**", "**.md", "LICENSE", ".gitignore"]
   workflow_dispatch:
 
 concurrency:
@@ -35,7 +35,8 @@ jobs:
         run: ruff format --check src/ tests/
 
       - name: Type Check (Mypy)
-        run: mypy --ignore-missing-imports src/movement_optimizer/ || true
+        run: mypy --ignore-missing-imports src/movement_optimizer/ || echo "::warning::mypy found type errors (non-blocking)"
+        continue-on-error: true
 
       - name: Security Scan (bandit)
         run: bandit -r src/movement_optimizer/ -ll -ii
@@ -58,7 +59,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run Tests
-        run: pytest tests/ -v --tb=short --cov=movement_optimizer --cov-report=xml
+        run: pytest tests/ -v --tb=short --cov=movement_optimizer --cov-report=xml --cov-fail-under=50
 
       - name: Upload Coverage
         if: matrix.python-version == '3.12'

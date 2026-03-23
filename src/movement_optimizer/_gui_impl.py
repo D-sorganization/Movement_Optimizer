@@ -16,6 +16,7 @@ Design Principles:
 from __future__ import annotations
 
 import csv
+import json
 import logging
 import os
 import sys
@@ -259,7 +260,8 @@ class LabelledSlider(QWidget):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        assert lo < hi, f"lo ({lo}) must be < hi ({hi})"
+        if lo >= hi:
+            raise ValueError(f"lo ({lo}) must be < hi ({hi})")
         self.lo = lo
         self.hi = hi
         self.decimals = decimals
@@ -1312,7 +1314,7 @@ class MainWindow(QMainWindow):
                 "smoothness": self.sidebar.smooth_slider.value(),
             }
             save_app_state(results_dict, slider_values)
-        except Exception:
+        except (OSError, TypeError, ValueError):
             logger.warning("Failed to save session state: %s", traceback.format_exc())
 
     def try_restore_session(self) -> None:
@@ -1348,7 +1350,7 @@ class MainWindow(QMainWindow):
             if "smoothness" in sv:
                 self.sidebar.smooth_slider.set_value(sv["smoothness"])
             self.status_label.setText("Previous session restored (slider values).")
-        except Exception:
+        except (OSError, KeyError, TypeError, ValueError):
             logger.warning("Failed to restore session: %s", traceback.format_exc())
 
     def _save_layout(self) -> None:
@@ -1483,7 +1485,7 @@ class MainWindow(QMainWindow):
             self._sig_done.emit(idx, result, body, bar, then_chain)
         except CancelledError:
             self._sig_cancelled.emit()
-        except Exception as exc:
+        except (ValueError, RuntimeError, OSError, np.linalg.LinAlgError) as exc:
             tb = traceback.format_exc()
             logger.error("Optimisation failed:\n%s", tb)
             self._sig_error.emit(str(exc))
@@ -1569,13 +1571,12 @@ class MainWindow(QMainWindow):
                 self._opt_running = False
                 self.sidebar.show_idle()
                 self.status_label.setText(status_msg)
-        except Exception:
+        except (ValueError, RuntimeError, OSError, AttributeError) as exc:
             self._opt_running = False
             tb = traceback.format_exc()
             logger.error("Error in _on_done:\n%s", tb)
-            print(f"ERROR in _on_done:\n{tb}", flush=True)
             self.sidebar.show_idle()
-            self.status_label.setText(f"Render error: {tb.splitlines()[-1]}")
+            self.status_label.setText(f"Render error: {exc}")
 
     def _on_cancelled(self) -> None:
         self._opt_running = False
@@ -1720,7 +1721,7 @@ class MainWindow(QMainWindow):
 
     def _write_csv(self, path: str, r: OptimizationResult) -> None:
         try:
-            with open(path, "w", newline="") as f:
+            with open(path, "w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
                 w.writerow(
                     [
@@ -1759,7 +1760,7 @@ class MainWindow(QMainWindow):
                     )
             self.status_label.setText(f"Exported: {os.path.basename(path)}")
             QMessageBox.information(self, "Exported", f"Saved to:\n{path}")
-        except Exception as e:
+        except (OSError, ValueError) as e:
             QMessageBox.critical(self, "Export Error", str(e))
 
     def _save_solution(self) -> None:
@@ -1790,7 +1791,7 @@ class MainWindow(QMainWindow):
             bar = self.sidebar.bar_slider.value()
             save_solution(path, r, body_params, etype, bar)
             self.status_label.setText(f"Saved: {os.path.basename(path)}")
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             QMessageBox.critical(self, "Save Error", str(e))
 
     def _load_solution(self) -> None:
@@ -1815,7 +1816,7 @@ class MainWindow(QMainWindow):
                 f"Bar mass: {data.get('bar_mass')} kg\n"
                 f"Cost: {data.get('metadata', {}).get('cost', 'N/A')}",
             )
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
             QMessageBox.critical(self, "Load Error", str(e))
 
     def _export_video(self) -> None:
@@ -1845,7 +1846,7 @@ class MainWindow(QMainWindow):
             export_animation_gif(tab.fig, draw_frame, n_frames, path, fps=15)
             self.status_label.setText(f"Exported GIF: {os.path.basename(path)}")
             QMessageBox.information(self, "Exported", f"Animation saved to:\n{path}")
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             QMessageBox.critical(self, "Export Error", str(e))
 
     def _export_plots(self) -> None:
@@ -1870,7 +1871,7 @@ class MainWindow(QMainWindow):
                 export_plots_png(tab.fig, path)
             self.status_label.setText(f"Exported: {os.path.basename(path)}")
             QMessageBox.information(self, "Exported", f"Plots saved to:\n{path}")
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             QMessageBox.critical(self, "Export Error", str(e))
 
     def _add_comparison(self) -> None:

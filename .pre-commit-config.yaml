@@ -48,7 +48,7 @@ repos:
       - id: mypy
         name: "mypy (type check)"
         stages: [pre-push]
-        additional_dependencies: [types-requests, types-PyYAML, numpy]
+        additional_dependencies: [numpy]
         args: [--ignore-missing-imports]
         types: [python]
         files: ^src/

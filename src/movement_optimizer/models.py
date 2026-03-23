@@ -60,8 +60,10 @@ class BodyModel:
         abduction_angle: float = 0.0,
         arm_angle: float = 0.0,
     ) -> None:
-        assert body_mass > 0, "body_mass must be positive"
-        assert height > 0, "height must be positive"
+        if body_mass <= 0:
+            raise ValueError("body_mass must be positive")
+        if height <= 0:
+            raise ValueError("height must be positive")
 
         self.body_mass = body_mass
         self.height = height
@@ -88,7 +90,8 @@ class BodyModel:
         out: dict[str, float] = {}
         for k, v in defaults.items():
             val = raw.get(k, v)
-            assert 0.5 <= val <= 2.0, f"{k} multiplier out of range"
+            if not (0.5 <= val <= 2.0):
+                raise ValueError(f"{k} multiplier out of range")
             out[k] = val
         return out
 
@@ -193,7 +196,8 @@ def clamp_joint_angles(
     """
     limits = joint_limits or JOINT_LIMITS
     names = joint_names or JOINT_NAMES
-    assert len(q) == len(names), f"q length {len(q)} != {len(names)} joint names"
+    if len(q) != len(names):
+        raise ValueError(f"q length {len(q)} != {len(names)} joint names")
     q_clamped = q.copy()
     for i, name in enumerate(names):
         lo, hi = limits[name]
@@ -214,7 +218,8 @@ def joint_angles_within_limits(
     """
     limits = joint_limits or JOINT_LIMITS
     names = joint_names or JOINT_NAMES
-    assert len(q) == len(names), f"q length {len(q)} != {len(names)} joint names"
+    if len(q) != len(names):
+        raise ValueError(f"q length {len(q)} != {len(names)} joint names")
     for i, name in enumerate(names):
         lo, hi = limits[name]
         if q[i] < lo - tol or q[i] > hi + tol:
@@ -249,9 +254,12 @@ class HillTorqueModel:
         ecc_factor: float = HILL_ECCENTRIC_FACTOR,
         max_ecc_ratio: float = HILL_MAX_ECCENTRIC_RATIO,
     ) -> None:
-        assert tau_max > 0, "tau_max must be positive"
-        assert angle_width > 0, "angle_width must be positive"
-        assert v_max > 0, "v_max must be positive"
+        if tau_max <= 0:
+            raise ValueError("tau_max must be positive")
+        if angle_width <= 0:
+            raise ValueError("angle_width must be positive")
+        if v_max <= 0:
+            raise ValueError("v_max must be positive")
 
         self.tau_max = tau_max
         self.q_optimal = q_optimal
@@ -315,8 +323,10 @@ class JointTorqueSet:
         angle_width: float = HILL_ANGLE_WIDTH,
         v_max: float = HILL_MAX_ANGULAR_VELOCITY,
     ) -> None:
-        assert all(n in max_torques for n in joint_names), "max_torques must cover all joints"
-        assert all(n in optimal_angles for n in joint_names), "optimal_angles must cover all joints"
+        if not all(n in max_torques for n in joint_names):
+            raise ValueError("max_torques must cover all joints")
+        if not all(n in optimal_angles for n in joint_names):
+            raise ValueError("optimal_angles must cover all joints")
 
         self.joint_names = joint_names
         self._models: dict[str, HillTorqueModel] = {}
@@ -335,13 +345,16 @@ class JointTorqueSet:
             joint_name is a valid joint in this set
             tau_max > 0
         """
-        assert joint_name in self._models, f"Unknown joint: {joint_name}"
-        assert tau_max > 0, "tau_max must be positive"
+        if joint_name not in self._models:
+            raise ValueError(f"Unknown joint: {joint_name}")
+        if tau_max <= 0:
+            raise ValueError("tau_max must be positive")
         self._models[joint_name].tau_max = tau_max
 
     def get_max_torque(self, joint_name: str) -> float:
         """Return current max isometric torque for a joint."""
-        assert joint_name in self._models, f"Unknown joint: {joint_name}"
+        if joint_name not in self._models:
+            raise ValueError(f"Unknown joint: {joint_name}")
         return self._models[joint_name].tau_max
 
     def available_torques(self, q: NDArray, qd: NDArray) -> NDArray:
@@ -454,9 +467,12 @@ def compute_max_load(
     """
     from .trajectory import TrajectoryOptimizer
 
-    assert load_range[0] >= 0, "min load must be non-negative"
-    assert load_range[1] > load_range[0], "max must exceed min"
-    assert tol > 0, "tolerance must be positive"
+    if load_range[0] < 0:
+        raise ValueError("min load must be non-negative")
+    if load_range[1] <= load_range[0]:
+        raise ValueError("max must exceed min")
+    if tol <= 0:
+        raise ValueError("tolerance must be positive")
 
     lo, hi = load_range
 
@@ -526,8 +542,10 @@ class LagrangianDynamics(PhysicsBackend):
         I_segments: NDArray,
         load_mass: float,
     ) -> None:
-        assert len(m_segments) == 3, "need 3 segment masses"
-        assert load_mass >= 0, "load_mass cannot be negative"
+        if len(m_segments) != 3:
+            raise ValueError("need 3 segment masses")
+        if load_mass < 0:
+            raise ValueError("load_mass cannot be negative")
         self.body = body
         self.L = body.L
         self.L_eff = body.L_eff
@@ -755,7 +773,7 @@ class LagrangianDynamics(PhysicsBackend):
 # ==============================================================
 
 
-def _balance_pose(
+def balance_pose(
     dyn: LagrangianDynamics,
     q_init: NDArray,
     exercise_type: str,
@@ -803,7 +821,7 @@ def _standing_balanced(dyn: LagrangianDynamics, bar_mass: float, exercise_type: 
     Adjusts shin angle (joint 0) to shift COM forward over mid-foot.
     """
     q_stand = np.array([0.0, 0.0, 0.0])
-    return _balance_pose(dyn, q_stand, exercise_type, bar_mass, adjust_joint=0)
+    return balance_pose(dyn, q_stand, exercise_type, bar_mass, adjust_joint=0)
 
 
 def make_squat_config(
@@ -812,7 +830,7 @@ def make_squat_config(
     dyn = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), bar_mass)
     # Squat bottom: deep knee bend, torso adjusted for COM balance
     q_bottom_raw = np.array([np.radians(25), np.radians(-90), np.radians(50)])
-    q_start = _balance_pose(dyn, q_bottom_raw, "squat", bar_mass, adjust_joint=2)
+    q_start = balance_pose(dyn, q_bottom_raw, "squat", bar_mass, adjust_joint=2)
     q_end = _standing_balanced(dyn, bar_mass, "squat")
     q_bounds = np.array(
         [
@@ -832,7 +850,7 @@ def make_full_squat_config(
     q_start = q_stand.copy()
     q_end = q_stand.copy()
     q_bottom_raw = np.array([np.radians(25), np.radians(-90), np.radians(50)])
-    q_via = _balance_pose(dyn, q_bottom_raw, "full_squat", bar_mass, adjust_joint=2)
+    q_via = balance_pose(dyn, q_bottom_raw, "full_squat", bar_mass, adjust_joint=2)
     q_bounds = np.array(
         [
             [np.radians(-5), np.radians(40)],
@@ -849,7 +867,7 @@ def make_deadlift_config(
     load = body.m_arms + bar_mass
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
     q_start_raw = _deadlift_start_angles(body)
-    q_start = _balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
+    q_start = balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
     q_end = _standing_balanced(dyn, bar_mass, "deadlift")
     q_bounds = np.array(
         [

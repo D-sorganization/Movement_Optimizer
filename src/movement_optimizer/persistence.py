@@ -74,7 +74,7 @@ def save_solution(
         **_result_to_dict(result),
     }
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     logger.info("Saved solution to %s", path)
 
@@ -91,7 +91,7 @@ def load_solution(path: str) -> dict[str, Any]:
     """
     if not os.path.exists(path):
         raise FileNotFoundError(f"Solution file not found: {path}")
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     logger.info("Loaded solution from %s", path)
     return data
@@ -122,7 +122,7 @@ def save_app_state(
         "slider_values": slider_values,
         "results": serialized_results,
     }
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     logger.info("Saved app state to %s", path)
 
@@ -139,7 +139,7 @@ def load_app_state(*, state_dir: str | None = None) -> dict[str, Any] | None:
         return None
 
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         logger.info("Loaded app state from %s", path)
         return data
