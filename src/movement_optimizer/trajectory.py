@@ -372,6 +372,25 @@ class TrajectoryOptimizer:
         upper = self.inner_toe - com_x
         return np.concatenate([lower, upper])
 
+    def _bar_knee_clearance(self, x: NDArray) -> NDArray:
+        """Bar must stay in front of the knees during deadlift.
+
+        Returns array of length n_eval:
+            bar_x - knee_x + margin  (must be >= 0)
+        Only active for deadlift exercises.
+        """
+        splines = self.build_splines(x)
+        q = np.column_stack([s(self.t_eval) for s in splines])
+        L = self.body.L
+        knee_x = L[0] * np.sin(q[:, 0])
+        hip_x = knee_x + L[1] * np.sin(q[:, 1])
+        shoulder_x = hip_x + L[2] * np.sin(q[:, 2])
+        # For deadlift, bar hangs from shoulders (at arm length below)
+        # Bar x == shoulder x in sagittal plane
+        bar_x = shoulder_x
+        clearance = 0.02  # 2cm minimum clearance
+        return bar_x - knee_x + clearance
+
     # ==========================================================
     # Pure cost computation (thread-safe, no side effects)
     # ==========================================================
@@ -518,13 +537,15 @@ class TrajectoryOptimizer:
             raise CancelledError("Optimization cancelled by user")
 
     def _build_constraints(self) -> list[dict]:
-        """Build SLSQP inequality constraints for COM balance."""
-        return [
-            {
-                "type": "ineq",
-                "fun": self._com_constraint_values,
-            }
+        """Build SLSQP inequality constraints."""
+        constraints = [
+            {"type": "ineq", "fun": self._com_constraint_values},
         ]
+        if self.exercise_type == "deadlift":
+            constraints.append(
+                {"type": "ineq", "fun": self._bar_knee_clearance},
+            )
+        return constraints
 
     def _run_single_start(self, seed: int) -> tuple[object, int] | None:
         """Run one SLSQP solve with a perturbed initial guess.

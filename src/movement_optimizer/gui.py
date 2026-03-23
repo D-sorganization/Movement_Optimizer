@@ -791,7 +791,7 @@ class ExerciseTab(QWidget):
         style_axis(ax)
         ax.set_xlim(-0.9, 0.9)
         ax.set_ylim(-0.15, 1.8)
-        ax.set_aspect("equal")
+        ax.set_aspect("equal", adjustable="datalim")
 
         q = result.q[fi]
         t_now = result.t[fi]
@@ -1158,9 +1158,11 @@ class MainWindow(QMainWindow):
                 self.sidebar.show_idle()
                 self.status_label.setText(status_msg)
         except Exception:
-            logger.exception("Error in _on_done — resetting UI")
+            tb = traceback.format_exc()
+            logger.error("Error in _on_done:\n%s", tb)
+            print(f"ERROR in _on_done:\n{tb}", flush=True)
             self.sidebar.show_idle()
-            self.status_label.setText("Error displaying results. Check console.")
+            self.status_label.setText(f"Render error: {tb.splitlines()[-1]}")
 
     def _on_cancelled(self) -> None:
         self.sidebar.show_idle()
