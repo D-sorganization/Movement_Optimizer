@@ -380,17 +380,70 @@ class LagrangianDynamics(PhysicsBackend):
 # ==============================================================
 
 
+def _balance_pose(
+    dyn: LagrangianDynamics,
+    q_init: NDArray,
+    exercise_type: str,
+    bar_mass: float,
+    adjust_joint: int = 2,
+) -> NDArray:
+    """Adjust one joint angle so the COM lands at the inner BOS center.
+
+    Solves for the angle of ``adjust_joint`` (default: torso) that places
+    the whole-body COM_x at ``body.inner_center``.  Uses bisection on the
+    COM_x function — guaranteed to converge within joint bounds.
+
+    Preconditions:
+        adjust_joint in {0, 1, 2}
+        q_init is length-3
+    """
+    from scipy.optimize import brentq
+
+    body = dyn.body
+    target_x = body.inner_center
+    lo, hi = np.radians(-10), np.radians(80)
+
+    def residual(angle: float) -> float:
+        q = q_init.copy()
+        q[adjust_joint] = angle
+        return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x
+
+    # Check if a root exists in the bracket
+    f_lo, f_hi = residual(lo), residual(hi)
+    if f_lo * f_hi > 0:
+        # No root — pick whichever end is closer to target
+        q = q_init.copy()
+        q[adjust_joint] = lo if abs(f_lo) < abs(f_hi) else hi
+        return q
+
+    angle_opt = brentq(residual, lo, hi, xtol=1e-6)
+    q = q_init.copy()
+    q[adjust_joint] = angle_opt
+    return q
+
+
+def _standing_balanced(dyn: LagrangianDynamics, bar_mass: float, exercise_type: str) -> NDArray:
+    """Find a near-standing pose with COM at inner BOS center.
+
+    Adjusts shin angle (joint 0) to shift COM forward over mid-foot.
+    """
+    q_stand = np.array([0.0, 0.0, 0.0])
+    return _balance_pose(dyn, q_stand, exercise_type, bar_mass, adjust_joint=0)
+
+
 def make_squat_config(
     body: BodyModel, bar_mass: float
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
     dyn = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), bar_mass)
-    q_start = np.array([np.radians(20), np.radians(-90), np.radians(40)])
-    q_end = np.array([0.0, 0.0, 0.0])
+    # Squat bottom: deep knee bend, torso adjusted for COM balance
+    q_bottom_raw = np.array([np.radians(25), np.radians(-90), np.radians(50)])
+    q_start = _balance_pose(dyn, q_bottom_raw, "squat", bar_mass, adjust_joint=2)
+    q_end = _standing_balanced(dyn, bar_mass, "squat")
     q_bounds = np.array(
         [
             [np.radians(-5), np.radians(40)],
             [np.radians(-95), np.radians(5)],
-            [np.radians(-5), np.radians(60)],
+            [np.radians(-5), np.radians(75)],
         ]
     )
     return dyn, q_start, q_end, q_bounds
@@ -400,14 +453,16 @@ def make_full_squat_config(
     body: BodyModel, bar_mass: float
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray, NDArray]:
     dyn = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), bar_mass)
-    q_start = np.array([0.0, 0.0, 0.0])
-    q_end = np.array([0.0, 0.0, 0.0])
-    q_via = np.array([np.radians(20), np.radians(-90), np.radians(40)])
+    q_stand = _standing_balanced(dyn, bar_mass, "full_squat")
+    q_start = q_stand.copy()
+    q_end = q_stand.copy()
+    q_bottom_raw = np.array([np.radians(25), np.radians(-90), np.radians(50)])
+    q_via = _balance_pose(dyn, q_bottom_raw, "full_squat", bar_mass, adjust_joint=2)
     q_bounds = np.array(
         [
             [np.radians(-5), np.radians(40)],
             [np.radians(-95), np.radians(5)],
-            [np.radians(-5), np.radians(60)],
+            [np.radians(-5), np.radians(75)],
         ]
     )
     return dyn, q_start, q_end, q_bounds, q_via
@@ -418,13 +473,14 @@ def make_deadlift_config(
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
     load = body.m_arms + bar_mass
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
-    q_start = _deadlift_start_angles(body)
-    q_end = np.array([0.0, 0.0, 0.0])
+    q_start_raw = _deadlift_start_angles(body)
+    q_start = _balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
+    q_end = _standing_balanced(dyn, bar_mass, "deadlift")
     q_bounds = np.array(
         [
             [np.radians(-5), np.radians(30)],
             [np.radians(-80), np.radians(5)],
-            [np.radians(-5), np.radians(70)],
+            [np.radians(-5), np.radians(75)],
         ]
     )
     return dyn, q_start, q_end, q_bounds
