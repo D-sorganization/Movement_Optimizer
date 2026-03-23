@@ -1088,6 +1088,22 @@ class MainWindow(QMainWindow):
             logger.error("Optimisation failed:\n%s", tb)
             msg = str(exc)
             QTimer.singleShot(0, lambda _m=msg: self._on_err(_m))
+        finally:
+            # Always ensure the UI returns to idle if nothing else handled it.
+            # QTimer.singleShot defers to the event loop, so this runs after
+            # the success/error/cancel handlers above.
+            QTimer.singleShot(100, self._ensure_idle)
+
+    def _ensure_idle(self) -> None:
+        """Safety net: if the sidebar is still in 'optimizing' state
+        after the worker thread finished, force it back to idle.
+        This catches any unhandled exception in _on_done rendering.
+        """
+        if not self.sidebar.opt_btn.isEnabled():
+            logger.warning("UI was stuck in optimizing state — forcing idle")
+            self.sidebar.show_idle()
+            if not self.status_label.text().startswith(("Error", "Cancelled")):
+                self.status_label.setText("Ready")
 
     def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
         def cb(report: ProgressReport) -> None:
@@ -1106,38 +1122,45 @@ class MainWindow(QMainWindow):
         bar: float,
         then_chain: list[int] | None,
     ) -> None:
-        self.sidebar.progress.setValue(100)
-        name = self.EXERCISE_CONFIGS[idx][0]
+        try:
+            self.sidebar.progress.setValue(100)
+            name = self.EXERCISE_CONFIGS[idx][0]
 
-        self._update_result_summary(name, result)
+            self._update_result_summary(name, result)
 
-        _, etype = self.EXERCISE_CONFIGS[idx]
-        tab = self.exercise_tabs[idx]
-        tab.draw_all_plots(result, body, bar)
-        tab.draw_anim_frame(0, result, self.dynamics_list[idx], body, etype)
+            _, etype = self.EXERCISE_CONFIGS[idx]
+            tab = self.exercise_tabs[idx]
+            tab.draw_all_plots(result, body, bar)
+            tab.draw_anim_frame(0, result, self.dynamics_list[idx], body, etype)
 
-        elapsed = result.elapsed_s
-        t_str = f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
-        self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")
-        self.sidebar.export_btn.setEnabled(True)
-
-        if result.success:
-            self.sidebar.stall_label.setVisible(False)
-            status_msg = f"{name} optimization complete in {t_str}!"
-        else:
-            self.sidebar.stall_label.setText(
-                "\u26a0 COM went outside the inner 60% BOS zone. "
-                "Try increasing smoothness or adjusting body parameters."
+            elapsed = result.elapsed_s
+            t_str = (
+                f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
             )
-            self.sidebar.stall_label.setVisible(True)
-            status_msg = f"{name} done in {t_str} -- WARNING: COM balance violated"
+            self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")
+            self.sidebar.export_btn.setEnabled(True)
 
-        if then_chain:
-            next_idx = then_chain.pop(0)
-            self._run_exercise(next_idx, then_chain or None)
-        else:
+            if result.success:
+                self.sidebar.stall_label.setVisible(False)
+                status_msg = f"{name} optimization complete in {t_str}!"
+            else:
+                self.sidebar.stall_label.setText(
+                    "\u26a0 COM went outside the inner 60% BOS zone. "
+                    "Try increasing smoothness or adjusting body parameters."
+                )
+                self.sidebar.stall_label.setVisible(True)
+                status_msg = f"{name} done in {t_str} -- WARNING: COM balance violated"
+
+            if then_chain:
+                next_idx = then_chain.pop(0)
+                self._run_exercise(next_idx, then_chain or None)
+            else:
+                self.sidebar.show_idle()
+                self.status_label.setText(status_msg)
+        except Exception:
+            logger.exception("Error in _on_done — resetting UI")
             self.sidebar.show_idle()
-            self.status_label.setText(status_msg)
+            self.status_label.setText("Error displaying results. Check console.")
 
     def _on_cancelled(self) -> None:
         self.sidebar.show_idle()
