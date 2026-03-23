@@ -559,8 +559,9 @@ class ExerciseTab(QWidget):
             2,
             4,
             figure=self.fig,
-            hspace=0.38,
-            wspace=0.38,
+            height_ratios=[2, 1],
+            hspace=0.35,
+            wspace=0.40,
             left=0.06,
             right=0.97,
             top=0.92,
@@ -577,7 +578,7 @@ class ExerciseTab(QWidget):
         for ax in self.axes.values():
             style_axis(ax)
 
-        self.axes["anim"].set_aspect("equal")
+        self.axes["anim"].set_aspect("equal", adjustable="datalim")
         self.axes["anim"].set_xlim(-0.9, 0.9)
         self.axes["anim"].set_ylim(-0.15, 1.8)
         self.axes["anim"].text(
@@ -908,6 +909,7 @@ class MainWindow(QMainWindow):
         self.anim_timer.timeout.connect(self._anim_step)
 
         self._cancel_event = threading.Event()
+        self._opt_running = False
         self._cache = SolutionCache()
 
         self._build_ui()
@@ -986,6 +988,7 @@ class MainWindow(QMainWindow):
     def _run_exercise(self, idx: int, then_chain: list[int] | None = None) -> None:
         self._stop_anim()
         self._cancel_event.clear()
+        self._opt_running = True
         self.sidebar.show_optimizing()
         name = self.EXERCISE_CONFIGS[idx][0]
         self.status_label.setText(f"Optimizing {name}...")
@@ -1095,10 +1098,12 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(100, self._ensure_idle)
 
     def _ensure_idle(self) -> None:
-        """Safety net: if the sidebar is still in 'optimizing' state
-        after the worker thread finished, force it back to idle.
-        This catches any unhandled exception in _on_done rendering.
+        """Safety net: force UI back to idle if the worker is done but
+        the sidebar is still locked.  Skips if another optimization is
+        actively running (e.g. chaining exercises).
         """
+        if self._opt_running:
+            return
         if not self.sidebar.opt_btn.isEnabled():
             logger.warning("UI was stuck in optimizing state — forcing idle")
             self.sidebar.show_idle()
@@ -1155,9 +1160,11 @@ class MainWindow(QMainWindow):
                 next_idx = then_chain.pop(0)
                 self._run_exercise(next_idx, then_chain or None)
             else:
+                self._opt_running = False
                 self.sidebar.show_idle()
                 self.status_label.setText(status_msg)
         except Exception:
+            self._opt_running = False
             tb = traceback.format_exc()
             logger.error("Error in _on_done:\n%s", tb)
             print(f"ERROR in _on_done:\n{tb}", flush=True)
@@ -1165,6 +1172,7 @@ class MainWindow(QMainWindow):
             self.status_label.setText(f"Render error: {tb.splitlines()[-1]}")
 
     def _on_cancelled(self) -> None:
+        self._opt_running = False
         self.sidebar.show_idle()
         self.sidebar.prog_label.setText("Cancelled")
         self.status_label.setText("Optimization cancelled by user.")
@@ -1185,6 +1193,7 @@ class MainWindow(QMainWindow):
         )
 
     def _on_err(self, msg: str) -> None:
+        self._opt_running = False
         self.sidebar.show_idle()
         self.status_label.setText(f"Error: {msg}")
         QMessageBox.critical(self, "Error", msg)
