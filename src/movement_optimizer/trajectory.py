@@ -236,9 +236,11 @@ class TrajectoryOptimizer:
     ) -> None:
         if n_waypoints < 4:
             raise ValueError("need >= 4 waypoints")
-        if q_bounds.shape != (3, 2):
-            raise ValueError("q_bounds must be (3,2)")
+        n_dof = q_bounds.shape[0]
+        if q_bounds.shape != (n_dof, 2):
+            raise ValueError(f"q_bounds must be ({n_dof},2)")
 
+        self.n_dof = n_dof
         self.body = body
         self.dynamics = dynamics
         self.exercise_type = exercise_type
@@ -292,7 +294,7 @@ class TrajectoryOptimizer:
 
     def build_splines(self, x: NDArray) -> list[CubicSpline]:
         """Build cubic splines from the flat optimisation vector *x*."""
-        wp = x.reshape(self.n_waypoints, 3)
+        wp = x.reshape(self.n_waypoints, self.n_dof)
 
         if self.q_via is not None:
             n_half = self.n_waypoints // 2
@@ -300,7 +302,7 @@ class TrajectoryOptimizer:
         else:
             q_all = np.vstack([self.q_start, wp, self.q_end])
 
-        return [CubicSpline(self.t_ctrl, q_all[:, j], bc_type="clamped") for j in range(3)]
+        return [CubicSpline(self.t_ctrl, q_all[:, j], bc_type="clamped") for j in range(self.n_dof)]
 
     def eval_trajectory(
         self, splines: list[CubicSpline]
@@ -410,15 +412,20 @@ class TrajectoryOptimizer:
         splines = self.build_splines(x)
         q, qd, qdd, qddd = self.eval_trajectory(splines)
         torques = self.dynamics.inverse_dynamics_batch(q, qd, qdd)
-        com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
 
-        return (
+        total = (
             self._torque_cost(torques)
             + self._jerk_cost(qddd)
             + self._torque_rate_cost(torques)
             + self._endpoint_damping_cost(qd, qdd)
-            + self._balance_cost(com_x)
         )
+
+        # Bench press: no balance cost (lifter is on a bench)
+        if self.exercise_type != "bench_press":
+            com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
+            total += self._balance_cost(com_x)
+
+        return total
 
     # ==========================================================
     # Legacy cost() for single-thread compat / progress tracking
@@ -484,10 +491,10 @@ class TrajectoryOptimizer:
 
     def _initial_guess(self) -> NDArray:
         """Linear interpolation between start/end (or start/via/end)."""
-        wp = np.zeros((self.n_waypoints, 3))
+        wp = np.zeros((self.n_waypoints, self.n_dof))
         if self.q_via is not None:
             n_half = self.n_waypoints // 2
-            for j in range(3):
+            for j in range(self.n_dof):
                 wp[:n_half, j] = np.linspace(self.q_start[j], self.q_via[j], n_half + 2)[1:-1]
                 wp[n_half:, j] = np.linspace(
                     self.q_via[j],
@@ -495,7 +502,7 @@ class TrajectoryOptimizer:
                     self.n_waypoints - n_half + 2,
                 )[1:-1]
         else:
-            for j in range(3):
+            for j in range(self.n_dof):
                 wp[:, j] = np.linspace(self.q_start[j], self.q_end[j], self.n_waypoints + 2)[1:-1]
         return wp
 
@@ -516,7 +523,7 @@ class TrajectoryOptimizer:
         wp_perturbed = wp + noise
 
         # Clip to joint bounds
-        for j in range(3):
+        for j in range(self.n_dof):
             wp_perturbed[:, j] = np.clip(
                 wp_perturbed[:, j], self.q_bounds[j, 0], self.q_bounds[j, 1]
             )
@@ -525,7 +532,7 @@ class TrajectoryOptimizer:
     def _build_bounds(self) -> list[tuple[float, float]]:
         bounds: list[tuple[float, float]] = []
         for _ in range(self.n_waypoints):
-            for j in range(3):
+            for j in range(self.n_dof):
                 bounds.append((self.q_bounds[j, 0], self.q_bounds[j, 1]))
         return bounds
 
@@ -539,7 +546,14 @@ class TrajectoryOptimizer:
             raise CancelledError("Optimization cancelled by user")
 
     def _build_constraints(self) -> list[dict]:
-        """Build SLSQP inequality constraints."""
+        """Build SLSQP inequality constraints.
+
+        Bench press has no COM/balance constraints because the lifter
+        is lying on a bench, not standing.
+        """
+        if self.exercise_type == "bench_press":
+            return []
+
         constraints = [
             {"type": "ineq", "fun": self._com_constraint_values},
         ]
@@ -720,21 +734,27 @@ class TrajectoryOptimizer:
         com_h_range = (np.max(com_x) - np.min(com_x)) * 100.0
 
         # Success: cost is finite AND COM stays within inner BOS (the hard constraint)
+        # Bench press: no COM constraint (lifter is on a bench)
         cost_val = float(res.fun)
-        com_in_bounds = np.all(com_x >= self.inner_heel - 0.005) and np.all(
-            com_x <= self.inner_toe + 0.005
-        )
         cost_finite = cost_val < float("inf") and not np.isnan(cost_val)
-        success = cost_finite and com_in_bounds
-        if cost_finite and not com_in_bounds:
-            logger.warning(
-                "Solution found but COM violated inner BOS: min=%.4f max=%.4f "
-                "(bounds: [%.4f, %.4f])",
-                com_x.min(),
-                com_x.max(),
-                self.inner_heel,
-                self.inner_toe,
+
+        if self.exercise_type == "bench_press":
+            com_in_bounds = True
+        else:
+            com_in_bounds = np.all(com_x >= self.inner_heel - 0.005) and np.all(
+                com_x <= self.inner_toe + 0.005
             )
+            if cost_finite and not com_in_bounds:
+                logger.warning(
+                    "Solution found but COM violated inner BOS: min=%.4f max=%.4f "
+                    "(bounds: [%.4f, %.4f])",
+                    com_x.min(),
+                    com_x.max(),
+                    self.inner_heel,
+                    self.inner_toe,
+                )
+
+        success = cost_finite and com_in_bounds
 
         return OptimizationResult(
             t=self.t_eval,

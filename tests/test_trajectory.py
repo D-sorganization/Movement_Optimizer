@@ -91,7 +91,7 @@ class TestConstruction:
     def test_bad_bounds_shape_raises(self) -> None:
         body = BodyModel(75.0, 1.75)
         dyn, qs, qe, _ = make_squat_config(body, 60.0)
-        bad_bounds = np.zeros((2, 2))
+        bad_bounds = np.zeros((2, 3))  # wrong second dim (3 instead of 2)
         with pytest.raises(ValueError, match="q_bounds"):
             TrajectoryOptimizer(
                 body,

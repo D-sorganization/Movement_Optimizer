@@ -14,10 +14,12 @@ from movement_optimizer.models import (
 class TestBenchPressConfig:
     def test_bench_config_shapes(self, default_body: BodyModel) -> None:
         """make_bench_press_config returns correct shapes."""
-        _dyn, qs, qe, qb = make_bench_press_config(default_body, 60.0)
+        _dyn, qs, qe, qb, q_via = make_bench_press_config(default_body, 60.0)
         assert qs.shape == (3,)
         assert qe.shape == (3,)
         assert qb.shape == (3, 2)
+        assert q_via is not None
+        assert q_via.shape == (3,)
 
     def test_bench_horizontal_orientation(self, default_body: BodyModel) -> None:
         """The bench press models a supine (horizontal) body.
@@ -59,7 +61,7 @@ class TestBenchPressConfig:
         In the bench press the bar is always above the body (positive y
         in the FK frame, since the chain swings upward from the shoulder).
         """
-        dyn, qs, qe, _qb = make_bench_press_config(default_body, 60.0)
+        dyn, qs, qe, _qb, _q_via = make_bench_press_config(default_body, 60.0)
         fk_start = dyn.forward_kinematics(qs)
         fk_end = dyn.forward_kinematics(qe)
         # The wrist (end effector) y should be positive at both poses

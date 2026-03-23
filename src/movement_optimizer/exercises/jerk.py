@@ -17,26 +17,31 @@ from ..models import BodyModel, LagrangianDynamics, balance_pose
 
 
 def _jerk_start_angles() -> NDArray:
-    """Front rack position: near-standing with a slight knee bend."""
+    """Front rack position: standing with bar at shoulders."""
     q0 = np.radians(5)
-    q1 = np.radians(-10)
-    q2 = np.radians(3)
+    q1 = np.radians(-8)
+    q2 = np.radians(5)
     return np.array([q0, q1, q2])
 
 
 def _jerk_via_angles() -> NDArray:
-    """Dip position: quarter-squat before the drive."""
+    """Dip position: quarter-squat before the explosive drive phase."""
     q0 = np.radians(12)
-    q1 = np.radians(-35)
-    q2 = np.radians(10)
+    q1 = np.radians(-40)
+    q2 = np.radians(8)
     return np.array([q0, q1, q2])
 
 
 def _jerk_end_angles() -> NDArray:
-    """Overhead lockout: torso vertical, slight split stance."""
-    q0 = np.radians(5)
+    """Overhead lockout: torso vertical, bar overhead with arms locked out.
+
+    The bar is above the shoulders.  In our 3-link model the shoulder
+    is at the top of the chain; a near-vertical torso (~2 deg) puts
+    the shoulder as high as possible, representing overhead lockout.
+    """
+    q0 = np.radians(3)
     q1 = np.radians(-5)
-    q2 = np.radians(3)
+    q2 = np.radians(2)
     return np.array([q0, q1, q2])
 
 

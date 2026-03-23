@@ -280,24 +280,25 @@ class TestJointTorqueSet:
 
 class TestBenchPressConfig:
     def test_config_shapes(self, bench_press_config) -> None:
-        _dyn, qs, qe, qb = bench_press_config
+        _dyn, qs, qe, qb, q_via = bench_press_config
         assert qs.shape == (3,)
         assert qe.shape == (3,)
         assert qb.shape == (3, 2)
+        assert q_via is not None
 
-    def test_start_is_flexed(self, bench_press_config) -> None:
-        """Start position should have elbow deeply flexed (negative)."""
-        _, qs, _, _ = bench_press_config
-        assert qs[1] < np.radians(-90)  # elbow flexed past 90°
+    def test_start_is_extended(self, bench_press_config) -> None:
+        """Start position should have arms extended (lockout)."""
+        _, qs, _, _, _ = bench_press_config
+        assert qs[1] > np.radians(-30)  # elbow near extension
 
     def test_end_is_extended(self, bench_press_config) -> None:
-        """End position should have arms nearly extended."""
-        _, _, qe, _ = bench_press_config
+        """End position should have arms nearly extended (same as start -- full rep)."""
+        _, _, qe, _, _ = bench_press_config
         assert qe[1] > np.radians(-30)  # elbow near extension
 
     def test_bounds_respect_joint_limits(self, bench_press_config) -> None:
         """q_bounds should be within bench press joint limits."""
-        _, _, _, qb = bench_press_config
+        _, _, _, qb, _ = bench_press_config
         for i, name in enumerate(BENCH_PRESS_JOINT_NAMES):
             lo, hi = BENCH_PRESS_JOINT_LIMITS[name]
             assert qb[i, 0] >= lo - 1e-10
@@ -305,19 +306,19 @@ class TestBenchPressConfig:
 
     def test_dynamics_produces_torques(self, bench_press_config) -> None:
         """Should be able to compute inverse dynamics."""
-        dyn, qs, _, _ = bench_press_config
+        dyn, qs, _, _, _ = bench_press_config
         tau = dyn.inverse_dynamics(qs, np.zeros(3), np.zeros(3))
         assert tau.shape == (3,)
         assert np.all(np.isfinite(tau))
 
     def test_mass_matrix_positive_definite(self, bench_press_config) -> None:
-        dyn, qs, _, _ = bench_press_config
+        dyn, qs, _, _, _ = bench_press_config
         M = dyn.mass_matrix(qs)
         eigenvalues = np.linalg.eigvals(M)
         assert np.all(eigenvalues > 0)
 
     def test_forward_kinematics(self, bench_press_config) -> None:
-        dyn, qs, _, _ = bench_press_config
+        dyn, qs, _, _, _ = bench_press_config
         fk = dyn.forward_kinematics(qs)
         assert "ankle" in fk  # uses same joint names as parent
         assert "shoulder" in fk
