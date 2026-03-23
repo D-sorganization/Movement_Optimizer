@@ -11,7 +11,7 @@ Design Principles:
 from __future__ import annotations
 
 from matplotlib.axes import Axes
-from matplotlib.patches import Circle, Rectangle
+from matplotlib.patches import Circle
 from numpy.typing import NDArray
 
 from .constants import BAR_RADIUS_M, PLATE_RADIUS_STD_M
@@ -38,46 +38,52 @@ class Palette:
 
 
 class BarbellRenderer:
-    """Draw barbell as sagittal cross-section."""
+    """Draw barbell as seen from the side (sagittal plane).
 
-    BAR_ALPHA = 0.50
-    PLATE_ALPHA = 0.55
-    BAR_COLOR = "#d4a017"
-    PLATE_COLOR = "#777777"
+    From the side, a loaded barbell appears as a large circle (the plate)
+    with a smaller concentric circle (the bar shaft).
+    """
+
+    BAR_ALPHA = 0.60
+    PLATE_ALPHA = 0.50
+    BAR_COLOR = "#c0c0c0"
+    BAR_EDGE = "#888888"
+    PLATE_COLOR = "#444444"
+    PLATE_EDGE = "#333333"
 
     @classmethod
     def draw(cls, ax: Axes, position: tuple[float, float]) -> None:
         x, y = position
+        cls._draw_plate_circle(ax, x, y)
         cls._draw_bar_circle(ax, x, y)
-        cls._draw_plate_rect(ax, x, y)
+
+    @classmethod
+    def _draw_plate_circle(cls, ax: Axes, x: float, y: float) -> None:
+        """Outer plate circle — the bumper plate seen from the side."""
+        ax.add_patch(
+            Circle(
+                (x, y),
+                PLATE_RADIUS_STD_M,
+                facecolor=cls.PLATE_COLOR,
+                edgecolor=cls.PLATE_EDGE,
+                linewidth=1.5,
+                alpha=cls.PLATE_ALPHA,
+                zorder=7,
+            )
+        )
 
     @classmethod
     def _draw_bar_circle(cls, ax: Axes, x: float, y: float) -> None:
+        """Inner bar shaft circle — the bar cross-section."""
         ax.add_patch(
             Circle(
                 (x, y),
                 BAR_RADIUS_M,
                 facecolor=cls.BAR_COLOR,
-                edgecolor="#8B7500",
+                edgecolor=cls.BAR_EDGE,
                 linewidth=1.5,
                 alpha=cls.BAR_ALPHA,
                 zorder=8,
-            )
-        )
-
-    @classmethod
-    def _draw_plate_rect(cls, ax: Axes, x: float, y: float) -> None:
-        pw = 0.025
-        ax.add_patch(
-            Rectangle(
-                (x - pw / 2, y - PLATE_RADIUS_STD_M),
-                pw,
-                2 * PLATE_RADIUS_STD_M,
-                facecolor=cls.PLATE_COLOR,
-                edgecolor="#555",
-                linewidth=1,
-                alpha=cls.PLATE_ALPHA,
-                zorder=7,
             )
         )
 
