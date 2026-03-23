@@ -978,12 +978,12 @@ def make_bench_press_config(
     dyn._g1 = body.g * (m[1] * d[1] + (m[2] + bar_mass) * L[1])
     dyn._g2 = body.g * (m[2] * d[2] + bar_mass * L[2])
 
-    # Start: arms extended (lockout -- top of the rep)
-    q_start = np.array([np.radians(80), np.radians(-10), np.radians(0)])
-    # Via: bar at chest (arms flexed -- bottom of the rep)
-    q_via = np.array([np.radians(10), np.radians(-120), np.radians(0)])
-    # End: arms extended again (lockout -- same as start, full rep)
-    q_end = np.array([np.radians(80), np.radians(-10), np.radians(0)])
+    # Start: lockout (arms straight up, perpendicular to supine body)
+    q_start = np.array([np.radians(0), np.radians(0), np.radians(0)])
+    # Via: bar at chest (upper arm ~horizontal, elbow bent ~90 degrees)
+    q_via = np.array([np.radians(80), np.radians(-100), np.radians(10)])
+    # End: lockout again (full rep)
+    q_end = np.array([np.radians(0), np.radians(0), np.radians(0)])
 
     q_bounds = np.array(
         [
