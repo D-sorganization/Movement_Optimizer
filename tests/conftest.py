@@ -6,7 +6,11 @@ import pytest
 
 from movement_optimizer.models import (
     BodyModel,
+    JointTorqueSet,
+    make_bench_press_config,
+    make_bench_press_torque_set,
     make_deadlift_config,
+    make_default_torque_set,
     make_full_squat_config,
     make_squat_config,
 )
@@ -39,3 +43,18 @@ def deadlift_dynamics(default_body: BodyModel):
 @pytest.fixture()
 def full_squat_config(default_body: BodyModel):
     return make_full_squat_config(default_body, 60.0)
+
+
+@pytest.fixture()
+def bench_press_config(default_body: BodyModel):
+    return make_bench_press_config(default_body, 60.0)
+
+
+@pytest.fixture()
+def default_torque_set() -> JointTorqueSet:
+    return make_default_torque_set()
+
+
+@pytest.fixture()
+def bench_torque_set() -> JointTorqueSet:
+    return make_bench_press_torque_set()
