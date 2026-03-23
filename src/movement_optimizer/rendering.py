@@ -10,11 +10,15 @@ Design Principles:
 
 from __future__ import annotations
 
+import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.patches import Circle
 from numpy.typing import NDArray
 
-from .constants import BAR_RADIUS_M, PLATE_RADIUS_STD_M
+from .constants import BAR_RADIUS_M, LENGTH_FRAC, PLATE_RADIUS_STD_M
+
+# Neck length as a fraction of body height (used by BodyRenderer)
+NECK_LENGTH_FRAC: float = LENGTH_FRAC["neck"]
 
 
 class Palette:
@@ -104,7 +108,9 @@ class BodyRenderer:
         )
 
     @classmethod
-    def draw_ghost(cls, ax: Axes, joints: dict[str, NDArray], alpha: float = 0.10) -> None:
+    def draw_ghost(
+        cls, ax: Axes, joints: dict[str, NDArray], alpha: float = 0.10, body_height: float = 1.75
+    ) -> None:
         pts = [joints["ankle"], joints["knee"], joints["hip"], joints["shoulder"]]
         for k in range(3):
             ax.plot(
@@ -115,13 +121,35 @@ class BodyRenderer:
                 lw=2,
                 alpha=alpha,
             )
+        # Ghost neck + head
+        neck_length = NECK_LENGTH_FRAC * body_height
+        shoulder = joints["shoulder"]
+        neck_top = np.array([shoulder[0], shoulder[1] + neck_length])
+        ax.plot(
+            [shoulder[0], neck_top[0]],
+            [shoulder[1], neck_top[1]],
+            "-",
+            color=Palette.FG,
+            lw=2,
+            alpha=alpha,
+        )
+        ax.add_patch(
+            Circle(
+                (neck_top[0], neck_top[1] + cls.HEAD_RADIUS),
+                cls.HEAD_RADIUS,
+                facecolor=Palette.FG,
+                edgecolor="none",
+                alpha=alpha,
+                zorder=6,
+            )
+        )
 
     # Linewidths per segment: shank (thinner), thigh (medium), torso (thick)
     SEG_LINEWIDTHS = (6, 9, 12)
     HEAD_RADIUS = 0.10  # metres
 
     @classmethod
-    def draw_segments(cls, ax: Axes, joints: dict[str, NDArray]) -> None:
+    def draw_segments(cls, ax: Axes, joints: dict[str, NDArray], body_height: float = 1.75) -> None:
         pts = [joints["ankle"], joints["knee"], joints["hip"], joints["shoulder"]]
         for k in range(3):
             ax.plot(
@@ -142,13 +170,25 @@ class BodyRenderer:
                 markeredgecolor="#333",
                 markeredgewidth=1.2,
             )
-        # Draw head above the shoulder joint
-        cls.draw_head(ax, joints["shoulder"])
+        # Draw neck segment from shoulder upward
+        neck_length = NECK_LENGTH_FRAC * body_height
+        shoulder = joints["shoulder"]
+        neck_top = np.array([shoulder[0], shoulder[1] + neck_length])
+        ax.plot(
+            [shoulder[0], neck_top[0]],
+            [shoulder[1], neck_top[1]],
+            "-",
+            color="#d4a574",
+            lw=5,
+            solid_capstyle="round",
+        )
+        # Draw head at top of neck
+        cls.draw_head(ax, neck_top)
 
     @classmethod
-    def draw_head(cls, ax: Axes, shoulder: NDArray) -> None:
-        """Draw a circle representing the head above the shoulder joint."""
-        head_center = (shoulder[0], shoulder[1] + cls.HEAD_RADIUS)
+    def draw_head(cls, ax: Axes, neck_top: NDArray) -> None:
+        """Draw a circle representing the head above the top of the neck."""
+        head_center = (neck_top[0], neck_top[1] + cls.HEAD_RADIUS)
         ax.add_patch(
             Circle(
                 head_center,
