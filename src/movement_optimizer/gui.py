@@ -578,14 +578,18 @@ class ExerciseTab(QWidget):
             style_axis(ax)
 
         self.axes["anim"].set_aspect("equal")
+        self.axes["anim"].set_xlim(-0.9, 0.9)
+        self.axes["anim"].set_ylim(-0.15, 1.8)
         self.axes["anim"].text(
-            0,
-            0.7,
+            0.5,
+            0.5,
             "Click Optimize to begin",
             ha="center",
+            va="center",
             fontsize=13,
             color=Palette.FG_DIM,
             style="italic",
+            transform=self.axes["anim"].transAxes,
         )
         self.fig.suptitle(
             f"{self.name} Optimization",
@@ -1115,15 +1119,25 @@ class MainWindow(QMainWindow):
         elapsed = result.elapsed_s
         t_str = f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
         self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")
-        self.sidebar.stall_label.setVisible(False)
         self.sidebar.export_btn.setEnabled(True)
+
+        if result.success:
+            self.sidebar.stall_label.setVisible(False)
+            status_msg = f"{name} optimization complete in {t_str}!"
+        else:
+            self.sidebar.stall_label.setText(
+                "\u26a0 COM went outside the inner 60% BOS zone. "
+                "Try increasing smoothness or adjusting body parameters."
+            )
+            self.sidebar.stall_label.setVisible(True)
+            status_msg = f"{name} done in {t_str} -- WARNING: COM balance violated"
 
         if then_chain:
             next_idx = then_chain.pop(0)
             self._run_exercise(next_idx, then_chain or None)
         else:
             self.sidebar.show_idle()
-            self.status_label.setText(f"{name} optimization complete in {t_str}!")
+            self.status_label.setText(status_msg)
 
     def _on_cancelled(self) -> None:
         self.sidebar.show_idle()
@@ -1134,13 +1148,15 @@ class MainWindow(QMainWindow):
     def _update_result_summary(self, name: str, r: OptimizationResult) -> None:
         pk = np.max(np.abs(r.torques), axis=0)
         work = trapezoid(np.sum(np.abs(r.power), axis=1), r.t)
+        balance_ok = "BALANCED" if r.success else "OUT OF BOUNDS"
         self.sidebar.result_label.setText(
             f"{name} results:\n"
             f"  Ankle: {pk[0]:>6.0f} N\u00b7m\n"
             f"  Knee:  {pk[1]:>6.0f} N\u00b7m\n"
             f"  Hip:   {pk[2]:>6.0f} N\u00b7m\n"
             f"  Work:  {work:>6.0f} J\n"
-            f"  COM horiz sway: {r.com_horizontal_range_cm:.1f} cm"
+            f"  COM sway: {r.com_horizontal_range_cm:.1f} cm\n"
+            f"  Balance: {balance_ok}"
         )
 
     def _on_err(self, msg: str) -> None:
