@@ -889,6 +889,14 @@ class PlaybackControls(QWidget):
 class MainWindow(QMainWindow):
     """Top-level application window."""
 
+    # Signals for thread-safe GUI updates from the optimizer worker.
+    # Using signals instead of QTimer.singleShot is the Qt-correct way
+    # to communicate from a background thread to the main thread.
+    _sig_done = pyqtSignal(int, object, object, float, object)  # idx, result, body, bar, then_chain
+    _sig_cancelled = pyqtSignal()
+    _sig_error = pyqtSignal(str)
+    _sig_progress = pyqtSignal(object)  # ProgressReport
+
     EXERCISE_CONFIGS = (
         ("Bottoms Up Squat", "squat"),
         ("Full Squat", "full_squat"),
@@ -911,6 +919,12 @@ class MainWindow(QMainWindow):
         self._cancel_event = threading.Event()
         self._opt_running = False
         self._cache = SolutionCache()
+
+        # Connect thread-safe signals
+        self._sig_done.connect(self._on_done)
+        self._sig_cancelled.connect(self._on_cancelled)
+        self._sig_error.connect(self._on_err)
+        self._sig_progress.connect(self._update_progress)
 
         self._build_ui()
         self.setStyleSheet(QSS)
@@ -1032,12 +1046,7 @@ class MainWindow(QMainWindow):
                 result = cached
                 self.results[idx] = result
                 self.anim_frames[idx] = 0
-                QTimer.singleShot(
-                    0,
-                    lambda _i=idx, _r=result, _b=body, _br=bar, _tc=then_chain: self._on_done(
-                        _i, _r, _b, _br, _tc
-                    ),
-                )
+                self._sig_done.emit(idx, result, body, bar, then_chain)
                 return
 
             logger.info(
@@ -1078,41 +1087,20 @@ class MainWindow(QMainWindow):
                 result,
             )
 
-            QTimer.singleShot(
-                0,
-                lambda _i=idx, _r=result, _b=body, _br=bar, _tc=then_chain: self._on_done(
-                    _i, _r, _b, _br, _tc
-                ),
-            )
+            self._sig_done.emit(idx, result, body, bar, then_chain)
         except CancelledError:
-            QTimer.singleShot(0, self._on_cancelled)
+            self._sig_cancelled.emit()
         except Exception as exc:
             tb = traceback.format_exc()
             logger.error("Optimisation failed:\n%s", tb)
-            msg = str(exc)
-            QTimer.singleShot(0, lambda _m=msg: self._on_err(_m))
-        finally:
-            # Always ensure the UI returns to idle if nothing else handled it.
-            # QTimer.singleShot defers to the event loop, so this runs after
-            # the success/error/cancel handlers above.
-            QTimer.singleShot(100, self._ensure_idle)
+            self._sig_error.emit(str(exc))
 
-    def _ensure_idle(self) -> None:
-        """Safety net: force UI back to idle if the worker is done but
-        the sidebar is still locked.  Skips if another optimization is
-        actively running (e.g. chaining exercises).
-        """
-        if self._opt_running:
-            return
-        if not self.sidebar.opt_btn.isEnabled():
-            logger.warning("UI was stuck in optimizing state — forcing idle")
-            self.sidebar.show_idle()
-            if not self.status_label.text().startswith(("Error", "Cancelled")):
-                self.status_label.setText("Ready")
+    # _ensure_idle removed: signals guarantee delivery to the main thread,
+    # so _on_done / _on_cancelled / _on_err always fire reliably.
 
     def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
         def cb(report: ProgressReport) -> None:
-            QTimer.singleShot(0, lambda _r=report: self._update_progress(_r))
+            self._sig_progress.emit(report)
 
         return cb
 
