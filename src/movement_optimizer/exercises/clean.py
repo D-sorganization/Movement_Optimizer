@@ -14,7 +14,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..constants import PLATE_RADIUS_STD_M
-from ..models import BodyModel, LagrangianDynamics, _balance_pose
+from ..models import BodyModel, LagrangianDynamics, balance_pose
 
 
 def _clean_start_angles(body: BodyModel) -> NDArray:
@@ -66,13 +66,13 @@ def make_clean_config(
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
 
     q_start_raw = _clean_start_angles(body)
-    q_start = _balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
+    q_start = balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
 
     q_end_raw = _clean_end_angles(body)
-    q_end = _balance_pose(dyn, q_end_raw, "deadlift", bar_mass, adjust_joint=2)
+    q_end = balance_pose(dyn, q_end_raw, "deadlift", bar_mass, adjust_joint=2)
 
     q_via_raw = _clean_via_angles(body)
-    q_via = _balance_pose(dyn, q_via_raw, "deadlift", bar_mass, adjust_joint=2)
+    q_via = balance_pose(dyn, q_via_raw, "deadlift", bar_mass, adjust_joint=2)
 
     q_bounds = np.array(
         [

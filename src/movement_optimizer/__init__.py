@@ -6,4 +6,11 @@ using Lagrangian inverse dynamics in the sagittal plane.
 
 from __future__ import annotations
 
-__version__ = "1.0.0"
+import importlib.metadata
+
+from .models import balance_pose as balance_pose
+
+try:
+    __version__ = importlib.metadata.version("movement-optimizer")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "0.0.0.dev0"

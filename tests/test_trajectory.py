@@ -76,7 +76,7 @@ class TestConstruction:
     def test_too_few_waypoints_raises(self) -> None:
         body = BodyModel(75.0, 1.75)
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
-        with pytest.raises(AssertionError, match="waypoints"):
+        with pytest.raises(ValueError, match="waypoints"):
             TrajectoryOptimizer(
                 body,
                 dyn,
@@ -92,7 +92,7 @@ class TestConstruction:
         body = BodyModel(75.0, 1.75)
         dyn, qs, qe, _ = make_squat_config(body, 60.0)
         bad_bounds = np.zeros((2, 2))
-        with pytest.raises(AssertionError, match="q_bounds"):
+        with pytest.raises(ValueError, match="q_bounds"):
             TrajectoryOptimizer(
                 body,
                 dyn,

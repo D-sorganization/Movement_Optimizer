@@ -13,7 +13,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from ..models import BodyModel, LagrangianDynamics, _balance_pose
+from ..models import BodyModel, LagrangianDynamics, balance_pose
 
 
 def _jerk_start_angles() -> NDArray:
@@ -54,13 +54,13 @@ def make_jerk_config(
     dyn = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), bar_mass)
 
     q_start_raw = _jerk_start_angles()
-    q_start = _balance_pose(dyn, q_start_raw, "squat", bar_mass, adjust_joint=0)
+    q_start = balance_pose(dyn, q_start_raw, "squat", bar_mass, adjust_joint=0)
 
     q_end_raw = _jerk_end_angles()
-    q_end = _balance_pose(dyn, q_end_raw, "squat", bar_mass, adjust_joint=0)
+    q_end = balance_pose(dyn, q_end_raw, "squat", bar_mass, adjust_joint=0)
 
     q_via_raw = _jerk_via_angles()
-    q_via = _balance_pose(dyn, q_via_raw, "squat", bar_mass, adjust_joint=2)
+    q_via = balance_pose(dyn, q_via_raw, "squat", bar_mass, adjust_joint=2)
 
     q_bounds = np.array(
         [

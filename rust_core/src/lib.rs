@@ -5,9 +5,10 @@
 //! iteration over timesteps when N is large.
 
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::useless_conversion)]
 
 use numpy::ndarray::{Array1, Array2};
-use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray2};
+use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 use rayon::prelude::*;
 
@@ -175,9 +176,78 @@ fn com_x_batch_rs<'py>(
     Array1::from_vec(result).into_pyarray_bound(py)
 }
 
+/// Generic N-DOF inverse dynamics for all timesteps in batch.
+///
+/// For an N-DOF serial chain with diagonal mass matrix approximation:
+///   tau_i = mass_matrix_diag[i] * qdd_i + gravity_coeffs[i] * sin(q_i)
+///
+/// This is a simplified but generic version that ignores off-diagonal
+/// coupling terms (Coriolis/centripetal).  For the full 3-DOF version
+/// with coupling, use `inverse_dynamics_batch_rs`.
+///
+/// Parameters:
+///   q, qd, qdd: (N, n_dof) arrays
+///   mass_matrix_diag: (n_dof,) diagonal mass-matrix entries
+///   gravity_coeffs: (n_dof,) gravity coefficients
+///
+/// Returns: torques (N, n_dof)
+#[pyfunction]
+fn inverse_dynamics_ndof_rs<'py>(
+    py: Python<'py>,
+    q: PyReadonlyArray2<'py, f64>,
+    _qd: PyReadonlyArray2<'py, f64>,
+    qdd: PyReadonlyArray2<'py, f64>,
+    mass_matrix_diag: PyReadonlyArray1<'py, f64>,
+    gravity_coeffs: PyReadonlyArray1<'py, f64>,
+) -> PyResult<Bound<'py, PyArray2<f64>>> {
+    let q = q.as_array();
+    let qdd = qdd.as_array();
+    let m_diag = mass_matrix_diag.as_array();
+    let g_coeffs = gravity_coeffs.as_array();
+
+    let n = q.shape()[0];
+    let n_dof = q.shape()[1];
+
+    if m_diag.len() != n_dof || g_coeffs.len() != n_dof {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "mass_matrix_diag and gravity_coeffs must have length n_dof",
+        ));
+    }
+
+    let compute_row = |i: usize| -> Vec<f64> {
+        let mut row = Vec::with_capacity(n_dof);
+        for j in 0..n_dof {
+            let t = m_diag[j] * qdd[[i, j]] + g_coeffs[j] * q[[i, j]].sin();
+            row.push(t);
+        }
+        row
+    };
+
+    let mut tau = Array2::<f64>::zeros((n, n_dof));
+
+    if n >= PAR_THRESHOLD {
+        let rows: Vec<Vec<f64>> = (0..n).into_par_iter().map(compute_row).collect();
+        for (i, row) in rows.iter().enumerate() {
+            for j in 0..n_dof {
+                tau[[i, j]] = row[j];
+            }
+        }
+    } else {
+        for i in 0..n {
+            let row = compute_row(i);
+            for j in 0..n_dof {
+                tau[[i, j]] = row[j];
+            }
+        }
+    }
+
+    Ok(tau.into_pyarray_bound(py))
+}
+
 #[pymodule]
 fn movement_optimizer_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(inverse_dynamics_batch_rs, m)?)?;
     m.add_function(wrap_pyfunction!(com_x_batch_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(inverse_dynamics_ndof_rs, m)?)?;
     Ok(())
 }

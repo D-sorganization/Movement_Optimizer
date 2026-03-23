@@ -62,8 +62,8 @@ class TestJointAngleLimits:
         assert q[0] == 0.0
 
     def test_clamp_wrong_length_raises(self) -> None:
-        """Wrong number of joints should raise AssertionError."""
-        with pytest.raises(AssertionError, match="q length"):
+        """Wrong number of joints should raise ValueError."""
+        with pytest.raises(ValueError, match="q length"):
             clamp_joint_angles(np.array([0.0, 0.0]))
 
     def test_within_limits_true(self) -> None:
@@ -166,11 +166,11 @@ class TestHillTorqueModel:
                 assert model.available_torque(q, qd) >= 0
 
     def test_tau_max_zero_raises(self) -> None:
-        with pytest.raises(AssertionError, match="tau_max"):
+        with pytest.raises(ValueError, match="tau_max"):
             HillTorqueModel(tau_max=0, q_optimal=0.0)
 
     def test_angle_width_zero_raises(self) -> None:
-        with pytest.raises(AssertionError, match="angle_width"):
+        with pytest.raises(ValueError, match="angle_width"):
             HillTorqueModel(tau_max=100, q_optimal=0.0, angle_width=0)
 
     def test_batch_angle_factor(self) -> None:
@@ -214,11 +214,11 @@ class TestJointTorqueSet:
         assert default_torque_set.get_max_torque("knee") == 300.0
 
     def test_set_invalid_joint_raises(self, default_torque_set: JointTorqueSet) -> None:
-        with pytest.raises(AssertionError, match="Unknown joint"):
+        with pytest.raises(ValueError, match="Unknown joint"):
             default_torque_set.set_max_torque("nonexistent", 100.0)
 
     def test_set_negative_torque_raises(self, default_torque_set: JointTorqueSet) -> None:
-        with pytest.raises(AssertionError, match="tau_max"):
+        with pytest.raises(ValueError, match="tau_max"):
             default_torque_set.set_max_torque("knee", -10.0)
 
     def test_available_torques_shape(self, default_torque_set: JointTorqueSet) -> None:
@@ -405,7 +405,7 @@ class TestMaxLoad:
         body = BodyModel(75.0, 1.75)
         ts = make_default_torque_set()
 
-        with pytest.raises(AssertionError, match="max must exceed min"):
+        with pytest.raises(ValueError, match="max must exceed min"):
             compute_max_load(
                 make_squat_config,
                 body,
@@ -420,7 +420,7 @@ class TestMaxLoad:
         body = BodyModel(75.0, 1.75)
         ts = make_default_torque_set()
 
-        with pytest.raises(AssertionError, match="min load"):
+        with pytest.raises(ValueError, match="min load"):
             compute_max_load(
                 make_squat_config,
                 body,

@@ -98,8 +98,10 @@ class BodyModel3D:
         hip_width: float = 0.30,
         shoulder_width: float = 0.40,
     ) -> None:
-        assert body_mass > 0, "body_mass must be positive"
-        assert height > 0, "height must be positive"
+        if body_mass <= 0:
+            raise ValueError("body_mass must be positive")
+        if height <= 0:
+            raise ValueError("height must be positive")
 
         self.body_mass = body_mass
         self.height = height
@@ -145,7 +147,8 @@ class BodyModel3D:
         Coordinate convention: x = left/right, y = front/back, z = up.
         Standing pose (q=0) has the body upright.
         """
-        assert len(q) == 16, f"Expected 16 DOF, got {len(q)}"
+        if len(q) != 16:
+            raise ValueError(f"Expected 16 DOF, got {len(q)}")
 
         joints: dict[str, NDArray] = {}
 
