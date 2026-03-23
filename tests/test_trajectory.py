@@ -12,8 +12,11 @@ import threading
 import numpy as np
 import pytest
 
+from movement_optimizer.exercises import make_clean_config, make_snatch_config
 from movement_optimizer.models import (
     BodyModel,
+    make_bench_press_config,
+    make_deadlift_config,
     make_full_squat_config,
     make_squat_config,
 )
@@ -524,3 +527,106 @@ class TestSolutionCache:
         cache.put("squat", 75.0, 1.75, mults, 60.0, 2.0, 1.0, dummy)
         cache.clear()
         assert cache.get("squat", 75.0, 1.75, mults, 60.0, 2.0, 1.0) is None
+
+
+# ==============================================================
+# Bar-Knee Clearance
+# ==============================================================
+
+
+def _has_bar_knee_constraint(opt: TrajectoryOptimizer) -> bool:
+    """Return True if the optimizer's constraints include bar-knee clearance."""
+    constraints = opt._build_constraints()
+    return any(
+        getattr(c["fun"], "__func__", None) is TrajectoryOptimizer._bar_knee_clearance
+        for c in constraints
+    )
+
+
+class TestBarKneeClearance:
+    def test_clearance_active_for_deadlift(self) -> None:
+        body = BodyModel(75.0, 1.75)
+        dyn, qs, qe, qb = make_deadlift_config(body, 60.0)
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,
+            "deadlift",
+            60.0,
+            qs,
+            qe,
+            qb,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=1,
+        )
+        assert _has_bar_knee_constraint(opt)
+
+    def test_clearance_active_for_clean(self) -> None:
+        body = BodyModel(75.0, 1.75)
+        dyn, qs, qe, qb, q_via = make_clean_config(body, 60.0)
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,
+            "clean",
+            60.0,
+            qs,
+            qe,
+            qb,
+            q_via=q_via,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=1,
+        )
+        assert _has_bar_knee_constraint(opt)
+
+    def test_clearance_active_for_snatch(self) -> None:
+        body = BodyModel(75.0, 1.75)
+        dyn, qs, qe, qb, q_via = make_snatch_config(body, 60.0)
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,
+            "snatch",
+            60.0,
+            qs,
+            qe,
+            qb,
+            q_via=q_via,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=1,
+        )
+        assert _has_bar_knee_constraint(opt)
+
+    def test_clearance_not_active_for_squat(self) -> None:
+        body = BodyModel(75.0, 1.75)
+        dyn, qs, qe, qb = make_squat_config(body, 60.0)
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=1,
+        )
+        assert not _has_bar_knee_constraint(opt)
+
+    def test_clearance_not_active_for_bench(self) -> None:
+        body = BodyModel(75.0, 1.75)
+        dyn, qs, qe, qb, _q_via = make_bench_press_config(body, 60.0)
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,
+            "bench_press",
+            60.0,
+            qs,
+            qe,
+            qb,
+            n_waypoints=6,
+            n_eval=20,
+            n_starts=1,
+        )
+        assert not _has_bar_knee_constraint(opt)

@@ -377,11 +377,11 @@ class TrajectoryOptimizer:
         return np.concatenate([lower, upper])
 
     def _bar_knee_clearance(self, x: NDArray) -> NDArray:
-        """Bar must stay in front of the knees during deadlift.
+        """Bar must stay in front of the knees during pulling exercises.
 
         Returns array of length n_eval:
             bar_x - knee_x + margin  (must be >= 0)
-        Only active for deadlift exercises.
+        Active for deadlift, clean, and snatch exercises.
         """
         splines = self.build_splines(x)
         q = np.column_stack([s(self.t_eval) for s in splines])
@@ -389,10 +389,10 @@ class TrajectoryOptimizer:
         knee_x = L[0] * np.sin(q[:, 0])
         hip_x = knee_x + L[1] * np.sin(q[:, 1])
         shoulder_x = hip_x + L[2] * np.sin(q[:, 2])
-        # For deadlift, bar hangs from shoulders (at arm length below)
+        # For pulling exercises, bar hangs from shoulders (at arm length below)
         # Bar x == shoulder x in sagittal plane
         bar_x = shoulder_x
-        clearance = 0.02  # 2cm minimum clearance
+        clearance = 0.05  # 5cm minimum bar-to-knee clearance
         return bar_x - knee_x + clearance
 
     # ==========================================================
@@ -557,7 +557,8 @@ class TrajectoryOptimizer:
         constraints = [
             {"type": "ineq", "fun": self._com_constraint_values},
         ]
-        if self.exercise_type == "deadlift":
+        pulling_exercises = {"deadlift", "clean", "snatch"}
+        if self.exercise_type in pulling_exercises:
             constraints.append(
                 {"type": "ineq", "fun": self._bar_knee_clearance},
             )

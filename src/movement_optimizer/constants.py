@@ -30,7 +30,18 @@ LENGTH_FRAC: dict[str, float] = {
     "torso": 0.288,
     "arm": 0.387,
     "foot": 0.152,
+    "neck": 0.075,  # C7 to base of skull, ~7.5% of height
 }
+
+# ------------------------------------------------------------------
+# Neck joint angle limit (degrees)
+#
+# The neck can tilt up to 45 degrees in any direction relative to the
+# torso.  The 2-D model does not currently have a separate neck DOF,
+# but the constant is documented here so the rendering keeps the neck
+# roughly aligned with the torso.
+# ------------------------------------------------------------------
+NECK_MAX_ANGLE_DEG: float = 45.0
 
 # ------------------------------------------------------------------
 # COM position as fraction of segment length from proximal joint
