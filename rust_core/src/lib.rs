@@ -5,6 +5,7 @@
 //! iteration over timesteps when N is large.
 
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::useless_conversion)]
 
 use numpy::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
@@ -191,7 +192,6 @@ fn com_x_batch_rs<'py>(
 ///
 /// Returns: torques (N, n_dof)
 #[pyfunction]
-#[allow(clippy::useless_conversion)]
 fn inverse_dynamics_ndof_rs<'py>(
     py: Python<'py>,
     q: PyReadonlyArray2<'py, f64>,
