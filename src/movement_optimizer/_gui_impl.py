@@ -945,13 +945,169 @@ class ExerciseTab(QWidget):
         ax = self.axes["anim"]
         ax.clear()
         style_axis(ax)
-        ax.set_xlim(-0.9, 0.9)
-        ax.set_ylim(-0.15, 1.8)
-        ax.set_aspect("equal", adjustable="datalim")
 
         q = result.q[fi]
         t_now = result.t[fi]
         fk = dynamics.forward_kinematics(q)
+
+        if exercise_type == "bench_press":
+            self._draw_bench_press_frame(ax, q, t_now, fi, result, fk)
+        else:
+            self._draw_standing_frame(ax, q, t_now, fi, result, dynamics, body, fk, exercise_type)
+
+        self.canvas.draw()
+
+    def _draw_bench_press_frame(
+        self,
+        ax: Any,
+        q: Any,
+        t_now: float,
+        fi: int,
+        result: OptimizationResult,
+        fk: dict[str, Any],
+    ) -> None:
+        """Render bench press: supine body on bench with arm chain."""
+        from matplotlib.patches import Circle as MplCircle
+
+        ax.set_xlim(-0.6, 0.8)
+        ax.set_ylim(-0.15, 1.4)
+        ax.set_aspect("equal", adjustable="datalim")
+
+        bench_h = 0.45
+
+        # Draw bench
+        ax.fill_between([-0.8, 0.5], bench_h - 0.05, bench_h, color="#8B4513", alpha=0.6)
+
+        # Draw body lying on bench (decorative -- not part of dynamics)
+        head_x, head_y = -0.35, bench_h + 0.05
+        neck_x = -0.25
+        shoulder_x = 0.0
+        hip_x = 0.35
+
+        # Neck
+        ax.plot(
+            [head_x + 0.08, neck_x],
+            [bench_h + 0.05, bench_h + 0.02],
+            "-",
+            color="#d4a574",
+            lw=5,
+            solid_capstyle="round",
+        )
+        # Head
+        ax.add_patch(
+            MplCircle(
+                (head_x, head_y),
+                0.08,
+                facecolor="#d4a574",
+                edgecolor="#333",
+                lw=1.2,
+                alpha=0.85,
+                zorder=6,
+            )
+        )
+        # Torso (horizontal on bench)
+        ax.plot(
+            [neck_x, shoulder_x],
+            [bench_h + 0.02, bench_h + 0.02],
+            "-",
+            color=Palette.SEG_COLORS[2],
+            lw=12,
+            solid_capstyle="round",
+        )
+        ax.plot(
+            [shoulder_x, hip_x],
+            [bench_h + 0.02, bench_h + 0.02],
+            "-",
+            color=Palette.SEG_COLORS[2],
+            lw=12,
+            solid_capstyle="round",
+        )
+        # Legs hanging off bench to floor
+        ax.plot(
+            [hip_x, hip_x + 0.15],
+            [bench_h, 0],
+            "-",
+            color=Palette.SEG_COLORS[1],
+            lw=9,
+            solid_capstyle="round",
+        )
+        ax.plot(
+            [hip_x + 0.15, hip_x + 0.2],
+            [0, 0],
+            "-",
+            color=Palette.SEG_COLORS[0],
+            lw=6,
+            solid_capstyle="round",
+        )
+
+        # Ground line
+        ax.plot([-0.6, 0.8], [0, 0], color=Palette.FG_DIM, lw=2, alpha=0.3)
+
+        # Arm chain from FK (the actual dynamics)
+        # FK "ankle" = shoulder joint position, remap to bench shoulder position
+        arm_base = np.array([shoulder_x, bench_h + 0.02])
+        fk_points = [fk["ankle"], fk["knee"], fk["hip"], fk["shoulder"]]
+        # Offset FK relative to arm_base (FK has ankle at origin)
+        arm_joints = [arm_base + (pt - fk_points[0]) for pt in fk_points]
+
+        # Draw arm segments: upper arm, forearm, hand/wrist
+        colors = [Palette.SEG_COLORS[0], Palette.SEG_COLORS[1], "#b0b0b0"]
+        lws = [8, 6, 4]
+        for k in range(3):
+            ax.plot(
+                [arm_joints[k][0], arm_joints[k + 1][0]],
+                [arm_joints[k][1], arm_joints[k + 1][1]],
+                "-",
+                color=colors[k],
+                lw=lws[k],
+                solid_capstyle="round",
+            )
+
+        # Joint markers
+        for pt in arm_joints:
+            ax.plot(
+                pt[0],
+                pt[1],
+                "o",
+                color=Palette.FG,
+                ms=6,
+                markeredgecolor="#333",
+                markeredgewidth=1,
+            )
+
+        # Bar at hand position (end of chain)
+        BarbellRenderer.draw(ax, (arm_joints[-1][0], arm_joints[-1][1]))
+
+        # Bar trace
+        BodyRenderer.draw_bar_trace(ax, result.bar, fi)
+
+        ax.set_title(
+            f"{self.name}  t={t_now:.2f}s  |  "
+            f"Shoulder {np.degrees(q[0]):.0f}\u00b0  "
+            f"Elbow {np.degrees(q[1]):.0f}\u00b0  "
+            f"Wrist {np.degrees(q[2]):.0f}\u00b0",
+            color=Palette.FG,
+            fontsize=10,
+            fontweight="bold",
+        )
+
+    def _draw_standing_frame(
+        self,
+        ax: Any,
+        q: Any,
+        t_now: float,
+        fi: int,
+        result: OptimizationResult,
+        dynamics: Any,
+        body: BodyModel,
+        fk: dict[str, Any],
+        exercise_type: str,
+    ) -> None:
+        """Render standing exercises (squat, deadlift, etc.)."""
+        ax.set_xlim(-0.9, 0.9)
+        ax.set_ylim(-0.15, 1.8)
+        ax.set_aspect("equal", adjustable="datalim")
+
         is_dl = exercise_type == "deadlift"
 
         BodyRenderer.draw_ground(ax, body.heel_x, body.toe_x)
@@ -980,7 +1136,6 @@ class ExerciseTab(QWidget):
             fontsize=10,
             fontweight="bold",
         )
-        self.canvas.draw()
 
 
 # ==============================================================
