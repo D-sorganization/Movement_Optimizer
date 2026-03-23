@@ -4,7 +4,7 @@
 //! pre-computed coupling coefficients.  Uses rayon for parallel
 //! iteration over timesteps when N is large.
 
-use numpy::ndarray::{Array1, Array2, ArrayView2, Axis};
+use numpy::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray2};
 use pyo3::prelude::*;
 use rayon::prelude::*;
@@ -102,7 +102,7 @@ fn inverse_dynamics_batch_rs<'py>(
         }
     }
 
-    tau.into_pyarray(py).into()
+    tau.into_pyarray_bound(py).into()
 }
 
 /// Compute COM x-coordinate for all timesteps.
