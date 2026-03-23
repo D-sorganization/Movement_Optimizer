@@ -296,8 +296,8 @@ class TestOptimization:
         assert result.cost < float("inf")
         assert result.success
 
-    def test_com_ends_near_bos(self) -> None:
-        """At the end of the squat (standing), COM should be near the foot."""
+    def test_com_stays_in_inner_bos(self) -> None:
+        """After SLSQP optimization, COM should stay within the inner 60% BOS."""
         body = BodyModel(75.0, 1.75)
         dyn, qs, qe, qb = make_squat_config(body, 60.0)
         opt = TrajectoryOptimizer(
@@ -314,12 +314,14 @@ class TestOptimization:
             n_starts=2,
         )
         result = opt.optimize()
-        # At standing (end of ascent), COM should be near the ankle
-        com_x_end = result.com[-1, 0]
-        assert abs(com_x_end) < 0.05, f"COM at standing too far from ankle: {com_x_end:.4f}"
-        # COM should move forward (toward foot) as the squat ascends
-        com_x_start = result.com[0, 0]
-        assert com_x_end > com_x_start, "COM should move forward during ascent"
+        com_x = result.com[:, 0]
+        assert np.all(com_x >= body.inner_heel - 0.01), (
+            f"COM below inner_heel: min={com_x.min():.4f}, bound={body.inner_heel:.4f}"
+        )
+        assert np.all(com_x <= body.inner_toe + 0.01), (
+            f"COM above inner_toe: max={com_x.max():.4f}, bound={body.inner_toe:.4f}"
+        )
+        assert result.success, "Optimization should report success with COM in bounds"
 
 
 # ==============================================================
