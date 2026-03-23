@@ -146,13 +146,13 @@ HILL_MAX_ECCENTRIC_RATIO: float = 1.4
 #
 # Segment fractions for the arm chain (fraction of arm length):
 # ------------------------------------------------------------------
-BENCH_UPPER_ARM_FRAC: float = 0.45
-BENCH_FOREARM_FRAC: float = 0.55
+BENCH_UPPER_ARM_FRAC: float = 0.56  # shoulder to elbow (anatomical ~48% + shoulder width)
+BENCH_FOREARM_FRAC: float = 0.38  # elbow to wrist (anatomical ~38%)
 
 BENCH_PRESS_JOINT_LIMITS: dict[str, tuple[float, float]] = {
     "shoulder": (np.radians(-10), np.radians(100)),
     "elbow": (np.radians(-140), np.radians(10)),
-    "wrist": (np.radians(-15), np.radians(15)),
+    "wrist": (np.radians(-1), np.radians(1)),  # effectively locked straight
 }
 
 BENCH_PRESS_JOINT_NAMES: tuple[str, ...] = ("shoulder", "elbow", "wrist")
