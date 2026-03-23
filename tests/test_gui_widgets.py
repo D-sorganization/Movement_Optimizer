@@ -7,6 +7,17 @@ expected attributes/methods without requiring a running QApplication
 
 from __future__ import annotations
 
+import pytest
+
+try:
+    from movement_optimizer.gui import MainWindow  # noqa: F401
+
+    _GUI_AVAILABLE = True
+except (ImportError, OSError):
+    _GUI_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(not _GUI_AVAILABLE, reason="Qt bindings not available")
+
 
 class TestWidgetImports:
     """Verify that all GUI widget classes are importable."""
