@@ -11,6 +11,7 @@ Design Principles:
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import numpy as np
@@ -25,6 +26,7 @@ class ComparisonStore:
     """
 
     def __init__(self) -> None:
+        self._lock = threading.Lock()
         self._trials: list[dict[str, Any]] = []
 
     def add_trial(
@@ -40,22 +42,25 @@ class ComparisonStore:
             name is a non-empty string.
             result is a valid OptimizationResult.
         """
-        self._trials.append(
-            {
-                "name": name,
-                "result": result,
-                "body_params": body_params,
-                "bar_mass": bar_mass,
-            }
-        )
+        with self._lock:
+            self._trials.append(
+                {
+                    "name": name,
+                    "result": result,
+                    "body_params": body_params,
+                    "bar_mass": bar_mass,
+                }
+            )
 
     def get_trials(self) -> list[dict[str, Any]]:
         """Return a copy of the stored trials list."""
-        return list(self._trials)
+        with self._lock:
+            return list(self._trials)
 
     def clear(self) -> None:
         """Remove all stored trials."""
-        self._trials.clear()
+        with self._lock:
+            self._trials.clear()
 
 
 def comparison_metrics(trials: list[dict[str, Any]]) -> list[dict[str, Any]]:

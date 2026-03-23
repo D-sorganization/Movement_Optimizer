@@ -23,15 +23,15 @@ class TestBodyModel:
         assert custom_body.L[2] > default.L[2]
 
     def test_negative_mass_raises(self) -> None:
-        with pytest.raises(AssertionError, match="body_mass"):
+        with pytest.raises(ValueError, match="body_mass"):
             BodyModel(-10, 1.75)
 
     def test_zero_height_raises(self) -> None:
-        with pytest.raises(AssertionError, match="height"):
+        with pytest.raises(ValueError, match="height"):
             BodyModel(75, 0)
 
     def test_multiplier_out_of_range_raises(self) -> None:
-        with pytest.raises(AssertionError, match="out of range"):
+        with pytest.raises(ValueError, match="out of range"):
             BodyModel(75, 1.75, seg_multipliers={"lower_leg": 3.0})
 
     def test_mass_fractions_sum(self, default_body: BodyModel) -> None:
@@ -96,7 +96,7 @@ class TestDynamics:
         assert "Lagrangian" in dyn.name
 
     def test_negative_load_raises(self, default_body: BodyModel) -> None:
-        with pytest.raises(AssertionError, match="load_mass"):
+        with pytest.raises(ValueError, match="load_mass"):
             LagrangianDynamics(
                 default_body,
                 default_body.m_squat,

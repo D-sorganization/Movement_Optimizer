@@ -6,6 +6,7 @@ import json
 
 import numpy as np
 import pytest
+from conftest import make_test_result
 
 from movement_optimizer.persistence import (
     load_app_state,
@@ -13,40 +14,11 @@ from movement_optimizer.persistence import (
     save_app_state,
     save_solution,
 )
-from movement_optimizer.trajectory import OptimizationResult
-
-
-def _make_result() -> OptimizationResult:
-    """Create a minimal OptimizationResult for testing."""
-    n = 10
-    t = np.linspace(0, 2, n)
-    q = np.random.default_rng(42).random((n, 3))
-    qd = np.random.default_rng(43).random((n, 3))
-    qdd = np.random.default_rng(44).random((n, 3))
-    torques = np.random.default_rng(45).random((n, 3))
-    power = np.random.default_rng(46).random((n, 3))
-    com = np.random.default_rng(47).random((n, 2))
-    bar = np.random.default_rng(48).random((n, 2))
-    return OptimizationResult(
-        t=t,
-        q=q,
-        qd=qd,
-        qdd=qdd,
-        torques=torques,
-        power=power,
-        com=com,
-        bar=bar,
-        success=True,
-        cost=42.5,
-        com_horizontal_range_cm=3.2,
-        elapsed_s=1.5,
-        n_evals=100,
-    )
 
 
 class TestSaveSolution:
     def test_round_trip_preserves_all_fields(self, tmp_path):
-        result = _make_result()
+        result = make_test_result()
         body_params = {
             "body_mass": 80.0,
             "height": 1.80,
@@ -67,7 +39,7 @@ class TestSaveSolution:
         assert loaded["metadata"]["n_evals"] == 100
 
     def test_round_trip_preserves_arrays(self, tmp_path):
-        result = _make_result()
+        result = make_test_result()
         body_params = {"body_mass": 75.0, "height": 1.75}
         path = tmp_path / "solution.json"
 
@@ -92,7 +64,7 @@ class TestSaveSolution:
 
 class TestAppState:
     def test_round_trip_state(self, tmp_path):
-        result = _make_result()
+        result = make_test_result()
         results_dict = {"squat": result}
         slider_values = {
             "body_mass": 80.0,

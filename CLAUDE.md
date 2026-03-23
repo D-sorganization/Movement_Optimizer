@@ -6,10 +6,10 @@ Project-specific guidance for Claude Code sessions.
 
 ```bash
 # Run tests
-PYTHONPATH=src py -m pytest tests/ -v
+PYTHONPATH=src python3 -m pytest tests/ -v
 
 # Run a single test file
-PYTHONPATH=src py -m pytest tests/test_models.py -v
+PYTHONPATH=src python3 -m pytest tests/test_models.py -v
 
 # Lint
 ruff check src/ tests/

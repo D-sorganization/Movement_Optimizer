@@ -14,7 +14,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..constants import PLATE_RADIUS_STD_M
-from ..models import BodyModel, LagrangianDynamics, _balance_pose
+from ..models import BodyModel, LagrangianDynamics, balance_pose
 
 
 def _snatch_start_angles(body: BodyModel) -> NDArray:
@@ -68,15 +68,15 @@ def make_snatch_config(
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
 
     q_start_raw = _snatch_start_angles(body)
-    q_start = _balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
+    q_start = balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
 
     # End: standing with bar overhead -- use squat-style COM for balance check
     # but keep the same dynamics object
     q_end_raw = _snatch_end_angles()
-    q_end = _balance_pose(dyn, q_end_raw, "squat", bar_mass, adjust_joint=0)
+    q_end = balance_pose(dyn, q_end_raw, "squat", bar_mass, adjust_joint=0)
 
     q_via_raw = _snatch_via_angles()
-    q_via = _balance_pose(dyn, q_via_raw, "deadlift", bar_mass, adjust_joint=2)
+    q_via = balance_pose(dyn, q_via_raw, "deadlift", bar_mass, adjust_joint=2)
 
     q_bounds = np.array(
         [

@@ -234,8 +234,10 @@ class TrajectoryOptimizer:
         progress_cb: Callable[[ProgressReport], None] | None = None,
         cancel_event: threading.Event | None = None,
     ) -> None:
-        assert n_waypoints >= 4, "need >= 4 waypoints"
-        assert q_bounds.shape == (3, 2), "q_bounds must be (3,2)"
+        if n_waypoints < 4:
+            raise ValueError("need >= 4 waypoints")
+        if q_bounds.shape != (3, 2):
+            raise ValueError("q_bounds must be (3,2)")
 
         self.body = body
         self.dynamics = dynamics
@@ -706,15 +708,13 @@ class TrajectoryOptimizer:
         torques = self.dynamics.inverse_dynamics_batch(q, qd, qdd)
         power = torques * qd
 
-        com_traj = np.array(
-            [
-                self.dynamics.com_position(q[n], self.exercise_type, self.bar_mass)
-                for n in range(self.n_eval)
-            ]
-        )
-        bar_traj = np.array(
-            [self.dynamics.bar_position(q[n], self.exercise_type) for n in range(self.n_eval)]
-        )
+        # Batch-vectorized COM and bar trajectories
+        n_pts = q.shape[0]
+        com_traj = np.empty((n_pts, 2))
+        bar_traj = np.empty((n_pts, 2))
+        for n in range(n_pts):
+            com_traj[n] = self.dynamics.com_position(q[n], self.exercise_type, self.bar_mass)
+            bar_traj[n] = self.dynamics.bar_position(q[n], self.exercise_type)
 
         com_x = com_traj[:, 0]
         com_h_range = (np.max(com_x) - np.min(com_x)) * 100.0
