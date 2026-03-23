@@ -57,6 +57,8 @@ class BodyModel:
         body_mass: float = 75.0,
         height: float = 1.75,
         seg_multipliers: dict[str, float] | None = None,
+        abduction_angle: float = 0.0,
+        arm_angle: float = 0.0,
     ) -> None:
         assert body_mass > 0, "body_mass must be positive"
         assert height > 0, "height must be positive"
@@ -64,6 +66,8 @@ class BodyModel:
         self.body_mass = body_mass
         self.height = height
         self.g = 9.81
+        self.abduction_angle = abduction_angle
+        self.arm_angle = arm_angle
 
         mults = self._validated_multipliers(seg_multipliers)
         self._compute_lengths(height, mults)
@@ -98,6 +102,17 @@ class BodyModel:
         )
         self.L_arm = LENGTH_FRAC["arm"] * height
         self.foot_length = LENGTH_FRAC["foot"] * height
+
+        # Leg abduction correction: project leg lengths into sagittal plane
+        abduction_rad = np.radians(self.abduction_angle)
+        correction = np.cos(abduction_rad)
+        self.L_eff = self.L.copy()
+        self.L_eff[0] *= correction  # lower leg projected length
+        self.L_eff[1] *= correction  # upper leg projected length
+        # torso (index 2) is NOT corrected - it stays in sagittal plane
+
+        # Arm angle projection for bench press side-view
+        self.L_arm_eff = self.L_arm * np.sin(np.radians(self.arm_angle))
 
     def _compute_base_of_support(self) -> None:
         """Compute full and inner (constrained) base-of-support bounds.
@@ -146,6 +161,14 @@ class BodyModel:
                 COM_FRAC["lower_leg"] * self.L[0],
                 COM_FRAC["upper_leg"] * self.L[1],
                 COM_FRAC["torso"] * self.L[2],
+            ]
+        )
+        # Projected COM distances for kinematic calculations
+        self.d_eff = np.array(
+            [
+                COM_FRAC["lower_leg"] * self.L_eff[0],
+                COM_FRAC["upper_leg"] * self.L_eff[1],
+                COM_FRAC["torso"] * self.L_eff[2],
             ]
         )
 
@@ -507,7 +530,9 @@ class LagrangianDynamics(PhysicsBackend):
         assert load_mass >= 0, "load_mass cannot be negative"
         self.body = body
         self.L = body.L
+        self.L_eff = body.L_eff
         self.d = body.d
+        self.d_eff = body.d_eff
         self.m = m_segments
         self.I = I_segments
         self.m_load = load_mass
@@ -657,14 +682,16 @@ class LagrangianDynamics(PhysicsBackend):
         """
         b = self.body
         sq = np.sin(q)
+        L = self.L_eff
+        d = self.d_eff
 
-        knee_x = b.L[0] * sq[:, 0]
-        hip_x = knee_x + b.L[1] * sq[:, 1]
-        shoulder_x = hip_x + b.L[2] * sq[:, 2]
+        knee_x = L[0] * sq[:, 0]
+        hip_x = knee_x + L[1] * sq[:, 1]
+        shoulder_x = hip_x + L[2] * sq[:, 2]
 
-        c1x = b.d[0] * sq[:, 0]
-        c2x = knee_x + b.d[1] * sq[:, 1]
-        c3x = hip_x + b.d[2] * sq[:, 2]
+        c1x = d[0] * sq[:, 0]
+        c2x = knee_x + d[1] * sq[:, 1]
+        c3x = hip_x + d[2] * sq[:, 2]
 
         total_mass = b.body_mass + bar_mass
         numerator = b.m_feet * b.foot_com_x + self.m[0] * c1x + self.m[1] * c2x + self.m[2] * c3x
@@ -677,7 +704,7 @@ class LagrangianDynamics(PhysicsBackend):
         return numerator / total_mass
 
     def forward_kinematics(self, q: NDArray) -> dict[str, NDArray]:
-        L = self.L
+        L = self.L_eff
         ankle = np.array([0.0, 0.0])
         knee = ankle + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
         hip = knee + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
@@ -698,13 +725,15 @@ class LagrangianDynamics(PhysicsBackend):
         bar_mass: float = 0.0,
     ) -> NDArray:
         b = self.body
+        L = self.L_eff
+        d = self.d_eff
         ankle = np.array([0.0, 0.0])
-        c1 = ankle + b.d[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        knee = ankle + b.L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        c2 = knee + b.d[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        hip = knee + b.L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        c3 = hip + b.d[2] * np.array([np.sin(q[2]), np.cos(q[2])])
-        shoulder = hip + b.L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
+        c1 = ankle + d[0] * np.array([np.sin(q[0]), np.cos(q[0])])
+        knee = ankle + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
+        c2 = knee + d[1] * np.array([np.sin(q[1]), np.cos(q[1])])
+        hip = knee + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
+        c3 = hip + d[2] * np.array([np.sin(q[2]), np.cos(q[2])])
+        shoulder = hip + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
 
         foot_com = np.array([b.foot_com_x, b.foot_com_y])
         total_mass = b.body_mass + bar_mass
@@ -910,7 +939,9 @@ def make_bench_press_config(
     dyn = LagrangianDynamics(body, bp.m.copy(), bp.I.copy(), bar_mass)
     # Override segment lengths for arm chain
     dyn.L = bp.L
+    dyn.L_eff = bp.L.copy()
     dyn.d = bp.d
+    dyn.d_eff = bp.d.copy()
 
     # Recompute coupling coefficients for arm geometry
     m = bp.m
