@@ -200,11 +200,54 @@ class TestExerciseConfigs:
         _dyn, qs, qe, _qb, q_via = full_squat_config
         assert q_via is not None
         assert q_via.shape == (3,)
-        np.testing.assert_allclose(qs, [0, 0, 0])
-        np.testing.assert_allclose(qe, [0, 0, 0])
+        # Start and end are balanced standing (small shin lean, not pure zero)
+        np.testing.assert_allclose(qs, qe, atol=1e-10)
+        assert abs(qs[1]) < 0.01, "Knee should be near zero at standing"
+        assert abs(qs[2]) < 0.01, "Torso should be near zero at standing"
 
     def test_deadlift_config_shapes(self, deadlift_dynamics) -> None:
         _dyn, qs, qe, qb = deadlift_dynamics
         assert qs.shape == (3,)
         assert qe.shape == (3,)
         assert qb.shape == (3, 2)
+
+    def test_squat_endpoints_com_in_inner_bos(self, default_body) -> None:
+        """Start and end poses should have COM in the inner 60% zone."""
+        from movement_optimizer.models import make_squat_config
+
+        dyn, qs, qe, _ = make_squat_config(default_body, 60.0)
+        com_start = dyn.com_position(qs, "squat", 60.0)[0]
+        com_end = dyn.com_position(qe, "squat", 60.0)[0]
+        b = default_body
+        assert b.inner_heel <= com_start <= b.inner_toe, (
+            f"Start COM {com_start:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
+        )
+        assert b.inner_heel <= com_end <= b.inner_toe, (
+            f"End COM {com_end:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
+        )
+
+    def test_full_squat_via_com_in_inner_bos(self, default_body) -> None:
+        """Via-point should have COM in the inner 60% zone."""
+        from movement_optimizer.models import make_full_squat_config
+
+        dyn, _, _, _, q_via = make_full_squat_config(default_body, 60.0)
+        com_via = dyn.com_position(q_via, "full_squat", 60.0)[0]
+        b = default_body
+        assert b.inner_heel <= com_via <= b.inner_toe, (
+            f"Via COM {com_via:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
+        )
+
+    def test_deadlift_endpoints_com_in_inner_bos(self, default_body) -> None:
+        """Deadlift start and end should have COM in the inner 60% zone."""
+        from movement_optimizer.models import make_deadlift_config
+
+        dyn, qs, qe, _ = make_deadlift_config(default_body, 60.0)
+        com_start = dyn.com_position(qs, "deadlift", 60.0)[0]
+        com_end = dyn.com_position(qe, "deadlift", 60.0)[0]
+        b = default_body
+        assert b.inner_heel <= com_start <= b.inner_toe, (
+            f"Start COM {com_start:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
+        )
+        assert b.inner_heel <= com_end <= b.inner_toe, (
+            f"End COM {com_end:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
+        )

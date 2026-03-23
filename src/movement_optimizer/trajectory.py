@@ -30,7 +30,7 @@ import os
 import threading
 import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -354,51 +354,23 @@ class TrajectoryOptimizer:
         return self.endpoint_weight * float(cost) * self.dt
 
     def _balance_cost(self, com_x: NDArray) -> float:
-        """Two-zone COM constraint: hard wall at full BOS, strong preference for inner 60%.
-
-        Zone 1 (hard wall): COM outside the full foot (heel_x to toe_x)
-            incurs an extreme cubic+quadratic barrier -- effectively
-            impenetrable.  This prevents falling over.
-
-        Zone 2 (outer margin): COM between the full BOS and the inner 60%
-            incurs a steep quadratic penalty scaled by distance into the
-            outer zone.  The optimizer will strongly avoid this zone but
-            CAN enter it briefly if the fixed endpoint poses demand it
-            (e.g., at standing where the ankle sits near the heel).
-
-        Zone 3 (inner 60%): only a soft centering preference applies.
-        """
-        b = self.body
-        ih = self.inner_heel
-        it = self.inner_toe
+        """Soft centering preference (hard bounds enforced via SLSQP constraints)."""
         center = self.inner_center
+        return self.balance_center_weight * float(np.sum((com_x - center) ** 2)) * self.dt
 
-        cost = 0.0
+    def _com_constraint_values(self, x: NDArray) -> NDArray:
+        """Return COM constraint violation for SLSQP.
 
-        # --- Hard wall: outside full BOS (catastrophic) ---
-        below_full = com_x < b.heel_x
-        above_full = com_x > b.toe_x
-        if np.any(below_full):
-            v = b.heel_x - com_x[below_full]
-            cost += 50000.0 * float(np.sum(v**2 + v**3)) * self.dt
-        if np.any(above_full):
-            v = com_x[above_full] - b.toe_x
-            cost += 50000.0 * float(np.sum(v**2 + v**3)) * self.dt
-
-        # --- Outer zone: between full BOS and inner 60% (strongly penalised) ---
-        in_outer_rear = (com_x >= b.heel_x) & (com_x < ih)
-        in_outer_front = (com_x > it) & (com_x <= b.toe_x)
-        if np.any(in_outer_rear):
-            v = ih - com_x[in_outer_rear]
-            cost += self.balance_barrier_weight * float(np.sum(v**2)) * self.dt
-        if np.any(in_outer_front):
-            v = com_x[in_outer_front] - it
-            cost += self.balance_barrier_weight * float(np.sum(v**2)) * self.dt
-
-        # --- Centering preference (always active, soft) ---
-        cost += self.balance_center_weight * float(np.sum((com_x - center) ** 2)) * self.dt
-
-        return cost
+        Returns array of length 2*n_eval:
+            [0..n_eval-1]   = com_x - inner_heel  (must be >= 0)
+            [n_eval..2*n-1] = inner_toe - com_x    (must be >= 0)
+        """
+        splines = self.build_splines(x)
+        q = np.column_stack([s(self.t_eval) for s in splines])
+        com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
+        lower = com_x - self.inner_heel
+        upper = self.inner_toe - com_x
+        return np.concatenate([lower, upper])
 
     # ==========================================================
     # Pure cost computation (thread-safe, no side effects)
@@ -540,32 +512,51 @@ class TrajectoryOptimizer:
     # Single-start optimisation
     # ==========================================================
 
+    def _cancel_callback(self, _xk: NDArray) -> None:
+        """SLSQP iteration callback — raises to abort immediately."""
+        if self.cancel_event.is_set():
+            raise CancelledError("Optimization cancelled by user")
+
+    def _build_constraints(self) -> list[dict]:
+        """Build SLSQP inequality constraints for COM balance."""
+        return [
+            {
+                "type": "ineq",
+                "fun": self._com_constraint_values,
+            }
+        ]
+
     def _run_single_start(self, seed: int) -> tuple[object, int] | None:
-        """Run one L-BFGS-B solve with a perturbed initial guess.
+        """Run one SLSQP solve with a perturbed initial guess.
 
         Returns (scipy result, eval_count) or None if cancelled.
-        Thread-safe: uses only _compute_cost (no shared mutable state).
         """
         if self.cancel_event.is_set():
             return None
 
         wp0 = self._perturbed_guess(seed)
         bounds = self._build_bounds()
+        constraints = self._build_constraints()
         eval_count = [0]
 
         def cost_fn(x: NDArray) -> float:
             if self.cancel_event.is_set():
-                return float("inf")
+                raise CancelledError("cancelled")
             eval_count[0] += 1
             return self._compute_cost(x)
 
-        res = minimize(
-            cost_fn,
-            wp0.flatten(),
-            method="L-BFGS-B",
-            bounds=bounds,
-            options={"maxiter": MAX_ITER_PER_START, "ftol": 1e-6, "gtol": 1e-5},
-        )
+        try:
+            res = minimize(
+                cost_fn,
+                wp0.flatten(),
+                method="SLSQP",
+                bounds=bounds,
+                constraints=constraints,
+                callback=self._cancel_callback,
+                options={"maxiter": MAX_ITER_PER_START, "ftol": 1e-6, "disp": False},
+            )
+        except CancelledError:
+            return None
 
         if self.cancel_event.is_set():
             return None
@@ -577,13 +568,14 @@ class TrajectoryOptimizer:
     # ==========================================================
 
     def optimize(self) -> OptimizationResult:
-        """Run parallel multi-start L-BFGS-B and return best result.
+        """Run parallel multi-start SLSQP and return best result.
 
-        Launches n_starts worker threads, each with a perturbed initial
-        guess.  scipy's Fortran L-BFGS-B releases the GIL during
-        function and gradient evaluation, enabling true parallelism.
+        Uses SLSQP with hard COM inequality constraints to guarantee
+        the COM stays within the middle 60% of the foot at all times.
+        Multiple starts run concurrently; cancellation is immediate
+        via callback + exception.
 
-        Raises CancelledError if cancel_event is set during optimisation.
+        Raises CancelledError if cancel_event is set.
         """
         self._iter = 0
         self._cost_history = []
@@ -600,11 +592,9 @@ class TrajectoryOptimizer:
             self.n_waypoints,
         )
 
-        # -- parallel multi-start --
         results: list[tuple[object, int]] = []
 
         if n_workers <= 1 or self.n_starts <= 1:
-            # Single-start fallback (also used when progress tracking needed)
             out = self._run_single_start_with_progress()
             if self.cancel_event.is_set():
                 raise CancelledError("Optimization cancelled by user")
@@ -612,39 +602,38 @@ class TrajectoryOptimizer:
             return self._package_results(out, elapsed)
         else:
             with ThreadPoolExecutor(max_workers=n_workers) as pool:
-                futures = {
-                    pool.submit(self._run_single_start, seed): seed for seed in range(self.n_starts)
+                pending: set[Future] = {
+                    pool.submit(self._run_single_start, seed) for seed in range(self.n_starts)
                 }
-
-                # Report progress from the primary start periodically
                 total_evals = [0]
-                for future in as_completed(futures):
+
+                while pending:
                     if self.cancel_event.is_set():
-                        # Cancel remaining futures
-                        for f in futures:
+                        for f in pending:
                             f.cancel()
                         raise CancelledError("Optimization cancelled by user")
 
-                    result = future.result()
-                    if result is not None:
-                        results.append(result)
-                        res, n_evals = result
-                        total_evals[0] += n_evals
+                    done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
 
-                        # Update progress
-                        with self._progress_lock:
-                            self._iter = total_evals[0]
-                            cost_val = float(res.fun)
-                            self._cost_history.append(cost_val)
-                            self._best_cost = min(self._best_cost, cost_val)
-                            if self.progress_cb:
-                                self._emit_progress(cost_val)
+                    for future in done:
+                        result = future.result()
+                        if result is not None:
+                            results.append(result)
+                            res, n_evals = result
+                            total_evals[0] += n_evals
+
+                            with self._progress_lock:
+                                self._iter = total_evals[0]
+                                cost_val = float(res.fun)
+                                self._cost_history.append(cost_val)
+                                self._best_cost = min(self._best_cost, cost_val)
+                                if self.progress_cb:
+                                    self._emit_progress(cost_val)
 
         if not results:
             raise CancelledError("All optimization starts were cancelled")
 
-        # Pick the best result
-        best_res, _best_evals = min(results, key=lambda r: float(r[0].fun))
+        best_res, _ = min(results, key=lambda r: float(r[0].fun))
         elapsed = time.monotonic() - self._start_time
         total_evals_sum = sum(n for _, n in results)
 
@@ -659,21 +648,27 @@ class TrajectoryOptimizer:
         return self._package_results(best_res, elapsed, total_evals_sum)
 
     def _run_single_start_with_progress(self) -> object:
-        """Single-start path that tracks full progress history."""
+        """Single-start path with progress tracking."""
         self._iter = 0
         self._cost_history = []
         self._best_cost = float("inf")
 
         wp0 = self._initial_guess()
         bounds = self._build_bounds()
+        constraints = self._build_constraints()
 
-        res = minimize(
-            self.cost,
-            wp0.flatten(),
-            method="L-BFGS-B",
-            bounds=bounds,
-            options={"maxiter": MAX_ITER_PER_START * 2, "ftol": 1e-6, "gtol": 1e-5},
-        )
+        try:
+            res = minimize(
+                self.cost,
+                wp0.flatten(),
+                method="SLSQP",
+                bounds=bounds,
+                constraints=constraints,
+                callback=self._cancel_callback,
+                options={"maxiter": MAX_ITER_PER_START * 2, "ftol": 1e-6, "disp": False},
+            )
+        except CancelledError:
+            raise
 
         return res
 
@@ -703,11 +698,22 @@ class TrajectoryOptimizer:
         com_x = com_traj[:, 0]
         com_h_range = (np.max(com_x) - np.min(com_x)) * 100.0
 
-        # Success if cost is finite (optimizer converged to a solution).
-        # Note: fixed endpoint poses (squat bottom) may place COM outside
-        # the BOS -- this is physically correct and not a failure.
+        # Success: cost is finite AND COM stays within inner BOS (the hard constraint)
         cost_val = float(res.fun)
-        success = cost_val < float("inf") and not np.isnan(cost_val)
+        com_in_bounds = np.all(com_x >= self.inner_heel - 0.005) and np.all(
+            com_x <= self.inner_toe + 0.005
+        )
+        cost_finite = cost_val < float("inf") and not np.isnan(cost_val)
+        success = cost_finite and com_in_bounds
+        if cost_finite and not com_in_bounds:
+            logger.warning(
+                "Solution found but COM violated inner BOS: min=%.4f max=%.4f "
+                "(bounds: [%.4f, %.4f])",
+                com_x.min(),
+                com_x.max(),
+                self.inner_heel,
+                self.inner_toe,
+            )
 
         return OptimizationResult(
             t=self.t_eval,
