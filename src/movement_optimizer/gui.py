@@ -30,9 +30,12 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import (
     FigureCanvasQTAgg as FigureCanvas,
 )
+from matplotlib.backends.backend_qtagg import (
+    NavigationToolbar2QT as NavigationToolbar,
+)
 from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QSettings, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QFileDialog,
     QGroupBox,
@@ -51,6 +54,7 @@ from PyQt6.QtWidgets import (
 )
 
 from .constants import BAR_MASS_KG, PLATE_RADIUS_STD_M, trapezoid
+from .exercises import make_clean_config, make_jerk_config, make_snatch_config
 from .models import (
     BodyModel,
     make_bench_press_config,
@@ -64,6 +68,7 @@ from .rendering import (
     Palette,
     style_axis,
 )
+from .spine_loads import NIOSH_COMPRESSION_LIMIT, spinal_compression, spinal_shear
 from .trajectory import (
     CancelledError,
     OptimizationResult,
@@ -549,24 +554,26 @@ class ExerciseTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.fig = Figure(figsize=(11, 7), facecolor=Palette.BG)
+        self.fig = Figure(figsize=(11, 9), facecolor=Palette.BG)
         self.canvas = FigureCanvas(self.fig)
-        layout.addWidget(self.canvas)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        layout.addWidget(self.toolbar)
+        layout.addWidget(self.canvas, stretch=1)
 
         self._create_axes()
 
     def _create_axes(self) -> None:
         gs = GridSpec(
-            2,
+            3,
             4,
             figure=self.fig,
-            height_ratios=[2, 1],
-            hspace=0.35,
+            height_ratios=[3, 1, 1],
+            hspace=0.40,
             wspace=0.40,
             left=0.06,
             right=0.97,
-            top=0.92,
-            bottom=0.09,
+            top=0.93,
+            bottom=0.06,
         )
         self.axes = {
             "anim": self.fig.add_subplot(gs[0, 0:3]),
@@ -575,6 +582,8 @@ class ExerciseTab(QWidget):
             "torques": self.fig.add_subplot(gs[1, 1]),
             "power": self.fig.add_subplot(gs[1, 2]),
             "com_time": self.fig.add_subplot(gs[1, 3]),
+            "spine_comp": self.fig.add_subplot(gs[2, 0:2]),
+            "spine_shear": self.fig.add_subplot(gs[2, 2:4]),
         }
         for ax in self.axes.values():
             style_axis(ax)
@@ -607,15 +616,17 @@ class ExerciseTab(QWidget):
         body: BodyModel,
         bar_mass: float,
     ) -> None:
-        for k in ("angles", "torques", "power", "com_path", "com_time"):
-            self.axes[k].clear()
-            style_axis(self.axes[k])
+        for k in self.axes:
+            if k != "anim":
+                self.axes[k].clear()
+                style_axis(self.axes[k])
 
         self._plot_angles(result)
         self._plot_torques(result)
         self._plot_power(result)
         self._plot_com_path(result, body)
         self._plot_com_balance(result, body)
+        self._plot_spine_loads(result, body, bar_mass)
 
         self.fig.suptitle(
             f"{self.name}  |  {body.body_mass:.0f} kg body, {bar_mass:.0f} kg barbell",
@@ -778,6 +789,59 @@ class ExerciseTab(QWidget):
             labelcolor=Palette.FG,
         )
 
+    def _plot_spine_loads(self, r: OptimizationResult, body: BodyModel, bar_mass: float) -> None:
+        """Plot spinal compression and shear over time."""
+        exercise_type = self.name.lower().replace(" ", "_")
+        if exercise_type == "bottoms_up_squat":
+            exercise_type = "squat"
+
+        comp = spinal_compression(r.q, r.qd, r.qdd, body, bar_mass, exercise_type)
+        shear = spinal_shear(r.q, r.qd, r.qdd, body, bar_mass, exercise_type)
+
+        # Compression plot
+        ax = self.axes["spine_comp"]
+        ax.plot(r.t, comp, color=Palette.RED, lw=2, label="L5/S1 compression")
+        ax.axhline(
+            NIOSH_COMPRESSION_LIMIT,
+            color=Palette.YELLOW,
+            ls="--",
+            lw=1.5,
+            alpha=0.8,
+            label=f"NIOSH limit ({NIOSH_COMPRESSION_LIMIT:.0f} N)",
+        )
+        ax.fill_between(
+            r.t,
+            NIOSH_COMPRESSION_LIMIT,
+            comp,
+            where=comp > NIOSH_COMPRESSION_LIMIT,
+            alpha=0.3,
+            color=Palette.RED,
+            label="Exceeds limit",
+        )
+        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
+        ax.set_ylabel("Force (N)", color=Palette.FG_DIM, fontsize=8)
+        ax.set_title("Spinal Compression (L5/S1)", color=Palette.FG, fontsize=10)
+        ax.legend(
+            fontsize=6,
+            facecolor=Palette.BG_PANEL,
+            edgecolor=Palette.FG_DIM,
+            labelcolor=Palette.FG,
+        )
+
+        # Shear plot
+        ax = self.axes["spine_shear"]
+        ax.plot(r.t, shear, color=Palette.ORANGE, lw=2, label="L5/S1 shear")
+        ax.axhline(0, color=Palette.FG_DIM, lw=0.5, alpha=0.3)
+        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
+        ax.set_ylabel("Force (N)", color=Palette.FG_DIM, fontsize=8)
+        ax.set_title("Spinal Shear (L5/S1)", color=Palette.FG, fontsize=10)
+        ax.legend(
+            fontsize=6,
+            facecolor=Palette.BG_PANEL,
+            edgecolor=Palette.FG_DIM,
+            labelcolor=Palette.FG,
+        )
+
     def draw_anim_frame(
         self,
         fi: int,
@@ -903,6 +967,9 @@ class MainWindow(QMainWindow):
         ("Full Squat", "full_squat"),
         ("Deadlift", "deadlift"),
         ("Bench Press", "bench_press"),
+        ("Clean", "clean"),
+        ("Jerk", "jerk"),
+        ("Snatch", "snatch"),
     )
 
     def __init__(self) -> None:
@@ -928,8 +995,11 @@ class MainWindow(QMainWindow):
         self._sig_error.connect(self._on_err)
         self._sig_progress.connect(self._update_progress)
 
+        self._settings = QSettings("D-sorganization", "Movement-Optimizer")
+
         self._build_ui()
         self.setStyleSheet(QSS)
+        self._restore_layout()
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -985,10 +1055,25 @@ class MainWindow(QMainWindow):
         self.controls.speed_changed.connect(self._on_speed)
 
     def closeEvent(self, event: Any) -> None:
+        self._save_layout()
         self._stop_anim()
         self._cancel_event.set()
         event.accept()
         sys.exit(0)
+
+    def _save_layout(self) -> None:
+        """Persist window geometry and active tab to QSettings."""
+        self._settings.setValue("geometry", self.saveGeometry())
+        self._settings.setValue("activeTab", self.tabs.currentIndex())
+
+    def _restore_layout(self) -> None:
+        """Restore window geometry and active tab from QSettings."""
+        geom = self._settings.value("geometry")
+        if geom is not None:
+            self.restoreGeometry(geom)
+        tab_idx = self._settings.value("activeTab", 0, type=int)
+        if 0 <= tab_idx < self.tabs.count():
+            self.tabs.setCurrentIndex(tab_idx)
 
     def _cancel_optimization(self) -> None:
         self._cancel_event.set()
@@ -1031,6 +1116,15 @@ class MainWindow(QMainWindow):
                 dur = max(dur, 3.0)
             elif etype == "bench_press":
                 dyn, qs, qe, qb = make_bench_press_config(body, bar)
+            elif etype == "clean":
+                dyn, qs, qe, qb, q_via = make_clean_config(body, bar)
+                dur = max(dur, 2.5)
+            elif etype == "jerk":
+                dyn, qs, qe, qb, q_via = make_jerk_config(body, bar)
+                dur = max(dur, 2.0)
+            elif etype == "snatch":
+                dyn, qs, qe, qb, q_via = make_snatch_config(body, bar)
+                dur = max(dur, 3.0)
             else:
                 dyn, qs, qe, qb = make_deadlift_config(body, bar)
 

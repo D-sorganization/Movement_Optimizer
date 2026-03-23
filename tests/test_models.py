@@ -251,3 +251,50 @@ class TestExerciseConfigs:
         assert b.inner_heel <= com_end <= b.inner_toe, (
             f"End COM {com_end:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
         )
+
+
+class TestLegAbductionCorrection:
+    """Tests for issue #23: leg abduction angle correction."""
+
+    def test_zero_abduction_unchanged(self) -> None:
+        """BodyModel with abduction_angle=0 has same L as without."""
+        body_default = BodyModel(75.0, 1.75)
+        body_zero = BodyModel(75.0, 1.75, abduction_angle=0.0)
+        np.testing.assert_allclose(body_zero.L, body_default.L)
+        np.testing.assert_allclose(body_zero.L_eff, body_default.L_eff)
+
+    def test_30deg_reduces_effective_length(self) -> None:
+        """L_eff should be L * cos(30deg) for leg segments."""
+        body = BodyModel(75.0, 1.75, abduction_angle=30.0)
+        correction = np.cos(np.radians(30.0))
+        np.testing.assert_allclose(body.L_eff[0], body.L[0] * correction, rtol=1e-12)
+        np.testing.assert_allclose(body.L_eff[1], body.L[1] * correction, rtol=1e-12)
+
+    def test_torso_unaffected(self) -> None:
+        """Torso segment length doesn't change with leg abduction."""
+        body_0 = BodyModel(75.0, 1.75, abduction_angle=0.0)
+        body_30 = BodyModel(75.0, 1.75, abduction_angle=30.0)
+        np.testing.assert_allclose(body_30.L_eff[2], body_0.L_eff[2], rtol=1e-12)
+        # Torso L_eff should equal L (no correction)
+        np.testing.assert_allclose(body_30.L_eff[2], body_30.L[2], rtol=1e-12)
+
+    def test_standing_height_decreases(self) -> None:
+        """FK shoulder height at standing decreases with abduction."""
+        body_0 = BodyModel(75.0, 1.75, abduction_angle=0.0)
+        body_30 = BodyModel(75.0, 1.75, abduction_angle=30.0)
+        dyn_0 = LagrangianDynamics(body_0, body_0.m_squat.copy(), body_0.I_squat.copy(), 0.0)
+        dyn_30 = LagrangianDynamics(body_30, body_30.m_squat.copy(), body_30.I_squat.copy(), 0.0)
+        fk_0 = dyn_0.forward_kinematics(np.zeros(3))
+        fk_30 = dyn_30.forward_kinematics(np.zeros(3))
+        # With abduction, projected leg lengths are shorter, so shoulder is lower
+        assert fk_30["shoulder"][1] < fk_0["shoulder"][1]
+
+    def test_com_y_decreases(self) -> None:
+        """COM y-position decreases with abduction at standing."""
+        body_0 = BodyModel(75.0, 1.75, abduction_angle=0.0)
+        body_30 = BodyModel(75.0, 1.75, abduction_angle=30.0)
+        dyn_0 = LagrangianDynamics(body_0, body_0.m_squat.copy(), body_0.I_squat.copy(), 0.0)
+        dyn_30 = LagrangianDynamics(body_30, body_30.m_squat.copy(), body_30.I_squat.copy(), 0.0)
+        com_0 = dyn_0.com_position(np.zeros(3), "squat", 0.0)
+        com_30 = dyn_30.com_position(np.zeros(3), "squat", 0.0)
+        assert com_30[1] < com_0[1]
