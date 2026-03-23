@@ -578,14 +578,18 @@ class ExerciseTab(QWidget):
             style_axis(ax)
 
         self.axes["anim"].set_aspect("equal")
+        self.axes["anim"].set_xlim(-0.9, 0.9)
+        self.axes["anim"].set_ylim(-0.15, 1.8)
         self.axes["anim"].text(
-            0,
-            0.7,
+            0.5,
+            0.5,
             "Click Optimize to begin",
             ha="center",
+            va="center",
             fontsize=13,
             color=Palette.FG_DIM,
             style="italic",
+            transform=self.axes["anim"].transAxes,
         )
         self.fig.suptitle(
             f"{self.name} Optimization",
