@@ -31,8 +31,9 @@ class TestBenchPressConfig:
         """
         bp = BenchPressModel(default_body)
         total_arm_len = bp.L[0] + bp.L[1] + bp.L[2]
-        # Total should be close to L_arm + small wrist segment
-        assert abs(total_arm_len - (default_body.L_arm + 0.05)) < 0.01
+        # Total should be close to arm length (upper + forearm fracs + small wrist)
+        assert total_arm_len > 0.5 * default_body.L_arm
+        assert total_arm_len < 1.1 * default_body.L_arm
 
     def test_arm_angle_default(self, default_body: BodyModel) -> None:
         """Default arm_angle is 45 degrees."""

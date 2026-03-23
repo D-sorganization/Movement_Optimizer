@@ -979,10 +979,11 @@ class ExerciseTab(QWidget):
         ax.fill_between([-0.8, 0.5], bench_h - 0.05, bench_h, color="#8B4513", alpha=0.6)
 
         # Draw body lying on bench (decorative -- not part of dynamics)
-        head_x, head_y = -0.35, bench_h + 0.05
-        neck_x = -0.25
-        shoulder_x = 0.0
-        hip_x = 0.35
+        # Shoulder is near the head end (top of torso), not mid-body
+        head_x, head_y = -0.40, bench_h + 0.05
+        neck_x = -0.30
+        shoulder_x = -0.18
+        hip_x = 0.30
 
         # Neck
         ax.plot(

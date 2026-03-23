@@ -910,7 +910,7 @@ class BenchPressModel:
             [
                 BENCH_UPPER_ARM_FRAC * arm_len,
                 BENCH_FOREARM_FRAC * arm_len,
-                0.05,  # wrist segment (negligible)
+                0.01,  # wrist/hand (effectively zero — grip only)
             ]
         )
         self.body_mass = body.body_mass
@@ -981,7 +981,7 @@ def make_bench_press_config(
     # Start: lockout (arms straight up, perpendicular to supine body)
     q_start = np.array([np.radians(0), np.radians(0), np.radians(0)])
     # Via: bar at chest (upper arm ~horizontal, elbow bent ~90 degrees)
-    q_via = np.array([np.radians(80), np.radians(-100), np.radians(10)])
+    q_via = np.array([np.radians(80), np.radians(-100), np.radians(0)])
     # End: lockout again (full rep)
     q_end = np.array([np.radians(0), np.radians(0), np.radians(0)])
 
