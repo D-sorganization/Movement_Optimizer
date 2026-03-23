@@ -1412,7 +1412,8 @@ class MainWindow(QMainWindow):
                 dyn, qs, qe, qb, q_via = make_full_squat_config(body, bar)
                 dur = max(dur, 3.0)
             elif etype == "bench_press":
-                dyn, qs, qe, qb = make_bench_press_config(body, bar)
+                dyn, qs, qe, qb, q_via = make_bench_press_config(body, bar)
+                dur = max(dur, 3.0)
             elif etype == "clean":
                 dyn, qs, qe, qb, q_via = make_clean_config(body, bar)
                 dur = max(dur, 2.5)

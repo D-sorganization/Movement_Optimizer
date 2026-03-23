@@ -116,6 +116,10 @@ class BodyRenderer:
                 alpha=alpha,
             )
 
+    # Linewidths per segment: shank (thinner), thigh (medium), torso (thick)
+    SEG_LINEWIDTHS = (6, 9, 12)
+    HEAD_RADIUS = 0.10  # metres
+
     @classmethod
     def draw_segments(cls, ax: Axes, joints: dict[str, NDArray]) -> None:
         pts = [joints["ankle"], joints["knee"], joints["hip"], joints["shoulder"]]
@@ -125,7 +129,7 @@ class BodyRenderer:
                 [pts[k][1], pts[k + 1][1]],
                 "-",
                 color=Palette.SEG_COLORS[k],
-                lw=5,
+                lw=cls.SEG_LINEWIDTHS[k],
                 solid_capstyle="round",
             )
         for pt in pts:
@@ -138,6 +142,24 @@ class BodyRenderer:
                 markeredgecolor="#333",
                 markeredgewidth=1.2,
             )
+        # Draw head above the shoulder joint
+        cls.draw_head(ax, joints["shoulder"])
+
+    @classmethod
+    def draw_head(cls, ax: Axes, shoulder: NDArray) -> None:
+        """Draw a circle representing the head above the shoulder joint."""
+        head_center = (shoulder[0], shoulder[1] + cls.HEAD_RADIUS)
+        ax.add_patch(
+            Circle(
+                head_center,
+                cls.HEAD_RADIUS,
+                facecolor="#d4a574",
+                edgecolor="#333",
+                linewidth=1.2,
+                alpha=0.85,
+                zorder=6,
+            )
+        )
 
     @classmethod
     def draw_arms(cls, ax: Axes, shoulder: NDArray, arm_length: float) -> None:

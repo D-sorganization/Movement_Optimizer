@@ -34,20 +34,25 @@ def _clean_start_angles(body: BodyModel) -> NDArray:
 def _clean_end_angles(body: BodyModel) -> NDArray:
     """Compute end joint angles for front rack position.
 
-    Front rack: near-standing with a slight knee bend to catch.
-    Bar is at shoulder height (arms folded in front).
+    Front rack: standing with bar at shoulder (clavicle) height.
+    Torso near vertical (~5 deg), knees nearly straight.
+    The bar rests on the front of the shoulders -- NOT overhead.
     """
     q0 = np.radians(5)  # slight shin forward lean
-    q1 = np.radians(-15)  # slight knee bend for catch
+    q1 = np.radians(-8)  # nearly straight knees (standing)
     q2 = np.radians(5)  # torso near vertical
     return np.array([q0, q1, q2])
 
 
 def _clean_via_angles(body: BodyModel) -> NDArray:
-    """Compute via-point at the power position (hips extended, bar at mid-thigh)."""
-    q0 = np.radians(10)
-    q1 = np.radians(-20)
-    q2 = np.radians(25)
+    """Compute via-point at the power position (second pull).
+
+    Hips extended, bar at mid-thigh level.  This is the transition
+    between the pull phase and the catch phase.
+    """
+    q0 = np.radians(8)  # shins near vertical
+    q1 = np.radians(-15)  # knees slightly bent
+    q2 = np.radians(20)  # torso still leaning forward (pulling)
     return np.array([q0, q1, q2])
 
 

@@ -33,22 +33,28 @@ def _snatch_start_angles(body: BodyModel) -> NDArray:
 
 
 def _snatch_via_angles() -> NDArray:
-    """Power position / overhead squat catch via-point.
+    """Overhead squat catch position.
 
     Deep squat with bar overhead: significant knee flexion, torso
-    relatively upright to keep bar overhead.
+    relatively upright to keep the bar balanced overhead.
+    This is the unique snatch catch -- a deep squat with arms locked
+    out above.
     """
-    q0 = np.radians(20)
-    q1 = np.radians(-70)
-    q2 = np.radians(15)
+    q0 = np.radians(25)  # shins forward (deep squat)
+    q1 = np.radians(-90)  # deep knee bend
+    q2 = np.radians(10)  # torso relatively upright for overhead position
     return np.array([q0, q1, q2])
 
 
 def _snatch_end_angles() -> NDArray:
-    """Standing with bar overhead: torso vertical, arms locked out."""
-    q0 = np.radians(5)
+    """Standing with bar overhead: torso vertical, arms locked out.
+
+    Nearly identical to jerk end -- the bar is overhead with the
+    torso as vertical as possible.
+    """
+    q0 = np.radians(3)
     q1 = np.radians(-5)
-    q2 = np.radians(3)
+    q2 = np.radians(2)
     return np.array([q0, q1, q2])
 
 

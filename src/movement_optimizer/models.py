@@ -940,15 +940,18 @@ class BenchPressModel:
 
 def make_bench_press_config(
     body: BodyModel, bar_mass: float
-) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
+) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray, NDArray]:
     """Create dynamics and trajectory config for bench press.
 
     The bench press is modelled as a supine press: gravity acts along
     the vertical axis while the lifter pushes the bar upward from chest
-    level.  The 3-link chain represents shoulder→elbow→wrist.
+    level.  The 3-link chain represents shoulder, elbow, wrist.
+
+    Full rep: lockout (arms straight) -> chest (arms flexed) -> lockout.
+    This uses a via-point trajectory just like full_squat.
 
     Returns:
-        (dynamics, q_start, q_end, q_bounds)
+        (dynamics, q_start, q_end, q_bounds, q_via)
     """
     bp = BenchPressModel(body)
 
@@ -975,9 +978,11 @@ def make_bench_press_config(
     dyn._g1 = body.g * (m[1] * d[1] + (m[2] + bar_mass) * L[1])
     dyn._g2 = body.g * (m[2] * d[2] + bar_mass * L[2])
 
-    # Start: bar at chest (arms flexed)
-    q_start = np.array([np.radians(10), np.radians(-120), np.radians(0)])
-    # End: arms extended (lockout)
+    # Start: arms extended (lockout -- top of the rep)
+    q_start = np.array([np.radians(80), np.radians(-10), np.radians(0)])
+    # Via: bar at chest (arms flexed -- bottom of the rep)
+    q_via = np.array([np.radians(10), np.radians(-120), np.radians(0)])
+    # End: arms extended again (lockout -- same as start, full rep)
     q_end = np.array([np.radians(80), np.radians(-10), np.radians(0)])
 
     q_bounds = np.array(
@@ -988,4 +993,4 @@ def make_bench_press_config(
         ]
     )
 
-    return dyn, q_start, q_end, q_bounds
+    return dyn, q_start, q_end, q_bounds, q_via
