@@ -53,8 +53,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from .comparison import ComparisonStore, comparison_metrics
 from .constants import BAR_MASS_KG, PLATE_RADIUS_STD_M, trapezoid
 from .exercises import make_clean_config, make_jerk_config, make_snatch_config
+from .export import export_animation_gif, export_plots_pdf, export_plots_png
 from .models import (
     BodyModel,
     make_bench_press_config,
@@ -62,6 +64,7 @@ from .models import (
     make_full_squat_config,
     make_squat_config,
 )
+from .persistence import load_app_state, load_solution, save_app_state, save_solution
 from .rendering import (
     BarbellRenderer,
     BodyRenderer,
@@ -297,6 +300,13 @@ class ParameterSidebar(QScrollArea):
     cancel_requested = pyqtSignal()
     export_requested = pyqtSignal()
     reset_requested = pyqtSignal()
+    save_solution_requested = pyqtSignal()
+    load_solution_requested = pyqtSignal()
+    export_video_requested = pyqtSignal()
+    export_plots_requested = pyqtSignal()
+    add_comparison_requested = pyqtSignal()
+    compare_trials_requested = pyqtSignal()
+    clear_comparison_requested = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -453,6 +463,51 @@ class ParameterSidebar(QScrollArea):
         self.reset_btn = QPushButton("Reset Defaults")
         self.reset_btn.clicked.connect(self.reset_requested.emit)
         self.main_layout.addWidget(self.reset_btn)
+
+        self._build_persistence_buttons()
+        self._build_export_buttons()
+        self._build_comparison_buttons()
+
+    def _build_persistence_buttons(self) -> None:
+        grp = QGroupBox("Solution Files")
+        lay = QVBoxLayout(grp)
+        self.save_btn = QPushButton("Save Solution")
+        self.save_btn.setEnabled(False)
+        self.save_btn.clicked.connect(self.save_solution_requested.emit)
+        lay.addWidget(self.save_btn)
+        self.load_btn = QPushButton("Load Solution")
+        self.load_btn.clicked.connect(self.load_solution_requested.emit)
+        lay.addWidget(self.load_btn)
+        self.main_layout.addWidget(grp)
+
+    def _build_export_buttons(self) -> None:
+        grp = QGroupBox("Export Media")
+        lay = QVBoxLayout(grp)
+        self.export_video_btn = QPushButton("Export Animation GIF")
+        self.export_video_btn.setEnabled(False)
+        self.export_video_btn.clicked.connect(self.export_video_requested.emit)
+        lay.addWidget(self.export_video_btn)
+        self.export_plots_btn = QPushButton("Export Plots (PNG/PDF)")
+        self.export_plots_btn.setEnabled(False)
+        self.export_plots_btn.clicked.connect(self.export_plots_requested.emit)
+        lay.addWidget(self.export_plots_btn)
+        self.main_layout.addWidget(grp)
+
+    def _build_comparison_buttons(self) -> None:
+        grp = QGroupBox("Trial Comparison")
+        lay = QVBoxLayout(grp)
+        self.add_compare_btn = QPushButton("Add to Comparison")
+        self.add_compare_btn.setEnabled(False)
+        self.add_compare_btn.clicked.connect(self.add_comparison_requested.emit)
+        lay.addWidget(self.add_compare_btn)
+        self.compare_btn = QPushButton("Compare Trials")
+        self.compare_btn.setEnabled(False)
+        self.compare_btn.clicked.connect(self.compare_trials_requested.emit)
+        lay.addWidget(self.compare_btn)
+        self.clear_compare_btn = QPushButton("Clear Comparison")
+        self.clear_compare_btn.clicked.connect(self.clear_comparison_requested.emit)
+        lay.addWidget(self.clear_compare_btn)
+        self.main_layout.addWidget(grp)
 
     def show_optimizing(self) -> None:
         self.opt_btn.setEnabled(False)
@@ -947,6 +1002,142 @@ class PlaybackControls(QWidget):
 
 
 # ==============================================================
+# Comparison Dialog
+# ==============================================================
+
+
+class ComparisonDialog(QWidget):
+    """Dialog showing overlaid plots and metrics table for trial comparison."""
+
+    # Distinct colors for up to 10 trials
+    TRIAL_COLORS = (
+        "#569cd6",
+        "#f44747",
+        "#4ec9b0",
+        "#ffb74d",
+        "#ffd54f",
+        "#c678dd",
+        "#e06c75",
+        "#98c379",
+        "#61afef",
+        "#d19a66",
+    )
+
+    def __init__(self, trials: list[dict], parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Trial Comparison")
+        self.setMinimumSize(900, 600)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+        self.trials = trials
+        layout = QVBoxLayout(self)
+
+        # Metrics table
+        metrics = comparison_metrics(trials)
+        header = QLabel("Trial Metrics")
+        header.setProperty("class", "title")
+        layout.addWidget(header)
+
+        table_text = self._build_metrics_table(metrics)
+        table_label = QLabel(table_text)
+        table_label.setProperty("class", "result")
+        table_label.setWordWrap(True)
+        layout.addWidget(table_label)
+
+        # Overlaid plots
+        self.fig = Figure(figsize=(10, 6), facecolor=Palette.BG)
+        self.canvas = FigureCanvas(self.fig)
+        layout.addWidget(self.canvas, stretch=1)
+
+        self._draw_comparison_plots()
+        self.show()
+
+    def exec(self) -> None:
+        """Show the dialog (non-modal)."""
+        self.show()
+
+    def _build_metrics_table(self, metrics: list[dict]) -> str:
+        lines = [f"{'Trial':<30} {'Ankle':>8} {'Knee':>8} {'Hip':>8} {'Work':>10} {'COM sway':>10}"]
+        lines.append("-" * 80)
+        for m in metrics:
+            pt = m["peak_torques"]
+            lines.append(
+                f"{m['name']:<30} {pt[0]:>8.1f} {pt[1]:>8.1f} {pt[2]:>8.1f} "
+                f"{m['total_work']:>10.1f} {m['com_sway_cm']:>10.2f} cm"
+            )
+        return "\n".join(lines)
+
+    def _draw_comparison_plots(self) -> None:
+        gs = self.fig.add_gridspec(1, 3, hspace=0.3, wspace=0.35)
+        ax_angles = self.fig.add_subplot(gs[0, 0])
+        ax_torques = self.fig.add_subplot(gs[0, 1])
+        ax_com = self.fig.add_subplot(gs[0, 2])
+
+        for ax in (ax_angles, ax_torques, ax_com):
+            style_axis(ax)
+
+        joint_labels = ["Ankle", "Knee", "Hip"]
+
+        for i, trial in enumerate(self.trials):
+            r = trial["result"]
+            color = self.TRIAL_COLORS[i % len(self.TRIAL_COLORS)]
+            label = trial["name"]
+
+            # Joint angles (use first joint as representative)
+            for j in range(3):
+                ax_angles.plot(
+                    r.t,
+                    np.degrees(r.q[:, j]),
+                    color=color,
+                    lw=1.5,
+                    alpha=0.7,
+                    label=f"{label} - {joint_labels[j]}" if j == 0 else None,
+                    linestyle=["-", "--", ":"][j],
+                )
+
+            # Torques
+            for j in range(3):
+                ax_torques.plot(
+                    r.t,
+                    r.torques[:, j],
+                    color=color,
+                    lw=1.5,
+                    alpha=0.7,
+                    label=f"{label}" if j == 0 else None,
+                    linestyle=["-", "--", ":"][j],
+                )
+
+            # COM path
+            ax_com.plot(
+                r.com[:, 0],
+                r.com[:, 1],
+                color=color,
+                lw=2,
+                alpha=0.8,
+                label=label,
+            )
+
+        ax_angles.set_title("Joint Angles", color=Palette.FG, fontsize=9)
+        ax_angles.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
+        ax_angles.set_ylabel("Angle (deg)", color=Palette.FG_DIM, fontsize=8)
+        ax_angles.legend(fontsize=6, loc="best")
+
+        ax_torques.set_title("Joint Torques", color=Palette.FG, fontsize=9)
+        ax_torques.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
+        ax_torques.set_ylabel("Torque (Nm)", color=Palette.FG_DIM, fontsize=8)
+        ax_torques.legend(fontsize=6, loc="best")
+
+        ax_com.set_title("COM Path", color=Palette.FG, fontsize=9)
+        ax_com.set_xlabel("X (m)", color=Palette.FG_DIM, fontsize=8)
+        ax_com.set_ylabel("Y (m)", color=Palette.FG_DIM, fontsize=8)
+        ax_com.legend(fontsize=6, loc="best")
+        ax_com.set_aspect("equal", adjustable="datalim")
+
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+
+# ==============================================================
 # Main Window
 # ==============================================================
 
@@ -988,6 +1179,7 @@ class MainWindow(QMainWindow):
         self._cancel_event = threading.Event()
         self._opt_running = False
         self._cache = SolutionCache()
+        self._comparison_store = ComparisonStore()
 
         # Connect thread-safe signals
         self._sig_done.connect(self._on_done)
@@ -1048,6 +1240,13 @@ class MainWindow(QMainWindow):
         self.sidebar.cancel_requested.connect(self._cancel_optimization)
         self.sidebar.export_requested.connect(self._export)
         self.sidebar.reset_requested.connect(self._reset)
+        self.sidebar.save_solution_requested.connect(self._save_solution)
+        self.sidebar.load_solution_requested.connect(self._load_solution)
+        self.sidebar.export_video_requested.connect(self._export_video)
+        self.sidebar.export_plots_requested.connect(self._export_plots)
+        self.sidebar.add_comparison_requested.connect(self._add_comparison)
+        self.sidebar.compare_trials_requested.connect(self._compare_trials)
+        self.sidebar.clear_comparison_requested.connect(self._clear_comparison)
         self.controls.play_toggled.connect(self._toggle_play)
         self.controls.step_fwd.connect(self._step_fwd)
         self.controls.step_back.connect(self._step_back)
@@ -1056,10 +1255,68 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: Any) -> None:
         self._save_layout()
+        self._save_session_state()
         self._stop_anim()
         self._cancel_event.set()
         event.accept()
         sys.exit(0)
+
+    def _save_session_state(self) -> None:
+        """Persist current results and slider values on close."""
+        try:
+            results_dict: dict[str, OptimizationResult] = {}
+            for i, (_, etype) in enumerate(self.EXERCISE_CONFIGS):
+                if self.results[i] is not None:
+                    results_dict[etype] = self.results[i]
+            slider_values = {
+                "body_mass": self.sidebar.mass_slider.value(),
+                "height": self.sidebar.height_slider.value(),
+                "lower_leg": self.sidebar.ll_slider.value(),
+                "upper_leg": self.sidebar.ul_slider.value(),
+                "torso": self.sidebar.to_slider.value(),
+                "bar_mass": self.sidebar.bar_slider.value(),
+                "duration": self.sidebar.dur_slider.value(),
+                "smoothness": self.sidebar.smooth_slider.value(),
+            }
+            save_app_state(results_dict, slider_values)
+        except Exception:
+            logger.warning("Failed to save session state: %s", traceback.format_exc())
+
+    def try_restore_session(self) -> None:
+        """Check for a saved session and offer to restore it."""
+        state = load_app_state()
+        if state is None:
+            return
+        reply = QMessageBox.question(
+            self,
+            "Restore Session",
+            "Restore previous session?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            sv = state.get("slider_values", {})
+            if "body_mass" in sv:
+                self.sidebar.mass_slider.set_value(sv["body_mass"])
+            if "height" in sv:
+                self.sidebar.height_slider.set_value(sv["height"])
+            if "lower_leg" in sv:
+                self.sidebar.ll_slider.set_value(sv["lower_leg"])
+            if "upper_leg" in sv:
+                self.sidebar.ul_slider.set_value(sv["upper_leg"])
+            if "torso" in sv:
+                self.sidebar.to_slider.set_value(sv["torso"])
+            if "bar_mass" in sv:
+                self.sidebar.bar_slider.set_value(sv["bar_mass"])
+            if "duration" in sv:
+                self.sidebar.dur_slider.set_value(sv["duration"])
+            if "smoothness" in sv:
+                self.sidebar.smooth_slider.set_value(sv["smoothness"])
+            self.status_label.setText("Previous session restored (slider values).")
+        except Exception:
+            logger.warning("Failed to restore session: %s", traceback.format_exc())
 
     def _save_layout(self) -> None:
         """Persist window geometry and active tab to QSettings."""
@@ -1230,6 +1487,10 @@ class MainWindow(QMainWindow):
             )
             self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")
             self.sidebar.export_btn.setEnabled(True)
+            self.sidebar.save_btn.setEnabled(True)
+            self.sidebar.export_video_btn.setEnabled(True)
+            self.sidebar.export_plots_btn.setEnabled(True)
+            self.sidebar.add_compare_btn.setEnabled(True)
 
             if result.success:
                 self.sidebar.stall_label.setVisible(False)
@@ -1441,6 +1702,147 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Exported", f"Saved to:\n{path}")
         except Exception as e:
             QMessageBox.critical(self, "Export Error", str(e))
+
+    def _save_solution(self) -> None:
+        idx = self.tabs.currentIndex()
+        r = self.results[idx]
+        if r is None:
+            return
+        name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Solution",
+            f"{name}_solution.json",
+            "JSON Files (*.json)",
+        )
+        if not path:
+            return
+        try:
+            body_params = {
+                "body_mass": self.sidebar.mass_slider.value(),
+                "height": self.sidebar.height_slider.value(),
+                "seg_multipliers": {
+                    "lower_leg": self.sidebar.ll_slider.value(),
+                    "upper_leg": self.sidebar.ul_slider.value(),
+                    "torso": self.sidebar.to_slider.value(),
+                },
+            }
+            _, etype = self.EXERCISE_CONFIGS[idx]
+            bar = self.sidebar.bar_slider.value()
+            save_solution(path, r, body_params, etype, bar)
+            self.status_label.setText(f"Saved: {os.path.basename(path)}")
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", str(e))
+
+    def _load_solution(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Solution",
+            "",
+            "JSON Files (*.json)",
+        )
+        if not path:
+            return
+        try:
+            data = load_solution(path)
+            self.status_label.setText(
+                f"Loaded solution: {data.get('exercise_type', 'unknown')} "
+                f"from {os.path.basename(path)}"
+            )
+            QMessageBox.information(
+                self,
+                "Solution Loaded",
+                f"Exercise: {data.get('exercise_type')}\n"
+                f"Bar mass: {data.get('bar_mass')} kg\n"
+                f"Cost: {data.get('metadata', {}).get('cost', 'N/A')}",
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Load Error", str(e))
+
+    def _export_video(self) -> None:
+        idx = self.tabs.currentIndex()
+        r = self.results[idx]
+        if r is None:
+            return
+        name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Animation GIF",
+            f"{name}_animation.gif",
+            "GIF Files (*.gif)",
+        )
+        if not path:
+            return
+        try:
+            tab = self.exercise_tabs[idx]
+            _, etype = self.EXERCISE_CONFIGS[idx]
+            body = self.bodies_list[idx]
+            dyn = self.dynamics_list[idx]
+            n_frames = len(r.t)
+
+            def draw_frame(fi: int) -> None:
+                tab.draw_anim_frame(fi, r, dyn, body, etype)
+
+            export_animation_gif(tab.fig, draw_frame, n_frames, path, fps=15)
+            self.status_label.setText(f"Exported GIF: {os.path.basename(path)}")
+            QMessageBox.information(self, "Exported", f"Animation saved to:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Export Error", str(e))
+
+    def _export_plots(self) -> None:
+        idx = self.tabs.currentIndex()
+        r = self.results[idx]
+        if r is None:
+            return
+        name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
+        path, _selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Export Plots",
+            f"{name}_plots.png",
+            "PNG Files (*.png);;PDF Files (*.pdf)",
+        )
+        if not path:
+            return
+        try:
+            tab = self.exercise_tabs[idx]
+            if path.lower().endswith(".pdf"):
+                export_plots_pdf(tab.fig, path)
+            else:
+                export_plots_png(tab.fig, path)
+            self.status_label.setText(f"Exported: {os.path.basename(path)}")
+            QMessageBox.information(self, "Exported", f"Plots saved to:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Export Error", str(e))
+
+    def _add_comparison(self) -> None:
+        idx = self.tabs.currentIndex()
+        r = self.results[idx]
+        if r is None:
+            return
+        display_name, _etype = self.EXERCISE_CONFIGS[idx]
+        bar = self.sidebar.bar_slider.value()
+        body_params = {
+            "body_mass": self.sidebar.mass_slider.value(),
+            "height": self.sidebar.height_slider.value(),
+        }
+        n = len(self._comparison_store.get_trials()) + 1
+        trial_name = f"{display_name} #{n} ({bar:.0f}kg)"
+        self._comparison_store.add_trial(trial_name, r, body_params, bar)
+        self.sidebar.compare_btn.setEnabled(True)
+        self.status_label.setText(f"Added '{trial_name}' to comparison list.")
+
+    def _compare_trials(self) -> None:
+        trials = self._comparison_store.get_trials()
+        if not trials:
+            QMessageBox.information(self, "No Trials", "Add trials to compare first.")
+            return
+        dlg = ComparisonDialog(trials, self)
+        dlg.exec()
+
+    def _clear_comparison(self) -> None:
+        self._comparison_store.clear()
+        self.sidebar.compare_btn.setEnabled(False)
+        self.status_label.setText("Comparison list cleared.")
 
     def _reset(self) -> None:
         self._stop_anim()
