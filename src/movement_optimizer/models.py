@@ -168,17 +168,29 @@ class LagrangianDynamics(PhysicsBackend):
         self.g = body.g
 
         # Pre-compute coupling coefficients (constant for given model)
-        self._a01 = (m_segments[1] * body.d[1] + (m_segments[2] + load_mass) * body.L[1]) * body.L[0]
+        self._a01 = (m_segments[1] * body.d[1] + (m_segments[2] + load_mass) * body.L[1]) * body.L[
+            0
+        ]
         self._a02 = (m_segments[2] * body.d[2] + load_mass * body.L[2]) * body.L[0]
         self._a12 = (m_segments[2] * body.d[2] + load_mass * body.L[2]) * body.L[1]
 
         # Diagonal mass-matrix constants
-        self._M00 = m_segments[0] * body.d[0] ** 2 + (m_segments[1] + m_segments[2] + load_mass) * body.L[0] ** 2 + I_segments[0]
-        self._M11 = m_segments[1] * body.d[1] ** 2 + (m_segments[2] + load_mass) * body.L[1] ** 2 + I_segments[1]
+        self._M00 = (
+            m_segments[0] * body.d[0] ** 2
+            + (m_segments[1] + m_segments[2] + load_mass) * body.L[0] ** 2
+            + I_segments[0]
+        )
+        self._M11 = (
+            m_segments[1] * body.d[1] ** 2
+            + (m_segments[2] + load_mass) * body.L[1] ** 2
+            + I_segments[1]
+        )
         self._M22 = m_segments[2] * body.d[2] ** 2 + load_mass * body.L[2] ** 2 + I_segments[2]
 
         # Gravity coefficients
-        self._g0 = body.g * (m_segments[0] * body.d[0] + (m_segments[1] + m_segments[2] + load_mass) * body.L[0])
+        self._g0 = body.g * (
+            m_segments[0] * body.d[0] + (m_segments[1] + m_segments[2] + load_mass) * body.L[0]
+        )
         self._g1 = body.g * (m_segments[1] * body.d[1] + (m_segments[2] + load_mass) * body.L[1])
         self._g2 = body.g * (m_segments[2] * body.d[2] + load_mass * body.L[2])
 
@@ -218,11 +230,7 @@ class LagrangianDynamics(PhysicsBackend):
         return G
 
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-        return (
-            self.mass_matrix(q) @ qdd
-            + self._coriolis_vector(q, qd)
-            + self._gravity_vector(q)
-        )
+        return self.mass_matrix(q) @ qdd + self._coriolis_vector(q, qd) + self._gravity_vector(q)
 
     def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
         """Vectorised batch torques for all timesteps.
@@ -234,12 +242,21 @@ class LagrangianDynamics(PhysicsBackend):
         """
         # Try Rust accelerator first
         try:
-            from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]
+            from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001
+
             return inverse_dynamics_batch_rs(
-                q, qd, qdd,
-                self._M00, self._M11, self._M22,
-                self._a01, self._a02, self._a12,
-                self._g0, self._g1, self._g2,
+                q,
+                qd,
+                qdd,
+                self._M00,
+                self._M11,
+                self._M22,
+                self._a01,
+                self._a02,
+                self._a12,
+                self._g0,
+                self._g1,
+                self._g2,
             )
         except ImportError:
             pass
@@ -255,9 +272,15 @@ class LagrangianDynamics(PhysicsBackend):
         c12 = np.cos(d12)
 
         tau = np.empty((n, 3))
-        tau[:, 0] = self._M00 * qdd[:, 0] + self._a01 * c01 * qdd[:, 1] + self._a02 * c02 * qdd[:, 2]
-        tau[:, 1] = self._a01 * c01 * qdd[:, 0] + self._M11 * qdd[:, 1] + self._a12 * c12 * qdd[:, 2]
-        tau[:, 2] = self._a02 * c02 * qdd[:, 0] + self._a12 * c12 * qdd[:, 1] + self._M22 * qdd[:, 2]
+        tau[:, 0] = (
+            self._M00 * qdd[:, 0] + self._a01 * c01 * qdd[:, 1] + self._a02 * c02 * qdd[:, 2]
+        )
+        tau[:, 1] = (
+            self._a01 * c01 * qdd[:, 0] + self._M11 * qdd[:, 1] + self._a12 * c12 * qdd[:, 2]
+        )
+        tau[:, 2] = (
+            self._a02 * c02 * qdd[:, 0] + self._a12 * c12 * qdd[:, 1] + self._M22 * qdd[:, 2]
+        )
 
         s01 = np.sin(d01)
         s02 = np.sin(d02)
@@ -298,12 +321,7 @@ class LagrangianDynamics(PhysicsBackend):
         c3x = hip_x + b.d[2] * sq[:, 2]
 
         total_mass = b.body_mass + bar_mass
-        numerator = (
-            b.m_feet * b.foot_com_x
-            + self.m[0] * c1x
-            + self.m[1] * c2x
-            + self.m[2] * c3x
-        )
+        numerator = b.m_feet * b.foot_com_x + self.m[0] * c1x + self.m[1] * c2x + self.m[2] * c3x
 
         if exercise_type in ("squat", "full_squat"):
             numerator += bar_mass * shoulder_x
@@ -345,9 +363,7 @@ class LagrangianDynamics(PhysicsBackend):
         foot_com = np.array([b.foot_com_x, b.foot_com_y])
         total_mass = b.body_mass + bar_mass
 
-        numerator = (
-            b.m_feet * foot_com + self.m[0] * c1 + self.m[1] * c2 + self.m[2] * c3
-        )
+        numerator = b.m_feet * foot_com + self.m[0] * c1 + self.m[1] * c2 + self.m[2] * c3
 
         if exercise_type in ("squat", "full_squat"):
             numerator += bar_mass * shoulder

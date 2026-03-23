@@ -55,9 +55,7 @@ class TestBodyModel:
         b = default_body
         full_span = b.toe_x - b.heel_x
         inner_span = b.inner_toe - b.inner_heel
-        np.testing.assert_allclose(
-            inner_span / full_span, BOS_INNER_FRACTION, atol=1e-10
-        )
+        np.testing.assert_allclose(inner_span / full_span, BOS_INNER_FRACTION, atol=1e-10)
 
     def test_inner_center_between_bounds(self, default_body: BodyModel) -> None:
         b = default_body
@@ -100,7 +98,10 @@ class TestDynamics:
     def test_negative_load_raises(self, default_body: BodyModel) -> None:
         with pytest.raises(AssertionError, match="load_mass"):
             LagrangianDynamics(
-                default_body, default_body.m_squat, default_body.I_squat, -10,
+                default_body,
+                default_body.m_squat,
+                default_body.I_squat,
+                -10,
             )
 
     def test_precomputed_coefficients(self, squat_dynamics) -> None:
@@ -126,11 +127,13 @@ class TestKinematics:
     def test_joint_positions_connected(self, squat_dynamics) -> None:
         dyn, qs, _, _ = squat_dynamics
         fk = dyn.forward_kinematics(qs)
-        for i, (a, b) in enumerate([
-            (fk["ankle"], fk["knee"]),
-            (fk["knee"], fk["hip"]),
-            (fk["hip"], fk["shoulder"]),
-        ]):
+        for i, (a, b) in enumerate(
+            [
+                (fk["ankle"], fk["knee"]),
+                (fk["knee"], fk["hip"]),
+                (fk["hip"], fk["shoulder"]),
+            ]
+        ):
             dist = np.linalg.norm(b - a)
             np.testing.assert_allclose(dist, dyn.L[i], atol=1e-10)
 
@@ -173,9 +176,7 @@ class TestBatchMethods:
         qd = np.random.default_rng(43).normal(0, 0.5, (n, 3))
         qdd = np.random.default_rng(44).normal(0, 1.0, (n, 3))
 
-        loop_torques = np.array(
-            [dyn.inverse_dynamics(q[i], qd[i], qdd[i]) for i in range(n)]
-        )
+        loop_torques = np.array([dyn.inverse_dynamics(q[i], qd[i], qdd[i]) for i in range(n)])
         batch_torques = dyn.inverse_dynamics_batch(q, qd, qdd)
         np.testing.assert_allclose(batch_torques, loop_torques, rtol=1e-10)
 
@@ -183,9 +184,7 @@ class TestBatchMethods:
         dyn, qs, _, _ = squat_dynamics
         n = 10
         q = np.tile(qs, (n, 1))
-        loop_cx = np.array(
-            [dyn.com_position(q[i], "squat", 60.0)[0] for i in range(n)]
-        )
+        loop_cx = np.array([dyn.com_position(q[i], "squat", 60.0)[0] for i in range(n)])
         batch_cx = dyn.com_x_batch(q, "squat", 60.0)
         np.testing.assert_allclose(batch_cx, loop_cx, rtol=1e-10)
 

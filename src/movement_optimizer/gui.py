@@ -243,9 +243,7 @@ class LabelledSlider(QWidget):
         row = QHBoxLayout()
         self.name_label = QLabel(label)
         self.val_label = QLabel(self._fmt(default))
-        self.val_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        self.val_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         row.addWidget(self.name_label)
         row.addStretch()
         row.addWidget(self.val_label)
@@ -471,9 +469,7 @@ class ParameterSidebar(QScrollArea):
         phase = "Converging" if n_evals > 200 else "Exploring"
         self.prog_label.setText(f"{phase}...")
         self.iter_label.setText(f"Evaluations: {report.iteration}")
-        self.cost_label.setText(
-            f"Cost: {report.cost:.1f}  (best: {report.best_cost:.1f})"
-        )
+        self.cost_label.setText(f"Cost: {report.cost:.1f}  (best: {report.best_cost:.1f})")
         self.improve_label.setText(f"Improvement: {report.improvement_pct:+.3f}%")
         elapsed = report.elapsed_s
         if elapsed < 60:
@@ -487,8 +483,7 @@ class ParameterSidebar(QScrollArea):
             self.stall_label.setVisible(True)
         elif elapsed > 120:
             self.stall_label.setText(
-                "\u26a0 Taking longer than expected. "
-                "Consider cancelling and adjusting parameters."
+                "\u26a0 Taking longer than expected. Consider cancelling and adjusting parameters."
             )
             self.stall_label.setVisible(True)
         else:
@@ -561,9 +556,15 @@ class ExerciseTab(QWidget):
 
     def _create_axes(self) -> None:
         gs = GridSpec(
-            2, 4, figure=self.fig,
-            hspace=0.38, wspace=0.38,
-            left=0.06, right=0.97, top=0.92, bottom=0.09,
+            2,
+            4,
+            figure=self.fig,
+            hspace=0.38,
+            wspace=0.38,
+            left=0.06,
+            right=0.97,
+            top=0.92,
+            bottom=0.09,
         )
         self.axes = {
             "anim": self.fig.add_subplot(gs[0, 0:3]),
@@ -578,17 +579,27 @@ class ExerciseTab(QWidget):
 
         self.axes["anim"].set_aspect("equal")
         self.axes["anim"].text(
-            0, 0.7, "Click Optimize to begin",
-            ha="center", fontsize=13, color=Palette.FG_DIM, style="italic",
+            0,
+            0.7,
+            "Click Optimize to begin",
+            ha="center",
+            fontsize=13,
+            color=Palette.FG_DIM,
+            style="italic",
         )
         self.fig.suptitle(
             f"{self.name} Optimization",
-            color=Palette.FG, fontsize=13, fontweight="bold",
+            color=Palette.FG,
+            fontsize=13,
+            fontweight="bold",
         )
         self.canvas.draw()
 
     def draw_all_plots(
-        self, result: OptimizationResult, body: BodyModel, bar_mass: float,
+        self,
+        result: OptimizationResult,
+        body: BodyModel,
+        bar_mass: float,
     ) -> None:
         for k in ("angles", "torques", "power", "com_path", "com_time"):
             self.axes[k].clear()
@@ -601,9 +612,10 @@ class ExerciseTab(QWidget):
         self._plot_com_balance(result, body)
 
         self.fig.suptitle(
-            f"{self.name}  |  {body.body_mass:.0f} kg body, "
-            f"{bar_mass:.0f} kg barbell",
-            color=Palette.FG, fontsize=12, fontweight="bold",
+            f"{self.name}  |  {body.body_mass:.0f} kg body, {bar_mass:.0f} kg barbell",
+            color=Palette.FG,
+            fontsize=12,
+            fontweight="bold",
         )
         self.canvas.draw()
 
@@ -611,51 +623,71 @@ class ExerciseTab(QWidget):
         ax = self.axes["angles"]
         for j in range(3):
             ax.plot(
-                r.t, np.degrees(r.q[:, j]),
-                color=Palette.SEG_COLORS[j], lw=2, label=Palette.SEG_LABELS[j],
+                r.t,
+                np.degrees(r.q[:, j]),
+                color=Palette.SEG_COLORS[j],
+                lw=2,
+                label=Palette.SEG_LABELS[j],
             )
         ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
         ax.set_ylabel("Angle (deg)", color=Palette.FG_DIM, fontsize=8)
         ax.set_title("Joint Angles", color=Palette.FG, fontsize=10)
         ax.legend(
-            fontsize=7, facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM, labelcolor=Palette.FG,
+            fontsize=7,
+            facecolor=Palette.BG_PANEL,
+            edgecolor=Palette.FG_DIM,
+            labelcolor=Palette.FG,
         )
 
     def _plot_torques(self, r: OptimizationResult) -> None:
         ax = self.axes["torques"]
         for j in range(3):
             ax.plot(
-                r.t, r.torques[:, j],
-                color=Palette.SEG_COLORS[j], lw=2, label=Palette.SEG_LABELS[j],
+                r.t,
+                r.torques[:, j],
+                color=Palette.SEG_COLORS[j],
+                lw=2,
+                label=Palette.SEG_LABELS[j],
             )
         ax.axhline(0, color=Palette.FG_DIM, lw=0.5, alpha=0.3)
         ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
         ax.set_ylabel("Torque (N\u00b7m)", color=Palette.FG_DIM, fontsize=8)
         ax.set_title("Joint Torques", color=Palette.FG, fontsize=10)
         ax.legend(
-            fontsize=7, facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM, labelcolor=Palette.FG,
+            fontsize=7,
+            facecolor=Palette.BG_PANEL,
+            edgecolor=Palette.FG_DIM,
+            labelcolor=Palette.FG,
         )
 
     def _plot_power(self, r: OptimizationResult) -> None:
         ax = self.axes["power"]
         for j in range(3):
             ax.plot(
-                r.t, r.power[:, j],
-                color=Palette.SEG_COLORS[j], lw=2, label=Palette.SEG_LABELS[j],
+                r.t,
+                r.power[:, j],
+                color=Palette.SEG_COLORS[j],
+                lw=2,
+                label=Palette.SEG_LABELS[j],
             )
         ax.plot(
-            r.t, np.sum(r.power, axis=1),
-            "--", color=Palette.FG, lw=2, label="Total", alpha=0.7,
+            r.t,
+            np.sum(r.power, axis=1),
+            "--",
+            color=Palette.FG,
+            lw=2,
+            label="Total",
+            alpha=0.7,
         )
         ax.axhline(0, color=Palette.FG_DIM, lw=0.5, alpha=0.3)
         ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
         ax.set_ylabel("Power (W)", color=Palette.FG_DIM, fontsize=8)
         ax.set_title("Joint Power", color=Palette.FG, fontsize=10)
         ax.legend(
-            fontsize=7, facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM, labelcolor=Palette.FG,
+            fontsize=7,
+            facecolor=Palette.BG_PANEL,
+            edgecolor=Palette.FG_DIM,
+            labelcolor=Palette.FG,
         )
 
     def _plot_com_path(self, r: OptimizationResult, body: BodyModel) -> None:
@@ -663,17 +695,28 @@ class ExerciseTab(QWidget):
         colors_t = cm.viridis(np.linspace(0.2, 0.95, len(r.t)))
         for i in range(len(r.t) - 1):
             ax.plot(
-                r.com[i : i + 2, 0] * 100, r.com[i : i + 2, 1] * 100,
-                color=colors_t[i], lw=2.5,
+                r.com[i : i + 2, 0] * 100,
+                r.com[i : i + 2, 1] * 100,
+                color=colors_t[i],
+                lw=2.5,
             )
         ax.plot(
-            r.bar[:, 0] * 100, r.bar[:, 1] * 100,
-            "-", color=Palette.ORANGE, lw=1.5, alpha=0.7, label="Bar path",
+            r.bar[:, 0] * 100,
+            r.bar[:, 1] * 100,
+            "-",
+            color=Palette.ORANGE,
+            lw=1.5,
+            alpha=0.7,
+            label="Bar path",
         )
         ax.plot(
             [r.com[0, 0] * 100, r.com[-1, 0] * 100],
             [r.com[0, 1] * 100, r.com[-1, 1] * 100],
-            "--", color=Palette.YELLOW, lw=1.2, alpha=0.5, label="COM straight",
+            "--",
+            color=Palette.YELLOW,
+            lw=1.2,
+            alpha=0.5,
+            label="COM straight",
         )
         ax.plot(r.com[0, 0] * 100, r.com[0, 1] * 100, "o", color=Palette.RED, ms=8, label="Start")
         ax.plot(r.com[-1, 0] * 100, r.com[-1, 1] * 100, "s", color=Palette.GREEN, ms=8, label="End")
@@ -687,8 +730,10 @@ class ExerciseTab(QWidget):
         ax.set_ylabel("Height (cm)", color=Palette.FG_DIM, fontsize=8)
         ax.set_title("COM & Bar Path", color=Palette.FG, fontsize=10)
         ax.legend(
-            fontsize=6, facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM, labelcolor=Palette.FG,
+            fontsize=6,
+            facecolor=Palette.BG_PANEL,
+            edgecolor=Palette.FG_DIM,
+            labelcolor=Palette.FG,
         )
 
     def _plot_com_balance(self, r: OptimizationResult, body: BodyModel) -> None:
@@ -698,28 +743,42 @@ class ExerciseTab(QWidget):
         ax.axhline(body.inner_heel * 100, color=Palette.GREEN, ls="-", lw=1.5, alpha=0.8)
         ax.axhline(body.inner_toe * 100, color=Palette.GREEN, ls="-", lw=1.5, alpha=0.8)
         ax.fill_between(
-            r.t, body.inner_heel * 100, body.inner_toe * 100,
-            alpha=0.12, color=Palette.GREEN, label="Inner BOS (60%)",
+            r.t,
+            body.inner_heel * 100,
+            body.inner_toe * 100,
+            alpha=0.12,
+            color=Palette.GREEN,
+            label="Inner BOS (60%)",
         )
         # Outer BOS bounds
         ax.axhline(body.heel_x * 100, color=Palette.ORANGE, ls=":", lw=1, alpha=0.5)
         ax.axhline(body.toe_x * 100, color=Palette.ORANGE, ls=":", lw=1, alpha=0.5)
         ax.fill_between(
-            r.t, body.heel_x * 100, body.toe_x * 100,
-            alpha=0.04, color=Palette.ORANGE, label="Full BOS",
+            r.t,
+            body.heel_x * 100,
+            body.toe_x * 100,
+            alpha=0.04,
+            color=Palette.ORANGE,
+            label="Full BOS",
         )
         ax.axhline(body.inner_center * 100, color=Palette.GREEN, ls="--", lw=0.8, alpha=0.5)
         ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
         ax.set_ylabel("COM x (cm)", color=Palette.FG_DIM, fontsize=8)
         ax.set_title("COM Balance", color=Palette.FG, fontsize=10)
         ax.legend(
-            fontsize=6, facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM, labelcolor=Palette.FG,
+            fontsize=6,
+            facecolor=Palette.BG_PANEL,
+            edgecolor=Palette.FG_DIM,
+            labelcolor=Palette.FG,
         )
 
     def draw_anim_frame(
-        self, fi: int, result: OptimizationResult,
-        dynamics: Any, body: BodyModel, exercise_type: str,
+        self,
+        fi: int,
+        result: OptimizationResult,
+        dynamics: Any,
+        body: BodyModel,
+        exercise_type: str,
     ) -> None:
         n = len(result.t)
         fi = fi % n
@@ -757,7 +816,9 @@ class ExerciseTab(QWidget):
             f"Shin {np.degrees(q[0]):.0f}\u00b0  "
             f"Thigh {np.degrees(q[1]):.0f}\u00b0  "
             f"Torso {np.degrees(q[2]):.0f}\u00b0",
-            color=Palette.FG, fontsize=10, fontweight="bold",
+            color=Palette.FG,
+            fontsize=10,
+            fontweight="bold",
         )
         self.canvas.draw()
 
@@ -800,9 +861,7 @@ class PlaybackControls(QWidget):
         self.speed_slider.setRange(1, 30)
         self.speed_slider.setValue(10)
         self.speed_slider.setFixedWidth(100)
-        self.speed_slider.valueChanged.connect(
-            lambda v: self.speed_changed.emit(v / 10.0)
-        )
+        self.speed_slider.valueChanged.connect(lambda v: self.speed_changed.emit(v / 10.0))
         layout.addWidget(self.speed_slider)
 
         self.speed_label = QLabel("1.0x")
@@ -928,7 +987,9 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"Optimizing {name}...")
 
         threading.Thread(
-            target=self._opt_worker, args=(idx, then_chain), daemon=True,
+            target=self._opt_worker,
+            args=(idx, then_chain),
+            daemon=True,
         ).start()
 
     def _opt_worker(self, idx: int, then_chain: list[int] | None) -> None:
@@ -974,11 +1035,20 @@ class MainWindow(QMainWindow):
 
             logger.info(
                 "Starting %s optimisation: mass=%.0f, height=%.2f, bar=%.0f",
-                etype, body.body_mass, body.height, bar,
+                etype,
+                body.body_mass,
+                body.height,
+                bar,
             )
 
             opt = TrajectoryOptimizer(
-                body, dyn, etype, bar, qs, qe, qb,
+                body,
+                dyn,
+                etype,
+                bar,
+                qs,
+                qe,
+                qb,
                 q_via=q_via,
                 duration=dur,
                 n_waypoints=12,
@@ -991,8 +1061,14 @@ class MainWindow(QMainWindow):
             self.anim_frames[idx] = 0
 
             self._cache.put(
-                etype, body.body_mass, body.height, seg_mults,
-                bar, dur, smoothness, result,
+                etype,
+                body.body_mass,
+                body.height,
+                seg_mults,
+                bar,
+                dur,
+                smoothness,
+                result,
             )
 
             QTimer.singleShot(
@@ -1012,14 +1088,19 @@ class MainWindow(QMainWindow):
     def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
         def cb(report: ProgressReport) -> None:
             QTimer.singleShot(0, lambda _r=report: self._update_progress(_r))
+
         return cb
 
     def _update_progress(self, report: ProgressReport) -> None:
         self.sidebar.update_progress(report)
 
     def _on_done(
-        self, idx: int, result: OptimizationResult,
-        body: BodyModel, bar: float, then_chain: list[int] | None,
+        self,
+        idx: int,
+        result: OptimizationResult,
+        body: BodyModel,
+        bar: float,
+        then_chain: list[int] | None,
     ) -> None:
         self.sidebar.progress.setValue(100)
         name = self.EXERCISE_CONFIGS[idx][0]
@@ -1032,10 +1113,7 @@ class MainWindow(QMainWindow):
         tab.draw_anim_frame(0, result, self.dynamics_list[idx], body, etype)
 
         elapsed = result.elapsed_s
-        if elapsed < 60:
-            t_str = f"{elapsed:.1f}s"
-        else:
-            t_str = f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
+        t_str = f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
         self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")
         self.sidebar.stall_label.setVisible(False)
         self.sidebar.export_btn.setEnabled(True)
@@ -1097,7 +1175,11 @@ class MainWindow(QMainWindow):
         fi = self.anim_frames[idx]
         _, etype = self.EXERCISE_CONFIGS[idx]
         self.exercise_tabs[idx].draw_anim_frame(
-            fi, r, self.dynamics_list[idx], self.bodies_list[idx], etype,
+            fi,
+            r,
+            self.dynamics_list[idx],
+            self.bodies_list[idx],
+            etype,
         )
 
         n = len(r.t)
@@ -1120,8 +1202,11 @@ class MainWindow(QMainWindow):
         self.anim_frames[idx] = (self.anim_frames[idx] + 1) % n
         _, etype = self.EXERCISE_CONFIGS[idx]
         self.exercise_tabs[idx].draw_anim_frame(
-            self.anim_frames[idx], r,
-            self.dynamics_list[idx], self.bodies_list[idx], etype,
+            self.anim_frames[idx],
+            r,
+            self.dynamics_list[idx],
+            self.bodies_list[idx],
+            etype,
         )
         self.controls.frame_label.setText(f"Frame {self.anim_frames[idx] + 1}/{n}")
 
@@ -1135,8 +1220,11 @@ class MainWindow(QMainWindow):
         self.anim_frames[idx] = (self.anim_frames[idx] - 1) % n
         _, etype = self.EXERCISE_CONFIGS[idx]
         self.exercise_tabs[idx].draw_anim_frame(
-            self.anim_frames[idx], r,
-            self.dynamics_list[idx], self.bodies_list[idx], etype,
+            self.anim_frames[idx],
+            r,
+            self.dynamics_list[idx],
+            self.bodies_list[idx],
+            etype,
         )
 
     def _rewind(self) -> None:
@@ -1148,7 +1236,11 @@ class MainWindow(QMainWindow):
         self.anim_frames[idx] = 0
         _, etype = self.EXERCISE_CONFIGS[idx]
         self.exercise_tabs[idx].draw_anim_frame(
-            0, r, self.dynamics_list[idx], self.bodies_list[idx], etype,
+            0,
+            r,
+            self.dynamics_list[idx],
+            self.bodies_list[idx],
+            etype,
         )
 
     def _on_speed(self, speed: float) -> None:
@@ -1161,7 +1253,10 @@ class MainWindow(QMainWindow):
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export CSV", f"{name}_trajectory.csv", "CSV Files (*.csv)",
+            self,
+            "Export CSV",
+            f"{name}_trajectory.csv",
+            "CSV Files (*.csv)",
         )
         if not path:
             return
@@ -1171,24 +1266,41 @@ class MainWindow(QMainWindow):
         try:
             with open(path, "w", newline="") as f:
                 w = csv.writer(f)
-                w.writerow([
-                    "time_s",
-                    "shin_angle_deg", "thigh_angle_deg", "torso_angle_deg",
-                    "shin_vel_deg_s", "thigh_vel_deg_s", "torso_vel_deg_s",
-                    "ankle_torque_Nm", "knee_torque_Nm", "hip_torque_Nm",
-                    "ankle_power_W", "knee_power_W", "hip_power_W",
-                    "com_x_m", "com_y_m", "bar_x_m", "bar_y_m",
-                ])
+                w.writerow(
+                    [
+                        "time_s",
+                        "shin_angle_deg",
+                        "thigh_angle_deg",
+                        "torso_angle_deg",
+                        "shin_vel_deg_s",
+                        "thigh_vel_deg_s",
+                        "torso_vel_deg_s",
+                        "ankle_torque_Nm",
+                        "knee_torque_Nm",
+                        "hip_torque_Nm",
+                        "ankle_power_W",
+                        "knee_power_W",
+                        "hip_power_W",
+                        "com_x_m",
+                        "com_y_m",
+                        "bar_x_m",
+                        "bar_y_m",
+                    ]
+                )
                 for i in range(len(r.t)):
-                    w.writerow([
-                        f"{r.t[i]:.4f}",
-                        *[f"{np.degrees(r.q[i, j]):.2f}" for j in range(3)],
-                        *[f"{np.degrees(r.qd[i, j]):.2f}" for j in range(3)],
-                        *[f"{r.torques[i, j]:.2f}" for j in range(3)],
-                        *[f"{r.power[i, j]:.2f}" for j in range(3)],
-                        f"{r.com[i, 0]:.4f}", f"{r.com[i, 1]:.4f}",
-                        f"{r.bar[i, 0]:.4f}", f"{r.bar[i, 1]:.4f}",
-                    ])
+                    w.writerow(
+                        [
+                            f"{r.t[i]:.4f}",
+                            *[f"{np.degrees(r.q[i, j]):.2f}" for j in range(3)],
+                            *[f"{np.degrees(r.qd[i, j]):.2f}" for j in range(3)],
+                            *[f"{r.torques[i, j]:.2f}" for j in range(3)],
+                            *[f"{r.power[i, j]:.2f}" for j in range(3)],
+                            f"{r.com[i, 0]:.4f}",
+                            f"{r.com[i, 1]:.4f}",
+                            f"{r.bar[i, 0]:.4f}",
+                            f"{r.bar[i, 1]:.4f}",
+                        ]
+                    )
             self.status_label.setText(f"Exported: {os.path.basename(path)}")
             QMessageBox.information(self, "Exported", f"Saved to:\n{path}")
         except Exception as e:
