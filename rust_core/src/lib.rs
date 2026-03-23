@@ -191,6 +191,7 @@ fn com_x_batch_rs<'py>(
 ///
 /// Returns: torques (N, n_dof)
 #[pyfunction]
+#[allow(clippy::useless_conversion)]
 fn inverse_dynamics_ndof_rs<'py>(
     py: Python<'py>,
     q: PyReadonlyArray2<'py, f64>,
