@@ -172,7 +172,7 @@ fn com_x_batch_rs<'py>(
         (0..n).map(compute_one).collect()
     };
 
-    Array1::from_vec(result).into_pyarray(py).into()
+    Array1::from_vec(result).into_pyarray_bound(py).into()
 }
 
 #[pymodule]
