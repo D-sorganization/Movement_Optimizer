@@ -21,25 +21,51 @@ from .constants import BAR_RADIUS_M, LENGTH_FRAC, PLATE_RADIUS_STD_M
 NECK_LENGTH_FRAC: float = LENGTH_FRAC["neck"]
 
 
-class Palette:
-    """Centralised colour definitions."""
-
-    BG = "#1e1e2e"
-    BG_PANEL = "#2a2a3d"
-    BG_INPUT = "#363650"
-    BG_PLOT = "#1a1a2e"
-    FG = "#e0e0e0"
-    FG_DIM = "#8888aa"
-    ACCENT = "#7c6ff7"
-    ACCENT2 = "#9d93f9"
-    GREEN = "#4ec9b0"
-    RED = "#f44747"
-    BLUE = "#569cd6"
-    ORANGE = "#ffb74d"
-    YELLOW = "#ffd54f"
-    SEG_COLORS = ("#569cd6", "#f44747", "#4ec9b0")
-    SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
-    BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
+try:
+    from plot_theme.themes import get_theme, DEFAULT_THEME
+    from plot_theme.integration import style_axis as shared_style_axis
+    theme = get_theme(DEFAULT_THEME)
+    class Palette:
+        BG = theme.figure_facecolor
+        BG_PANEL = theme.axes_facecolor
+        BG_INPUT = theme.axes_facecolor
+        BG_PLOT = theme.axes_facecolor
+        FG = theme.text_color
+        FG_DIM = theme.tick_color
+        ACCENT = theme.primary_colors[0] if theme.primary_colors else "#7c6ff7"
+        ACCENT2 = theme.primary_colors[1] if len(theme.primary_colors) > 1 else "#9d93f9"
+        GREEN = theme.accent_color
+        RED = theme.secondary_color
+        BLUE = theme.primary_color
+        ORANGE = theme.accent_colors[1] if len(theme.accent_colors) > 1 else "#ffb74d"
+        YELLOW = theme.accent_colors[2] if len(theme.accent_colors) > 2 else "#ffd54f"
+        SEG_COLORS = [
+            theme.primary_colors[0] if len(theme.primary_colors) > 0 else "#569cd6", 
+            theme.secondary_colors[0] if len(theme.secondary_colors) > 0 else "#f44747", 
+            theme.accent_colors[0] if len(theme.accent_colors) > 0 else "#4ec9b0"
+        ]
+        SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
+        BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
+except ImportError:
+    # Fallback if ud-tools isn't installed
+    class Palette:
+        """Centralised colour definitions."""
+        BG = "#1e1e2e"
+        BG_PANEL = "#2a2a3d"
+        BG_INPUT = "#363650"
+        BG_PLOT = "#1a1a2e"
+        FG = "#e0e0e0"
+        FG_DIM = "#8888aa"
+        ACCENT = "#7c6ff7"
+        ACCENT2 = "#9d93f9"
+        GREEN = "#4ec9b0"
+        RED = "#f44747"
+        BLUE = "#569cd6"
+        ORANGE = "#ffb74d"
+        YELLOW = "#ffd54f"
+        SEG_COLORS = ("#569cd6", "#f44747", "#4ec9b0")
+        SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
+        BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
 
 
 class BarbellRenderer:
@@ -250,10 +276,14 @@ class BodyRenderer:
 
 def style_axis(ax: Axes) -> None:
     """Apply the dark-theme styling to a matplotlib Axes."""
-    ax.set_facecolor(Palette.BG_PLOT)
-    ax.tick_params(colors=Palette.FG_DIM, which="both", labelsize=8)
-    for sp in ("bottom", "left"):
-        ax.spines[sp].set_color(Palette.FG_DIM)
-    for sp in ("top", "right"):
-        ax.spines[sp].set_visible(False)
-    ax.grid(True, alpha=0.12, color=Palette.FG_DIM)
+    try:
+        from plot_theme.integration import style_axis as shared_style_axis
+        shared_style_axis(ax)
+    except ImportError:
+        ax.set_facecolor(Palette.BG_PLOT)
+        ax.tick_params(colors=Palette.FG_DIM, which="both", labelsize=8)
+        for sp in ("bottom", "left"):
+            ax.spines[sp].set_color(Palette.FG_DIM)
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        ax.grid(True, alpha=0.12, color=Palette.FG_DIM)
