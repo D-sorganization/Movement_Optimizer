@@ -1,4 +1,5 @@
 """Parallel multi-start trajectory optimiser engine."""
+
 from __future__ import annotations
 
 import logging
@@ -14,6 +15,7 @@ from scipy.interpolate import CubicSpline
 from scipy.optimize import minimize
 
 from ..backend import PhysicsBackend
+from ..constants import BAR_KNEE_CLEARANCE_M, BENCH_BAR_PATH_WEIGHT, TV_RATE_WEIGHT_RATIO
 from ..models import BodyModel
 from .result import CancelledError, OptimizationResult, ProgressReport
 from .tuning import (
@@ -30,6 +32,7 @@ from .tuning import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 class TrajectoryOptimizer:
     """Parallel multi-start trajectory optimiser.
@@ -168,7 +171,7 @@ class TrajectoryOptimizer:
         """
         dtau = np.diff(torques, axis=0) / self.dt
         l2_cost = float(np.sum(dtau**2)) * self.dt
-        tv_cost = float(np.sum(np.abs(dtau))) * self.dt * 0.1
+        tv_cost = float(np.sum(np.abs(dtau))) * self.dt * TV_RATE_WEIGHT_RATIO
         return self.torque_rate_weight * (l2_cost + tv_cost)
 
     def _endpoint_damping_cost(self, qd: NDArray, qdd: NDArray) -> float:
@@ -226,8 +229,7 @@ class TrajectoryOptimizer:
         # For pulling exercises, bar hangs from shoulders (at arm length below)
         # Bar x == shoulder x in sagittal plane
         bar_x = shoulder_x
-        clearance = 0.05  # 5cm minimum bar-to-knee clearance
-        return bar_x - knee_x + clearance
+        return bar_x - knee_x + BAR_KNEE_CLEARANCE_M
 
     # ==========================================================
     # Pure cost computation (thread-safe, no side effects)
@@ -260,7 +262,7 @@ class TrajectoryOptimizer:
             # hand_x = sum of L[i]*sin(q[i]) — should stay near zero (bar above shoulder).
             L = self.dynamics.L  # type: ignore[attr-defined]
             hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
-            total += 500.0 * float(np.sum(hand_x**2)) * self.dt
+            total += BENCH_BAR_PATH_WEIGHT * float(np.sum(hand_x**2)) * self.dt
         else:
             com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
             total += self._balance_cost(com_x)
@@ -598,16 +600,17 @@ class TrajectoryOptimizer:
 
         success = cost_finite and com_in_bounds
 
-        # Warn if optimized trajectory violates joint limits between control points
+        # Warn and record joint limit violations from spline overshoot
+        n_joint_limit_violations = 0
         if self.q_bounds is not None:
             _lower = np.array([b[0] for b in self.q_bounds])
             _upper = np.array([b[1] for b in self.q_bounds])
-            _n_violated = int(np.sum((q < _lower) | (q > _upper)))
-            if _n_violated > 0:
+            n_joint_limit_violations = int(np.sum((q < _lower) | (q > _upper)))
+            if n_joint_limit_violations > 0:
                 logger.warning(
                     "Trajectory has %d point(s) violating joint limits "
                     "(spline overshoot between control points).",
-                    _n_violated,
+                    n_joint_limit_violations,
                 )
 
         return OptimizationResult(
@@ -624,4 +627,5 @@ class TrajectoryOptimizer:
             com_horizontal_range_cm=com_h_range,
             elapsed_s=elapsed,
             n_evals=n_evals or self._iter,
+            n_joint_limit_violations=n_joint_limit_violations,
         )

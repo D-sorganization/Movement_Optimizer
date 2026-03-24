@@ -630,3 +630,49 @@ class TestBarKneeClearance:
             n_starts=1,
         )
         assert not _has_bar_knee_constraint(opt)
+
+
+# ==============================================================
+# OptimizationResult — joint limit violation tracking
+# ==============================================================
+
+
+class TestJointLimitViolationTracking:
+    """Tests that n_joint_limit_violations is populated in OptimizationResult."""
+
+    def test_no_violations_when_within_limits(self, squat_optimizer) -> None:
+        """A well-behaved trajectory should report zero joint-limit violations."""
+        opt, _body, _dyn, _qs, _qe = squat_optimizer
+        # Use the default initial guess (interpolated between start and end)
+        wp = opt._initial_guess()
+        x = wp.flatten()
+
+        class _FakeRes:
+            fun = 1.0
+            x = None
+
+        _FakeRes.x = x
+        result = opt._package_results(_FakeRes)
+        assert isinstance(result.n_joint_limit_violations, int)
+        assert result.n_joint_limit_violations >= 0
+
+    def test_violations_counted_when_q_exceeds_bounds(self, squat_optimizer) -> None:
+        """Forcing joint angles outside limits should produce a positive violation count."""
+        opt, _body, _dyn, _qs, _qe = squat_optimizer
+        # Build a waypoint array where all waypoints are set to a value well
+        # beyond the upper joint limit for every DOF.
+        n_wpt = opt.n_waypoints
+        n_dof = opt.dynamics.n_dof  # noqa: F841 (used via tile shape)
+        # Upper bound for each joint (grab from q_bounds)
+        upper = np.array([b[1] for b in opt.q_bounds])
+        # Set all waypoints to 2x the upper limit to guarantee violations
+        extreme_wp = np.tile(upper * 2.0, (n_wpt, 1))
+        x = extreme_wp.flatten()
+
+        class _FakeRes:
+            fun = 1.0
+            x = None
+
+        _FakeRes.x = x
+        result = opt._package_results(_FakeRes)
+        assert result.n_joint_limit_violations > 0

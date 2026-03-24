@@ -1,4 +1,5 @@
 """Thread-safe cache for optimisation solutions."""
+
 from __future__ import annotations
 
 import hashlib
@@ -9,6 +10,7 @@ import threading
 from .result import OptimizationResult
 
 logger = logging.getLogger(__name__)
+
 
 class SolutionCache:
     """Thread-safe cache of optimisation results keyed by config hash."""
