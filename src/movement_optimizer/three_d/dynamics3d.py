@@ -14,6 +14,8 @@ from numpy.typing import NDArray
 from ..backend import PhysicsBackend
 from .body3d import BodyModel3D
 
+_FD_EPSILON: float = 1e-6  # Finite-difference step for gravity torques
+
 
 class Dynamics3D(PhysicsBackend):
     """3D inverse dynamics via simplified Newton-Euler.
@@ -42,9 +44,16 @@ class Dynamics3D(PhysicsBackend):
         return self.body.forward_kinematics(q)
 
     def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
-        """Return barbell position (simplified: at wrist midpoint)."""
-        joints = self.body.forward_kinematics(q)
-        return (joints["wrist_l"] + joints["wrist_r"]) / 2.0
+        """Return barbell position (simplified: at wrist midpoint).
+
+        Raises:
+            NotImplementedError: 3D FK is not implemented; Coriolis terms also omitted.
+        """
+        raise NotImplementedError(
+            "3D inverse dynamics requires forward kinematics (GitHub issue #76, not implemented). "
+            "Additionally, Coriolis/centrifugal terms are omitted from the mass matrix — "
+            "results would be physically incorrect for dynamic movements. See GitHub issue #77."
+        )
 
     def com_position(
         self,
@@ -52,35 +61,52 @@ class Dynamics3D(PhysicsBackend):
         exercise_type: str = "squat",
         bar_mass: float = 0.0,
     ) -> NDArray:
-        """Return 3D whole-body centre of mass."""
-        joints = self.body.forward_kinematics(q)
-        return self._compute_com(joints, bar_mass)
+        """Return 3D whole-body centre of mass.
+
+        Raises:
+            NotImplementedError: 3D FK is not implemented; Coriolis terms also omitted.
+        """
+        raise NotImplementedError(
+            "3D inverse dynamics requires forward kinematics (GitHub issue #76, not implemented). "
+            "Additionally, Coriolis/centrifugal terms are omitted from the mass matrix — "
+            "results would be physically incorrect for dynamic movements. See GitHub issue #77."
+        )
 
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
         """Compute joint torques: tau = M*qdd + G(q).
 
-        Coriolis terms are omitted in this simplified model.
+        Raises:
+            NotImplementedError: 3D FK is not implemented; Coriolis terms also omitted.
         """
-        G = self._gravity_torques(q)
-        tau = self._M_diag * qdd + G
-        return tau
+        raise NotImplementedError(
+            "3D inverse dynamics requires forward kinematics (GitHub issue #76, not implemented). "
+            "Additionally, Coriolis/centrifugal terms are omitted from the mass matrix — "
+            "results would be physically incorrect for dynamic movements. See GitHub issue #77."
+        )
 
     def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-        """Vectorised batch torques: q, qd, qdd are (N, 16)."""
-        N = q.shape[0]
-        tau = np.zeros((N, 16))
-        for i in range(N):
-            tau[i] = self.inverse_dynamics(q[i], qd[i], qdd[i])
-        return tau
+        """Vectorised batch torques: q, qd, qdd are (N, 16).
+
+        Raises:
+            NotImplementedError: 3D FK is not implemented; Coriolis terms also omitted.
+        """
+        raise NotImplementedError(
+            "3D inverse dynamics requires forward kinematics (GitHub issue #76, not implemented). "
+            "Additionally, Coriolis/centrifugal terms are omitted from the mass matrix — "
+            "results would be physically incorrect for dynamic movements. See GitHub issue #77."
+        )
 
     def com_x_batch(self, q: NDArray, exercise_type: str, bar_mass: float) -> NDArray:
-        """Batch COM projected onto ground plane (returns x,y for each timestep)."""
-        N = q.shape[0]
-        result = np.zeros((N, 2))
-        for i in range(N):
-            com = self.com_position(q[i], exercise_type, bar_mass)
-            result[i] = com[:2]
-        return result
+        """Batch COM projected onto ground plane (returns x,y for each timestep).
+
+        Raises:
+            NotImplementedError: 3D FK is not implemented; Coriolis terms also omitted.
+        """
+        raise NotImplementedError(
+            "3D inverse dynamics requires forward kinematics (GitHub issue #76, not implemented). "
+            "Additionally, Coriolis/centrifugal terms are omitted from the mass matrix — "
+            "results would be physically incorrect for dynamic movements. See GitHub issue #77."
+        )
 
     def mass_matrix(self, q: NDArray) -> NDArray:
         """Return diagonal mass matrix approximation."""
@@ -163,11 +189,25 @@ class Dynamics3D(PhysicsBackend):
         return M
 
     def _gravity_torques(self, q: NDArray) -> NDArray:
-        """Compute gravity torques via numerical differentiation.
+        """Compute gravity generalized forces via central finite differences.
 
-        tau_g[i] = d(PE)/d(q[i]) approximated by central differences.
+        .. warning::
+            **Performance bottleneck** (GitHub issue #79): This method requires
+            2 × n_dof = 32 forward kinematics evaluations per call due to numerical
+            differentiation with hardcoded step ``eps=1e-6``.
+
+            Replace with analytical gravity torques when FK is implemented:
+                ``tau_g = -J_com(q).T @ (total_mass * g_vec)``
+            where ``J_com`` is the 3×n_dof Jacobian of the system COM w.r.t. ``q``.
+
         """
-        eps = 1e-6
+        # NOTE (GitHub issue #78): This method references joint names that must match
+        # the output schema of BodyModel3D.forward_kinematics() when it is implemented.
+        # Required joint names: "spine_top", "shoulder_l", "shoulder_r", "elbow_l",
+        # "elbow_r", "wrist_l", "wrist_r", "pelvis", "head", "hip_l", "hip_r",
+        # "knee_l", "knee_r", "ankle_l", "ankle_r".
+        # These names MUST be verified against the FK implementation before use.
+        eps = _FD_EPSILON
         G = np.zeros(16)
         for i in range(16):
             q_plus = q.copy()
@@ -189,6 +229,12 @@ class Dynamics3D(PhysicsBackend):
 
         Uses midpoint of adjacent joints as segment COM approximation.
         """
+        # NOTE (GitHub issue #78): This method references joint names that must match
+        # the output schema of BodyModel3D.forward_kinematics() when it is implemented.
+        # Required joint names: "spine_top", "shoulder_l", "shoulder_r", "elbow_l",
+        # "elbow_r", "wrist_l", "wrist_r", "pelvis", "head", "hip_l", "hip_r",
+        # "knee_l", "knee_r", "ankle_l", "ankle_r".
+        # These names MUST be verified against the FK implementation before use.
         b = self.body
         m = b.segment_masses
         g = self._g
