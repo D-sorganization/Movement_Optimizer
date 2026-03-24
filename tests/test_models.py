@@ -36,7 +36,7 @@ class TestBodyModel:
 
     def test_mass_fractions_sum(self, default_body: BodyModel) -> None:
         total = default_body.m_feet + default_body.m_squat.sum()
-        assert abs(total - default_body.body_mass) < 1.0
+        assert abs(total - default_body.body_mass) < 0.01
 
     def test_base_of_support(self, default_body: BodyModel) -> None:
         assert default_body.heel_x < 0

@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 
+from .constants import trapezoid
 from .trajectory import OptimizationResult
 
 
@@ -82,8 +83,7 @@ def comparison_metrics(trials: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for trial in trials:
         r: OptimizationResult = trial["result"]
         peak_torques = [float(np.max(np.abs(r.torques[:, j]))) for j in range(3)]
-        dt = float(r.t[1] - r.t[0]) if len(r.t) > 1 else 1.0
-        total_work = float(np.sum(np.abs(r.power)) * dt)
+        total_work = float(trapezoid(np.abs(r.power).sum(axis=1), r.t))
         com_sway_cm = float(r.com_horizontal_range_cm)
 
         metrics.append(

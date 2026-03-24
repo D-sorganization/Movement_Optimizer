@@ -1,4 +1,5 @@
 """Trajectory module extracted from monolith."""
+
 from __future__ import annotations
 
 from .cache import SolutionCache as SolutionCache

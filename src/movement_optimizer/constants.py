@@ -15,7 +15,7 @@ import numpy as np
 # ------------------------------------------------------------------
 MASS_FRAC: dict[str, float] = {
     "feet": 0.028,
-    "lower_legs": 0.093,
+    "lower_legs": 0.094,
     "upper_legs": 0.200,
     "trunk_head": 0.578,
     "arms": 0.100,
@@ -174,6 +174,23 @@ BENCH_PRESS_HILL_OPTIMAL_ANGLES: dict[str, float] = {
 # The outer 20% on each end is excluded.
 # ------------------------------------------------------------------
 BOS_INNER_FRACTION: float = 0.60
+
+# ------------------------------------------------------------------
+# Trajectory optimisation tuning constants
+# ------------------------------------------------------------------
+
+# Bench press bar-path penalty weight: penalises horizontal deviation of
+# the bar (hand position) from a vertical path during the press.
+BENCH_BAR_PATH_WEIGHT: float = 500.0
+
+# Total-variation weight ratio: TV regularisation is this fraction of the
+# L2 torque-rate regularisation term.
+TV_RATE_WEIGHT_RATIO: float = 0.1
+
+# Minimum bar-to-knee clearance for pulling exercises (deadlift, clean,
+# snatch).  The bar must stay at least this many metres in front of the
+# knees throughout the lift.
+BAR_KNEE_CLEARANCE_M: float = 0.05
 
 # numpy compat shim  (trapz renamed to trapezoid in numpy 2.0)
 trapezoid = getattr(np, "trapezoid", getattr(np, "trapz", None))

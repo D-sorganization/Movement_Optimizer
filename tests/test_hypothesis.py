@@ -24,7 +24,7 @@ class TestBodyModelProperties:
         body_mass=st.floats(min_value=30.0, max_value=200.0),
         height=st.floats(min_value=1.2, max_value=2.2),
     )
-    @settings(max_examples=50)
+    @settings(max_examples=100)
     def test_body_model_valid_inputs(self, body_mass: float, height: float):
         """BodyModel should accept any reasonable mass and height."""
         body = BodyModel(body_mass=body_mass, height=height)
@@ -37,7 +37,7 @@ class TestBodyModelProperties:
     @given(
         body_mass=st.floats(min_value=-100.0, max_value=0.0),
     )
-    @settings(max_examples=10)
+    @settings(max_examples=100)
     def test_body_model_rejects_nonpositive_mass(self, body_mass: float):
         """BodyModel should reject non-positive mass."""
         with pytest.raises(ValueError, match="body_mass"):
@@ -48,7 +48,7 @@ class TestBodyModelProperties:
         ul=st.floats(min_value=0.5, max_value=2.0),
         to=st.floats(min_value=0.5, max_value=2.0),
     )
-    @settings(max_examples=30)
+    @settings(max_examples=100)
     def test_segment_multipliers_preserve_proportionality(self, ll: float, ul: float, to: float):
         """Segment lengths should scale linearly with multipliers."""
         base = BodyModel(75.0, 1.75)
@@ -67,7 +67,7 @@ class TestHillTorqueModelProperties:
         q=st.floats(min_value=-2.0, max_value=2.0),
         qd=st.floats(min_value=-10.0, max_value=10.0),
     )
-    @settings(max_examples=50)
+    @settings(max_examples=100)
     def test_available_torque_nonnegative(self, q: float, qd: float):
         """Available torque should always be non-negative."""
         model = HillTorqueModel(tau_max=200.0, q_optimal=1.0)
@@ -77,7 +77,7 @@ class TestHillTorqueModelProperties:
     @given(
         tau_max=st.floats(min_value=10.0, max_value=1000.0),
     )
-    @settings(max_examples=20)
+    @settings(max_examples=100)
     def test_peak_torque_at_optimal_angle(self, tau_max: float):
         """Torque at optimal angle with zero velocity should equal tau_max."""
         model = HillTorqueModel(tau_max=tau_max, q_optimal=1.0)
@@ -91,7 +91,7 @@ class TestClampJointAnglesProperties:
         q1=st.floats(min_value=-3.0, max_value=3.0),
         q2=st.floats(min_value=-3.0, max_value=3.0),
     )
-    @settings(max_examples=50)
+    @settings(max_examples=100)
     def test_clamped_angles_within_limits(self, q0: float, q1: float, q2: float):
         """Clamped angles should always be within joint limits."""
         from movement_optimizer.constants import JOINT_LIMITS, JOINT_NAMES
@@ -110,7 +110,7 @@ class TestInverseDynamicsProperties:
         q1=st.floats(min_value=-1.5, max_value=1.5),
         q2=st.floats(min_value=-1.5, max_value=1.5),
     )
-    @settings(max_examples=30)
+    @settings(max_examples=100)
     def test_static_torques_finite(self, q0: float, q1: float, q2: float):
         """Static torques (zero velocity/acceleration) should be finite."""
         body = BodyModel(75.0, 1.75)
@@ -126,7 +126,7 @@ class TestInverseDynamicsProperties:
         q1=st.floats(min_value=-1.5, max_value=1.5),
         q2=st.floats(min_value=-1.5, max_value=1.5),
     )
-    @settings(max_examples=20)
+    @settings(max_examples=100)
     def test_mass_matrix_positive_definite(self, q0: float, q1: float, q2: float):
         """Mass matrix should be positive definite for any configuration."""
         body = BodyModel(75.0, 1.75)

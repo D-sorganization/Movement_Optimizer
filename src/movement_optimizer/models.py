@@ -541,47 +541,69 @@ class LagrangianDynamics(PhysicsBackend):
         m_segments: NDArray,
         I_segments: NDArray,
         load_mass: float,
+        body_override: dict[str, NDArray] | None = None,
     ) -> None:
+        """Initialise Lagrangian dynamics for a 3-link planar chain.
+
+        Parameters:
+            body: Anthropometric model (used for g, BOS, and default geometry).
+            m_segments: Length-3 array of segment masses (kg).
+            I_segments: Length-3 array of segment moments of inertia (kg·m²).
+            load_mass: Mass of the external load at the chain tip (kg).
+            body_override: Optional dict with keys 'L', 'd' containing
+                length-3 NDArrays that override the body geometry for the
+                coupling-coefficient calculations.  Used by non-leg kinematic
+                chains (e.g. the arm chain for bench press) without resorting
+                to post-hoc attribute surgery.
+        """
         if len(m_segments) != 3:
             raise ValueError("need 3 segment masses")
         if load_mass < 0:
             raise ValueError("load_mass cannot be negative")
         self.body = body
-        self.L = body.L
-        self.L_eff = body.L_eff
-        self.d = body.d
-        self.d_eff = body.d_eff
         self.m = m_segments
         self.I = I_segments
         self.m_load = load_mass
         self.g = body.g
 
+        # Allow callers to supply alternative segment geometry (e.g. arm chain).
+        if body_override is not None:
+            L = body_override["L"]
+            d = body_override["d"]
+            self.L = L
+            self.L_eff = L.copy()
+            self.d = d
+            self.d_eff = d.copy()
+        else:
+            self.L = body.L
+            self.L_eff = body.L_eff
+            self.d = body.d
+            self.d_eff = body.d_eff
+            L = body.L
+            d = body.d
+
         # Pre-compute coupling coefficients (constant for given model)
-        self._a01 = (m_segments[1] * body.d[1] + (m_segments[2] + load_mass) * body.L[1]) * body.L[
-            0
-        ]
-        self._a02 = (m_segments[2] * body.d[2] + load_mass * body.L[2]) * body.L[0]
-        self._a12 = (m_segments[2] * body.d[2] + load_mass * body.L[2]) * body.L[1]
+        self._a01 = (m_segments[1] * d[1] + (m_segments[2] + load_mass) * L[1]) * L[0]
+        self._a02 = (m_segments[2] * d[2] + load_mass * L[2]) * L[0]
+        self._a12 = (m_segments[2] * d[2] + load_mass * L[2]) * L[1]
 
         # Diagonal mass-matrix constants
         self._M00 = (
-            m_segments[0] * body.d[0] ** 2
-            + (m_segments[1] + m_segments[2] + load_mass) * body.L[0] ** 2
+            m_segments[0] * d[0] ** 2
+            + (m_segments[1] + m_segments[2] + load_mass) * L[0] ** 2
             + I_segments[0]
         )
         self._M11 = (
-            m_segments[1] * body.d[1] ** 2
-            + (m_segments[2] + load_mass) * body.L[1] ** 2
-            + I_segments[1]
+            m_segments[1] * d[1] ** 2 + (m_segments[2] + load_mass) * L[1] ** 2 + I_segments[1]
         )
-        self._M22 = m_segments[2] * body.d[2] ** 2 + load_mass * body.L[2] ** 2 + I_segments[2]
+        self._M22 = m_segments[2] * d[2] ** 2 + load_mass * L[2] ** 2 + I_segments[2]
 
         # Gravity coefficients
         self._g0 = body.g * (
-            m_segments[0] * body.d[0] + (m_segments[1] + m_segments[2] + load_mass) * body.L[0]
+            m_segments[0] * d[0] + (m_segments[1] + m_segments[2] + load_mass) * L[0]
         )
-        self._g1 = body.g * (m_segments[1] * body.d[1] + (m_segments[2] + load_mass) * body.L[1])
-        self._g2 = body.g * (m_segments[2] * body.d[2] + load_mass * body.L[2])
+        self._g1 = body.g * (m_segments[1] * d[1] + (m_segments[2] + load_mass) * L[1])
+        self._g2 = body.g * (m_segments[2] * d[2] + load_mass * L[2])
 
     @property
     def n_dof(self) -> int:
@@ -733,7 +755,14 @@ class LagrangianDynamics(PhysicsBackend):
         fk = self.forward_kinematics(q)
         s = fk["shoulder"]
         if exercise_type == "deadlift":
+            # Bar hangs from hands: arm-length below shoulder
             return np.array([s[0], s[1] - self.body.L_arm])
+        if exercise_type in ("clean", "clean_and_jerk"):
+            # Front rack: bar sits at shoulder height
+            return s.copy()
+        if exercise_type in ("snatch", "jerk"):
+            # Overhead: bar is arm-length above shoulder
+            return np.array([s[0], s[1] + self.body.L_arm])
         return s.copy()
 
     def com_position(
@@ -955,28 +984,16 @@ def make_bench_press_config(
     """
     bp = BenchPressModel(body)
 
-    # Create a dynamics object using arm segment properties
-    # For bench press, the load (bar) is at the end of the chain (hands)
-    dyn = LagrangianDynamics(body, bp.m.copy(), bp.I.copy(), bar_mass)
-    # Override segment lengths for arm chain
-    dyn.L = bp.L
-    dyn.L_eff = bp.L.copy()
-    dyn.d = bp.d
-    dyn.d_eff = bp.d.copy()
-
-    # Recompute coupling coefficients for arm geometry
-    m = bp.m
-    d = bp.d
-    L = bp.L
-    dyn._a01 = (m[1] * d[1] + (m[2] + bar_mass) * L[1]) * L[0]
-    dyn._a02 = (m[2] * d[2] + bar_mass * L[2]) * L[0]
-    dyn._a12 = (m[2] * d[2] + bar_mass * L[2]) * L[1]
-    dyn._M00 = m[0] * d[0] ** 2 + (m[1] + m[2] + bar_mass) * L[0] ** 2 + bp.I[0]
-    dyn._M11 = m[1] * d[1] ** 2 + (m[2] + bar_mass) * L[1] ** 2 + bp.I[1]
-    dyn._M22 = m[2] * d[2] ** 2 + bar_mass * L[2] ** 2 + bp.I[2]
-    dyn._g0 = body.g * (m[0] * d[0] + (m[1] + m[2] + bar_mass) * L[0])
-    dyn._g1 = body.g * (m[1] * d[1] + (m[2] + bar_mass) * L[1])
-    dyn._g2 = body.g * (m[2] * d[2] + bar_mass * L[2])
+    # Create a dynamics object using arm segment properties.
+    # Pass body_override so the constructor uses arm geometry (L, d) for all
+    # coupling-coefficient calculations — no post-hoc attribute surgery needed.
+    dyn = LagrangianDynamics(
+        body,
+        bp.m.copy(),
+        bp.I.copy(),
+        bar_mass,
+        body_override={"L": bp.L, "d": bp.d},
+    )
 
     # Start: lockout (arms straight up, perpendicular to supine body)
     q_start = np.array([np.radians(0), np.radians(0), np.radians(0)])
