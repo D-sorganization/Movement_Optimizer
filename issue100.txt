@@ -1,0 +1,25 @@
+title:	[Fleet Assessment][M] Configuration is not clearly externalized
+state:	OPEN
+author:	dieterolson (Dieter Olson)
+labels:	
+comments:	0
+assignees:	
+projects:	
+milestone:	
+number:	100
+--
+## Assessment Finding
+
+- Category: `M`
+- Severity: `MAJOR`
+- Full-traversal evidence: inspected `108` files, read `97` text files in full, classified `11` binary files by metadata and signature.
+
+### Evidence
+- Environment example files: 0
+- Config files discovered: 14
+
+### Why This Matters
+Poor config boundaries make deployments brittle and hinder reversibility.
+
+### Recommended Action
+Add sample environment files and centralize runtime configuration in versioned config modules or manifests.

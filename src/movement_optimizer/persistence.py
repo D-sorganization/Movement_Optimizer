@@ -45,12 +45,20 @@ def _dict_to_result(d: dict[str, Any]) -> OptimizationResult:
     arrays = {k: np.array(d["arrays"][k]) for k in _ARRAY_FIELDS}
     meta = d["metadata"]
     return OptimizationResult(
-        **arrays,
+        t=arrays["t"],
+        q=arrays["q"],
+        qd=arrays["qd"],
+        qdd=arrays["qdd"],
+        torques=arrays["torques"],
+        power=arrays["power"],
+        com=arrays["com"],
+        bar=arrays["bar"],
         success=meta["success"],
         cost=meta["cost"],
         com_horizontal_range_cm=meta["com_horizontal_range_cm"],
         elapsed_s=meta.get("elapsed_s", 0.0),
         n_evals=meta.get("n_evals", 0),
+        n_joint_limit_violations=meta.get("n_joint_limit_violations", 0),
     )
 
 
