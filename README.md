@@ -1,11 +1,11 @@
 # Movement Optimizer
 
-A biomechanics tool for optimizing barbell exercise trajectories using Lagrangian inverse dynamics. The body is modeled as a 3-link planar chain (shin, thigh, trunk) in the sagittal plane, with support for full 3D bilateral models. An optional Rust-accelerated backend provides high-performance computation for the hot-path inverse dynamics.
+A biomechanics tool for optimizing barbell exercise trajectories using Lagrangian inverse dynamics. The body is modeled as a 3-link planar chain (shin, thigh, trunk) in the sagittal plane. An optional Rust-accelerated backend provides high-performance computation for the hot-path inverse dynamics.
 
 ## Features
 
 - **Multi-exercise support**: Squat, Full Squat, Deadlift, Bench Press, Clean, Jerk, Snatch
-- **2D and 3D models**: Production-ready sagittal-plane 3-link chain plus an explicit 3D fail-fast placeholder
+- **2D model**: Production-ready sagittal-plane 3-link chain with a disabled placeholder selector reserved for future 3D work
 - **Real-time animation**: Stick-figure visualization with playback controls
 - **Spinal load analysis**: L5/S1 compression and shear estimation with NIOSH limits
 - **Trajectory optimization**: Multi-start parallel L-BFGS-B with COM balance constraints
@@ -108,9 +108,6 @@ src/movement_optimizer/
     export.py            # GIF, PNG, PDF export
     spine_loads.py       # Spinal compression/shear estimation
     exercises/           # Exercise config factories (clean, jerk, snatch)
-    exercises_3d/        # 3D exercise configs
-    three_d/             # 3D body model, dynamics, rendering
-
 rust_core/               # Optional PyO3/maturin Rust extension
     src/lib.rs           # Vectorized inverse dynamics and COM batch
     Cargo.toml
@@ -128,10 +125,9 @@ tests/                   # pytest test suite
 
 ### 3D Backend Status
 
-The 3D backend is intentionally fail-fast today. `BodyModel3D.forward_kinematics()` and
-the public `Dynamics3D` computation methods raise `NotImplementedError` with a consistent
-message directing users to the 2D optimizer. This is deliberate: partial 3D dynamics that
-silently return physically incorrect torques are worse than an explicit unsupported-path error.
+The shipped optimizer is currently 2D-only. The GUI still shows a disabled 3D selector to make
+that roadmap explicit, but the unfinished 3D modules were removed so unsupported paths fail by
+construction instead of drifting into misleading or physically incorrect behavior.
 
 ## Development
 

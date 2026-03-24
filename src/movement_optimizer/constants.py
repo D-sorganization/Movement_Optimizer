@@ -7,6 +7,9 @@ Sources:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 
 # ------------------------------------------------------------------
@@ -192,5 +195,8 @@ TV_RATE_WEIGHT_RATIO: float = 0.1
 # knees throughout the lift.
 BAR_KNEE_CLEARANCE_M: float = 0.05
 
-# numpy compat shim  (trapz renamed to trapezoid in numpy 2.0)
-trapezoid = getattr(np, "trapezoid", getattr(np, "trapz", None))
+# numpy compat shim (trapz renamed to trapezoid in numpy 2.0)
+_trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
+if _trapz is None:
+    raise ImportError("Neither np.trapezoid nor np.trapz found in numpy")
+trapezoid: Callable[..., Any] = _trapz

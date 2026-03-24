@@ -7,7 +7,6 @@ import logging
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QStandardItemModel
 from PyQt6.QtWidgets import (
     QComboBox,
     QGroupBox,
@@ -182,13 +181,14 @@ class ParameterSidebar(QScrollArea):
         # Disable 3D mode until forward kinematics is implemented
         idx_3d = self.model_combo.findText("3D Bilateral")
         if idx_3d >= 0:
+            from PyQt6.QtGui import QStandardItemModel
+
             model = self.model_combo.model()
-            item = model.item(idx_3d) if isinstance(model, QStandardItemModel) else None
-        else:
-            item = None
-        if item is not None:
-            item.setEnabled(False)
-            item.setToolTip("3D mode not yet implemented")
+            if isinstance(model, QStandardItemModel):
+                item = model.item(idx_3d)
+                if item is not None:
+                    item.setEnabled(False)
+                    item.setToolTip("3D mode not yet implemented")
         model_row.addWidget(self.model_combo)
         lay.addLayout(model_row)
 

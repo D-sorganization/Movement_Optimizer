@@ -670,8 +670,8 @@ class TestJointLimitViolationTracking:
         x = extreme_wp.flatten()
 
         class _FakeRes:
-            fun = 1.0
-            x = None
+            fun: float = 1.0
+            x: np.ndarray | None = None
 
         _FakeRes.x = x
         result = opt._package_results(_FakeRes)
