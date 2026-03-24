@@ -1,201 +1,35 @@
-"""Trajectory optimisation with multi-start parallel solver.
-
-Key improvements over v1:
-    1. **Tight COM constraint** -- COM must stay within the middle 60%
-       of the foot (inner_heel to inner_toe).  Violations incur a steep
-       cubic barrier penalty that the optimizer cannot trade away.
-    2. **Multi-start parallelism** -- N perturbed initial guesses run
-       concurrently via ThreadPoolExecutor.  scipy's Fortran L-BFGS-B
-       releases the GIL, so threads achieve true parallelism.
-    3. **Torque smoothing** -- higher torque-rate weight + total-variation
-       regularization eliminates oscillatory torque profiles.
-    4. **Robust convergence** -- relaxed tolerances (ftol=1e-6), scaled
-       cost terms, and multiple restarts avoid "optimization failed".
-    5. **Endpoint damping** -- exponential velocity/acceleration decay
-       at motion boundaries for clean start/stop.
-
-Design Principles:
-    DBC -- preconditions checked at construction and method entry.
-    DRY -- cost sub-terms are isolated into private methods.
-    LoD -- only ``optimize()`` is needed by callers.
-    TDD -- every cost term is independently testable.
-"""
-
+"""Parallel multi-start trajectory optimiser engine."""
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import os
 import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
-from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.interpolate import CubicSpline
 from scipy.optimize import minimize
 
-from .backend import PhysicsBackend
-from .models import BodyModel
+from ..backend import PhysicsBackend
+from ..models import BodyModel
+from .result import CancelledError, OptimizationResult, ProgressReport
+from .tuning import (
+    BALANCE_BARRIER_WEIGHT,
+    BALANCE_CENTER_WEIGHT,
+    DEFAULT_ENDPOINT_WEIGHT,
+    DEFAULT_JERK_WEIGHT,
+    DEFAULT_N_STARTS,
+    DEFAULT_TORQUE_RATE_WEIGHT,
+    MAX_ITER_PER_START,
+    PERTURBATION_SCALE,
+    STALL_THRESHOLD,
+    STALL_WINDOW,
+)
 
 logger = logging.getLogger(__name__)
-
-# ==============================================================
-# Result container
-# ==============================================================
-
-
-@dataclass
-class OptimizationResult:
-    """Immutable container for optimiser output."""
-
-    t: NDArray
-    q: NDArray
-    qd: NDArray
-    qdd: NDArray
-    torques: NDArray
-    power: NDArray
-    com: NDArray
-    bar: NDArray
-    success: bool
-    cost: float
-    com_horizontal_range_cm: float
-    elapsed_s: float = 0.0
-    n_evals: int = 0
-
-
-# ==============================================================
-# Progress report
-# ==============================================================
-
-
-@dataclass
-class ProgressReport:
-    """Snapshot of optimiser state for the GUI."""
-
-    iteration: int
-    cost: float
-    best_cost: float
-    improvement_pct: float
-    elapsed_s: float
-    cost_history: list[float] = field(default_factory=list)
-    is_stalled: bool = False
-    stall_reason: str = ""
-
-
-# ==============================================================
-# Cancellation sentinel
-# ==============================================================
-
-
-class CancelledError(Exception):
-    """Raised when the user cancels optimisation."""
-
-
-# ==============================================================
-# Solution cache
-# ==============================================================
-
-
-class SolutionCache:
-    """Thread-safe cache of optimisation results keyed by config hash."""
-
-    def __init__(self) -> None:
-        self._store: dict[str, OptimizationResult] = {}
-        self._lock = threading.Lock()
-
-    @staticmethod
-    def _config_key(
-        exercise_type: str,
-        body_mass: float,
-        height: float,
-        seg_mults: dict[str, float],
-        bar_mass: float,
-        duration: float,
-        smoothness: float,
-    ) -> str:
-        blob = json.dumps(
-            {
-                "ex": exercise_type,
-                "bm": round(body_mass, 2),
-                "h": round(height, 3),
-                "sm": {k: round(v, 3) for k, v in sorted(seg_mults.items())},
-                "bar": round(bar_mass, 1),
-                "dur": round(duration, 2),
-                "smooth": round(smoothness, 2),
-            },
-            sort_keys=True,
-        )
-        return hashlib.sha256(blob.encode()).hexdigest()[:16]
-
-    def get(
-        self,
-        exercise_type: str,
-        body_mass: float,
-        height: float,
-        seg_mults: dict[str, float],
-        bar_mass: float,
-        duration: float,
-        smoothness: float,
-    ) -> OptimizationResult | None:
-        key = self._config_key(
-            exercise_type, body_mass, height, seg_mults, bar_mass, duration, smoothness
-        )
-        with self._lock:
-            return self._store.get(key)
-
-    def put(
-        self,
-        exercise_type: str,
-        body_mass: float,
-        height: float,
-        seg_mults: dict[str, float],
-        bar_mass: float,
-        duration: float,
-        smoothness: float,
-        result: OptimizationResult,
-    ) -> None:
-        key = self._config_key(
-            exercise_type, body_mass, height, seg_mults, bar_mass, duration, smoothness
-        )
-        with self._lock:
-            self._store[key] = result
-        logger.debug("Cached solution for key=%s", key)
-
-    def clear(self) -> None:
-        with self._lock:
-            self._store.clear()
-
-
-# ==============================================================
-# Tuning defaults
-# ==============================================================
-
-DEFAULT_JERK_WEIGHT: float = 0.05
-DEFAULT_TORQUE_RATE_WEIGHT: float = 0.15
-DEFAULT_ENDPOINT_WEIGHT: float = 10.0
-
-# Balance constraint weights
-BALANCE_BARRIER_WEIGHT: float = 8000.0
-BALANCE_CENTER_WEIGHT: float = 12.0
-
-# Stall detection
-STALL_WINDOW: int = 80
-STALL_THRESHOLD: float = 1e-4
-
-# Multi-start
-DEFAULT_N_STARTS: int = 6
-MAX_ITER_PER_START: int = 500
-PERTURBATION_SCALE: float = 0.08
-
-
-# ==============================================================
-# Trajectory Optimiser
-# ==============================================================
-
 
 class TrajectoryOptimizer:
     """Parallel multi-start trajectory optimiser.
