@@ -749,9 +749,9 @@ class TrajectoryOptimizer:
         if self.exercise_type == "bench_press":
             com_in_bounds = True
         else:
-            com_in_bounds = bool(np.all(com_x >= self.inner_heel - 0.005) and np.all(
-                com_x <= self.inner_toe + 0.005
-            ))
+            com_in_bounds = bool(
+                np.all(com_x >= self.inner_heel - 0.005) and np.all(com_x <= self.inner_toe + 0.005)
+            )
             if cost_finite and not com_in_bounds:
                 logger.warning(
                     "Solution found but COM violated inner BOS: min=%.4f max=%.4f "

@@ -807,6 +807,7 @@ class ExerciseTab(QWidget):
     def _plot_com_path(self, r: OptimizationResult, body: BodyModel) -> None:
         ax = self.axes["com_path"]
         import matplotlib as mpl
+
         cmap = mpl.colormaps["viridis"] if hasattr(mpl, "colormaps") else cm.get_cmap("viridis")
         colors_t = cmap(np.linspace(0.2, 0.95, len(r.t)))
         for i in range(len(r.t) - 1):
@@ -2024,6 +2025,7 @@ class MainWindow(QMainWindow):
             n_frames = len(r.t)
 
             assert body is not None
+
             def draw_frame(fi: int) -> None:
                 tab.draw_anim_frame(fi, r, dyn, body, etype)
 
