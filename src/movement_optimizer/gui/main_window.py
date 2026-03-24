@@ -266,6 +266,7 @@ class MainWindow(QMainWindow):
 
         self._cancel_event = threading.Event()
         self._opt_running = False
+        self._opt_lock = threading.Lock()
         self._cache = SolutionCache()
         self._comparison_store = ComparisonStore()
 
@@ -434,7 +435,13 @@ class MainWindow(QMainWindow):
     def _run_exercise(self, idx: int, then_chain: list[int] | None = None) -> None:
         self._stop_anim()
         self._cancel_event.clear()
-        self._opt_running = True
+        
+        with self._opt_lock:
+            if self._opt_running:
+                logger.warning("Optimization already running")
+                return
+            self._opt_running = True
+            
         self.sidebar.show_optimizing()
         name = self.EXERCISE_CONFIGS[idx][0]
         self.status_label.setText(f"Optimizing {name}...")
@@ -522,8 +529,9 @@ class MainWindow(QMainWindow):
                 cancel_event=self._cancel_event,
             )
             result = opt.optimize()
-            self.results[idx] = result
-            self.anim_frames[idx] = 0
+            with self._opt_lock:
+                self.results[idx] = result
+                self.anim_frames[idx] = 0
 
             self._cache.put(
                 etype,
@@ -626,18 +634,21 @@ class MainWindow(QMainWindow):
                 remaining = then_chain[1:] if len(then_chain) > 1 else None
                 self._run_exercise(next_idx, remaining)
             else:
-                self._opt_running = False
+                with self._opt_lock:
+                    self._opt_running = False
                 self.sidebar.show_idle()
                 self.status_label.setText(status_msg)
         except (ValueError, RuntimeError, OSError, AttributeError) as exc:
-            self._opt_running = False
+            with self._opt_lock:
+                self._opt_running = False
             tb = traceback.format_exc()
             logger.error("Error in _on_done:\n%s", tb)
             self.sidebar.show_idle()
             self.status_label.setText(f"Render error: {exc}")
 
     def _on_cancelled(self) -> None:
-        self._opt_running = False
+        with self._opt_lock:
+            self._opt_running = False
         self.sidebar.show_idle()
         self.sidebar.prog_label.setText("Cancelled")
         self.status_label.setText("Optimization cancelled by user.")

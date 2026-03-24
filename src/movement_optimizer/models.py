@@ -790,8 +790,10 @@ class LagrangianDynamics(PhysicsBackend):
         if exercise_type in ("squat", "full_squat"):
             numerator += bar_mass * shoulder
         else:
-            arm_com = np.array([shoulder[0], shoulder[1] - COM_FRAC["arm"] * b.L_arm])
-            bar_pos = np.array([shoulder[0], shoulder[1] - b.L_arm])
+            bar_pos = self.bar_position(q, exercise_type)
+            # Arm vector from shoulder to bar
+            arm_vec = bar_pos - shoulder
+            arm_com = shoulder + COM_FRAC["arm"] * arm_vec
             numerator += b.m_arms * arm_com + bar_mass * bar_pos
 
         return numerator / total_mass
