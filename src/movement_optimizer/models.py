@@ -295,11 +295,13 @@ class LagrangianDynamics(PhysicsBackend):
             self.L_eff = L.copy()
             self.d = d
             self.d_eff = d.copy()
+            self.joint_names = body_override.get("joint_names", ["link0", "link1", "link2", "link3"])
         else:
             self.L = body.L
             self.L_eff = body.L_eff
             self.d = body.d
             self.d_eff = body.d_eff
+            self.joint_names = ["ankle", "knee", "hip", "shoulder"]
             L = body.L
             d = body.d
 
@@ -468,11 +470,12 @@ class LagrangianDynamics(PhysicsBackend):
 
     def forward_kinematics(self, q: NDArray) -> dict[str, NDArray]:
         L = self.L_eff
-        ankle = np.array([0.0, 0.0])
-        knee = ankle + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        hip = knee + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        shoulder = hip + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
-        return {"ankle": ankle, "knee": knee, "hip": hip, "shoulder": shoulder}
+        names = self.joint_names
+        p0 = np.array([0.0, 0.0])
+        p1 = p0 + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
+        p2 = p1 + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
+        p3 = p2 + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
+        return {names[0]: p0, names[1]: p1, names[2]: p2, names[3]: p3}
 
     def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
         fk = self.forward_kinematics(q)
