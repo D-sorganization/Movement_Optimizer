@@ -88,7 +88,7 @@ def spinal_compression(
     result = gravity_comp + inertial_comp
 
     if scalar_input:
-        return float(result[0])
+        return float(result[0])  # type: ignore[return-value]
     return result
 
 
@@ -127,5 +127,5 @@ def spinal_shear(
     result = (m_above + bar_mass) * body.g * np.sin(torso_angle)
 
     if scalar_input:
-        return float(result[0])
+        return float(result[0])  # type: ignore[return-value]
     return result

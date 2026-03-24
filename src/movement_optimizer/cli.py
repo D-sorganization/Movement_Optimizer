@@ -172,13 +172,13 @@ def main(argv: list[str] | None = None) -> int:
     t_start = time.perf_counter()
     opt = TrajectoryOptimizer(
         body,
-        dyn,
+        dyn,  # type: ignore[arg-type]
         exercise,
         bar_mass,
-        qs,
-        qe,
-        qb,
-        q_via=q_via,
+        qs,  # type: ignore[arg-type]
+        qe,  # type: ignore[arg-type]
+        qb,  # type: ignore[arg-type]
+        q_via=q_via,  # type: ignore[arg-type]
         duration=duration,
         n_waypoints=12,
         smoothness=smoothness,

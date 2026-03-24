@@ -424,7 +424,7 @@ class TrajectoryOptimizer:
             # Bar-path verticality: penalise horizontal drift from shoulder joint.
             # In bench FK, origin=shoulder, segments are upper_arm→forearm→hand.
             # hand_x = sum of L[i]*sin(q[i]) — should stay near zero (bar above shoulder).
-            L = self.dynamics.L
+            L = self.dynamics.L  # type: ignore[attr-defined]
             hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
             total += 500.0 * float(np.sum(hand_x**2)) * self.dt
         else:
@@ -471,7 +471,8 @@ class TrajectoryOptimizer:
             is_stalled=is_stalled,
             stall_reason=stall_reason,
         )
-        self.progress_cb(report)
+        if self.progress_cb:
+            self.progress_cb(report)
 
     def _detect_stall(self) -> tuple[bool, str]:
         history = self._cost_history
@@ -677,13 +678,13 @@ class TrajectoryOptimizer:
         if not results:
             raise CancelledError("All optimization starts were cancelled")
 
-        best_res, _ = min(results, key=lambda r: float(r[0].fun))
+        best_res, _ = min(results, key=lambda r: float(r[0].fun))  # type: ignore[attr-defined]
         elapsed = time.monotonic() - self._start_time
         total_evals_sum = sum(n for _, n in results)
 
         logger.info(
             "Optimisation finished: best_cost=%.2f, total_evals=%d, n_starts=%d, time=%.1fs",
-            best_res.fun,
+            best_res.fun,  # type: ignore[attr-defined]
             total_evals_sum,
             len(results),
             elapsed,
@@ -723,7 +724,7 @@ class TrajectoryOptimizer:
     def _package_results(
         self, res: object, elapsed: float = 0.0, n_evals: int = 0
     ) -> OptimizationResult:
-        splines = self.build_splines(res.x)
+        splines = self.build_splines(res.x)  # type: ignore[attr-defined]
         q, qd, qdd, _ = self.eval_trajectory(splines)
 
         torques = self.dynamics.inverse_dynamics_batch(q, qd, qdd)
@@ -742,15 +743,15 @@ class TrajectoryOptimizer:
 
         # Success: cost is finite AND COM stays within inner BOS (the hard constraint)
         # Bench press: no COM constraint (lifter is on a bench)
-        cost_val = float(res.fun)
+        cost_val = float(res.fun)  # type: ignore[attr-defined]
         cost_finite = cost_val < float("inf") and not np.isnan(cost_val)
 
         if self.exercise_type == "bench_press":
             com_in_bounds = True
         else:
-            com_in_bounds = np.all(com_x >= self.inner_heel - 0.005) and np.all(
+            com_in_bounds = bool(np.all(com_x >= self.inner_heel - 0.005) and np.all(
                 com_x <= self.inner_toe + 0.005
-            )
+            ))
             if cost_finite and not com_in_bounds:
                 logger.warning(
                     "Solution found but COM violated inner BOS: min=%.4f max=%.4f "

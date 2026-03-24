@@ -47,7 +47,7 @@ try:
         BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
 except ImportError:
     # Fallback if ud-tools isn't installed
-    class Palette:
+    class Palette:  # type: ignore[no-redef]
         """Centralised colour definitions."""
         BG = "#1e1e2e"
         BG_PANEL = "#2a2a3d"

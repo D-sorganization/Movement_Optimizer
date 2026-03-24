@@ -806,7 +806,9 @@ class ExerciseTab(QWidget):
 
     def _plot_com_path(self, r: OptimizationResult, body: BodyModel) -> None:
         ax = self.axes["com_path"]
-        colors_t = cm.viridis(np.linspace(0.2, 0.95, len(r.t)))
+        import matplotlib as mpl
+        cmap = mpl.colormaps["viridis"] if hasattr(mpl, "colormaps") else cm.get_cmap("viridis")
+        colors_t = cmap(np.linspace(0.2, 0.95, len(r.t)))
         for i in range(len(r.t) - 1):
             ax.plot(
                 r.com[i : i + 2, 0] * 100,
@@ -910,7 +912,7 @@ class ExerciseTab(QWidget):
             r.t,
             NIOSH_COMPRESSION_LIMIT,
             comp,
-            where=comp > NIOSH_COMPRESSION_LIMIT,
+            where=comp > NIOSH_COMPRESSION_LIMIT,  # type: ignore[arg-type]
             alpha=0.3,
             color=Palette.RED,
             label="Exceeds limit",
@@ -1467,8 +1469,9 @@ class MainWindow(QMainWindow):
         try:
             results_dict: dict[str, OptimizationResult] = {}
             for i, (_, etype) in enumerate(self.EXERCISE_CONFIGS):
-                if self.results[i] is not None:
-                    results_dict[etype] = self.results[i]
+                res = self.results[i]
+                if res is not None:
+                    results_dict[etype] = res
             slider_values = {
                 "body_mass": self.sidebar.mass_slider.value(),
                 "height": self.sidebar.height_slider.value(),
@@ -1755,6 +1758,7 @@ class MainWindow(QMainWindow):
         self, name: str, r: OptimizationResult, exercise_type: str = "squat"
     ) -> None:
         pk = np.max(np.abs(r.torques), axis=0)
+        assert trapezoid is not None
         work = trapezoid(np.sum(np.abs(r.power), axis=1), r.t)
 
         if exercise_type == "bench_press":
@@ -1807,11 +1811,13 @@ class MainWindow(QMainWindow):
 
         fi = self.anim_frames[idx]
         _, etype = self.EXERCISE_CONFIGS[idx]
+        body = self.bodies_list[idx]
+        assert body is not None
         self.exercise_tabs[idx].draw_anim_frame(
             fi,
             r,
             self.dynamics_list[idx],
-            self.bodies_list[idx],
+            body,
             etype,
         )
 
@@ -1838,7 +1844,7 @@ class MainWindow(QMainWindow):
             self.anim_frames[idx],
             r,
             self.dynamics_list[idx],
-            self.bodies_list[idx],
+            self.bodies_list[idx],  # type: ignore[arg-type]
             etype,
         )
         self.controls.frame_label.setText(f"Frame {self.anim_frames[idx] + 1}/{n}")
@@ -1856,7 +1862,7 @@ class MainWindow(QMainWindow):
             self.anim_frames[idx],
             r,
             self.dynamics_list[idx],
-            self.bodies_list[idx],
+            self.bodies_list[idx],  # type: ignore[arg-type]
             etype,
         )
 
@@ -1872,7 +1878,7 @@ class MainWindow(QMainWindow):
             0,
             r,
             self.dynamics_list[idx],
-            self.bodies_list[idx],
+            self.bodies_list[idx],  # type: ignore[arg-type]
             etype,
         )
 
@@ -2016,6 +2022,7 @@ class MainWindow(QMainWindow):
             dyn = self.dynamics_list[idx]
             n_frames = len(r.t)
 
+            assert body is not None
             def draw_frame(fi: int) -> None:
                 tab.draw_anim_frame(fi, r, dyn, body, etype)
 
