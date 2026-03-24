@@ -23,7 +23,9 @@ NECK_LENGTH_FRAC: float = LENGTH_FRAC["neck"]
 
 try:
     from plot_theme.themes import DEFAULT_THEME, get_theme
+
     theme = get_theme(DEFAULT_THEME)
+
     class Palette:
         BG = theme.figure_facecolor
         BG_PANEL = theme.axes_facecolor
@@ -41,7 +43,7 @@ try:
         SEG_COLORS = (
             theme.primary_colors[0] if len(theme.primary_colors) > 0 else "#569cd6",
             theme.secondary_colors[0] if len(theme.secondary_colors) > 0 else "#f44747",
-            theme.accent_colors[0] if len(theme.accent_colors) > 0 else "#4ec9b0"
+            theme.accent_colors[0] if len(theme.accent_colors) > 0 else "#4ec9b0",
         )
         SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
         BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
@@ -49,6 +51,7 @@ except ImportError:
     # Fallback if ud-tools isn't installed
     class Palette:  # type: ignore[no-redef]
         """Centralised colour definitions."""
+
         BG = "#1e1e2e"
         BG_PANEL = "#2a2a3d"
         BG_INPUT = "#363650"
@@ -277,6 +280,7 @@ def style_axis(ax: Axes) -> None:
     """Apply the dark-theme styling to a matplotlib Axes."""
     try:
         from plot_theme.integration import style_axis as shared_style_axis
+
         shared_style_axis(ax)
     except ImportError:
         ax.set_facecolor(Palette.BG_PLOT)
