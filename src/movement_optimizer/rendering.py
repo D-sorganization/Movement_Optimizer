@@ -22,8 +22,7 @@ NECK_LENGTH_FRAC: float = LENGTH_FRAC["neck"]
 
 
 try:
-    from plot_theme.themes import get_theme, DEFAULT_THEME
-    from plot_theme.integration import style_axis as shared_style_axis
+    from plot_theme.themes import DEFAULT_THEME, get_theme
     theme = get_theme(DEFAULT_THEME)
     class Palette:
         BG = theme.figure_facecolor
@@ -39,11 +38,11 @@ try:
         BLUE = theme.primary_color
         ORANGE = theme.accent_colors[1] if len(theme.accent_colors) > 1 else "#ffb74d"
         YELLOW = theme.accent_colors[2] if len(theme.accent_colors) > 2 else "#ffd54f"
-        SEG_COLORS = [
-            theme.primary_colors[0] if len(theme.primary_colors) > 0 else "#569cd6", 
-            theme.secondary_colors[0] if len(theme.secondary_colors) > 0 else "#f44747", 
+        SEG_COLORS = (
+            theme.primary_colors[0] if len(theme.primary_colors) > 0 else "#569cd6",
+            theme.secondary_colors[0] if len(theme.secondary_colors) > 0 else "#f44747",
             theme.accent_colors[0] if len(theme.accent_colors) > 0 else "#4ec9b0"
-        ]
+        )
         SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
         BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
 except ImportError:
