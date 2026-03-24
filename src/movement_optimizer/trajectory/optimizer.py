@@ -390,18 +390,18 @@ class TrajectoryOptimizer:
 
     def _joint_limit_constraint_values(self, x: NDArray) -> NDArray:
         """Return joint limit constraint violation for SLSQP.
-        
+
         Ensures all evaluated trajectory points stay within joint limits,
         preventing spline overshoot between control points from violating
         the physical bounds.
         """
         splines = self.build_splines(x)
         q = np.column_stack([s(self.t_eval) for s in splines])
-        
+
         # lower shape: (n_eval, n_dof)
         lower = q - self.q_bounds[:, 0]
         upper = self.q_bounds[:, 1] - q
-        
+
         return np.concatenate([lower.flatten(), upper.flatten()])
 
     def _build_constraints(self) -> list[dict]:
@@ -413,7 +413,7 @@ class TrajectoryOptimizer:
         constraints = [
             {"type": "ineq", "fun": self._joint_limit_constraint_values},
         ]
-        
+
         if self.exercise_type != "bench_press":
             constraints.append({"type": "ineq", "fun": self._com_constraint_values})
 

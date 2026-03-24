@@ -10,26 +10,20 @@ squat/deadlift factories in ``models.py``.
 
 from __future__ import annotations
 
-import numpy as np
 from numpy.typing import NDArray
 
-from ..models import BodyModel, LagrangianDynamics, balance_pose
+from ..models import BodyModel, LagrangianDynamics
+from ._common import balance_config_pose, default_bounds_deg, pose_deg
 
 
 def _jerk_start_angles() -> NDArray:
     """Front rack position: standing with bar at shoulders."""
-    q0 = np.radians(5)
-    q1 = np.radians(-8)
-    q2 = np.radians(5)
-    return np.array([q0, q1, q2])
+    return pose_deg(5, -8, 5)
 
 
 def _jerk_via_angles() -> NDArray:
     """Dip position: quarter-squat before the explosive drive phase."""
-    q0 = np.radians(12)
-    q1 = np.radians(-40)
-    q2 = np.radians(8)
-    return np.array([q0, q1, q2])
+    return pose_deg(12, -40, 8)
 
 
 def _jerk_end_angles() -> NDArray:
@@ -39,10 +33,7 @@ def _jerk_end_angles() -> NDArray:
     is at the top of the chain; a near-vertical torso (~2 deg) puts
     the shoulder as high as possible, representing overhead lockout.
     """
-    q0 = np.radians(3)
-    q1 = np.radians(-5)
-    q2 = np.radians(2)
-    return np.array([q0, q1, q2])
+    return pose_deg(3, -5, 2)
 
 
 def make_jerk_config(
@@ -59,20 +50,14 @@ def make_jerk_config(
     dyn = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), bar_mass)
 
     q_start_raw = _jerk_start_angles()
-    q_start = balance_pose(dyn, q_start_raw, "squat", bar_mass, adjust_joint=0)
+    q_start = balance_config_pose(dyn, q_start_raw, "squat", bar_mass, adjust_joint=0)
 
     q_end_raw = _jerk_end_angles()
-    q_end = balance_pose(dyn, q_end_raw, "squat", bar_mass, adjust_joint=0)
+    q_end = balance_config_pose(dyn, q_end_raw, "squat", bar_mass, adjust_joint=0)
 
     q_via_raw = _jerk_via_angles()
-    q_via = balance_pose(dyn, q_via_raw, "squat", bar_mass, adjust_joint=2)
+    q_via = balance_config_pose(dyn, q_via_raw, "squat", bar_mass, adjust_joint=2)
 
-    q_bounds = np.array(
-        [
-            [np.radians(-5), np.radians(30)],
-            [np.radians(-50), np.radians(5)],
-            [np.radians(-5), np.radians(40)],
-        ]
-    )
+    q_bounds = default_bounds_deg((-5, 30), (-50, 5), (-5, 40))
 
     return dyn, q_start, q_end, q_bounds, q_via

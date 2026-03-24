@@ -7,6 +7,9 @@ Sources:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 
 # ------------------------------------------------------------------
@@ -191,8 +194,6 @@ TV_RATE_WEIGHT_RATIO: float = 0.1
 # snatch).  The bar must stay at least this many metres in front of the
 # knees throughout the lift.
 BAR_KNEE_CLEARANCE_M: float = 0.05
-
-from typing import Any, Callable
 
 # numpy compat shim (trapz renamed to trapezoid in numpy 2.0)
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))

@@ -182,6 +182,7 @@ class ParameterSidebar(QScrollArea):
         idx_3d = self.model_combo.findText("3D Bilateral")
         if idx_3d >= 0:
             from PyQt6.QtGui import QStandardItemModel
+
             model = self.model_combo.model()
             if isinstance(model, QStandardItemModel):
                 item = model.item(idx_3d)

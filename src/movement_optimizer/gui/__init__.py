@@ -15,12 +15,7 @@ All public names are re-exported here for backward compatibility so that
 
 from __future__ import annotations
 
-from .comparison_dialog import ComparisonDialog as ComparisonDialog
-from .exercise_tab import ExerciseTab as ExerciseTab
-from .main_window import MainWindow as MainWindow
-from .widgets import LabelledSlider as LabelledSlider
-from .widgets import ParameterSidebar as ParameterSidebar
-from .widgets import PlaybackControls as PlaybackControls
+from importlib import import_module
 
 __all__ = [
     "ComparisonDialog",
@@ -30,3 +25,23 @@ __all__ = [
     "ParameterSidebar",
     "PlaybackControls",
 ]
+
+_EXPORT_MAP = {
+    "ComparisonDialog": (".comparison_dialog", "ComparisonDialog"),
+    "ExerciseTab": (".exercise_tab", "ExerciseTab"),
+    "LabelledSlider": (".widgets", "LabelledSlider"),
+    "MainWindow": (".main_window", "MainWindow"),
+    "ParameterSidebar": (".widgets", "ParameterSidebar"),
+    "PlaybackControls": (".widgets", "PlaybackControls"),
+}
+
+
+def __getattr__(name: str):
+    """Load GUI exports lazily so lightweight helpers can import safely."""
+    if name not in _EXPORT_MAP:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attr_name = _EXPORT_MAP[name]
+    module = import_module(module_name, __name__)
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value
