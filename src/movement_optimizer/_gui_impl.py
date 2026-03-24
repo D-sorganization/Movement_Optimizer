@@ -1734,8 +1734,9 @@ class MainWindow(QMainWindow):
                 status_msg = f"{name} done in {t_str} -- WARNING: COM balance violated"
 
             if then_chain:
-                next_idx = then_chain.pop(0)
-                self._run_exercise(next_idx, then_chain or None)
+                next_idx = then_chain[0]
+                remaining = then_chain[1:] if len(then_chain) > 1 else None
+                self._run_exercise(next_idx, remaining)
             else:
                 self._opt_running = False
                 self.sidebar.show_idle()
