@@ -1,0 +1,28 @@
+title:	[Fleet Assessment][A] Oversized files are accumulating architectural responsibility
+state:	OPEN
+author:	dieterolson (Dieter Olson)
+labels:	
+comments:	0
+assignees:	
+projects:	
+milestone:	
+number:	101
+--
+## Assessment Finding
+
+- Category: `A`
+- Severity: `MAJOR`
+- Full-traversal evidence: inspected `108` files, read `97` text files in full, classified `11` binary files by metadata and signature.
+
+### Evidence
+- src/movement_optimizer/models.py (1013 LOC)
+- src/movement_optimizer/gui/main_window.py (984 LOC)
+- tests/test_trajectory.py (678 LOC)
+- src/movement_optimizer/trajectory/optimizer.py (631 LOC)
+- src/movement_optimizer/gui/exercise_tab.py (549 LOC)
+
+### Why This Matters
+Very large files increase change risk, merge friction, and hidden coupling.
+
+### Recommended Action
+Split dominant modules into smaller units aligned to explicit responsibilities and test seams.

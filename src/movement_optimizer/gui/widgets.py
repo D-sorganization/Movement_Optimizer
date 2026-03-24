@@ -181,9 +181,13 @@ class ParameterSidebar(QScrollArea):
         # Disable 3D mode until forward kinematics is implemented
         idx_3d = self.model_combo.findText("3D Bilateral")
         if idx_3d >= 0:
-            item = self.model_combo.model().item(idx_3d)
-            item.setEnabled(False)
-            item.setToolTip("3D mode not yet implemented")
+            from PyQt6.QtGui import QStandardItemModel
+            model = self.model_combo.model()
+            if isinstance(model, QStandardItemModel):
+                item = model.item(idx_3d)
+                if item is not None:
+                    item.setEnabled(False)
+                    item.setToolTip("3D mode not yet implemented")
         model_row.addWidget(self.model_combo)
         lay.addLayout(model_row)
 

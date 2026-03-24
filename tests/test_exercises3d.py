@@ -135,8 +135,8 @@ class TestAll16DOF:
             # cfg is (dyn, q_start, q_end, q_bounds[, q_via])
             q_start = cfg[1]
             q_end = cfg[2]
-            assert q_start.shape == (16,), f"q_start shape {q_start.shape} != (16,)"
-            assert q_end.shape == (16,), f"q_end shape {q_end.shape} != (16,)"
+            assert q_start.shape == (16,), f"q_start shape {q_start.shape} != (16,)"  # type: ignore[union-attr]
+            assert q_end.shape == (16,), f"q_end shape {q_end.shape} != (16,)"  # type: ignore[union-attr]
             if len(cfg) == 5:
                 q_via = cfg[4]
-                assert q_via.shape == (16,), f"q_via shape {q_via.shape} != (16,)"
+                assert q_via.shape == (16,), f"q_via shape {q_via.shape} != (16,)"  # type: ignore[union-attr]
