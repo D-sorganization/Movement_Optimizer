@@ -12,6 +12,7 @@ import json
 import logging
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -127,6 +128,15 @@ def _result_to_full_dict(result: OptimizationResult, exercise: str) -> dict:
     return summary
 
 
+def _emit_cli_summary(summary: dict) -> None:
+    """Write the human-facing CLI summary to stdout.
+
+    This is the single intentional stdout path in `src/`, kept for the
+    command-line interface while operational events continue to use logging.
+    """
+    print(json.dumps(summary, indent=2))
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run CLI optimization."""
     parser = _build_parser()
@@ -195,12 +205,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.output:
         full_data = _result_to_full_dict(result, exercise)
-        with open(args.output, "w", encoding="utf-8") as f:
-            json.dump(full_data, f, indent=2)
+        Path(args.output).write_text(json.dumps(full_data, indent=2), encoding="utf-8")
         logger.info("Results saved to %s", args.output)
     else:
-        summary = _result_to_summary(result, exercise)
-        print(json.dumps(summary, indent=2))
+        _emit_cli_summary(_result_to_summary(result, exercise))
 
     return 0 if result.success else 1
 

@@ -62,9 +62,13 @@ from ..trajectory import (
 )
 from .comparison_dialog import ComparisonDialog
 from .exercise_tab import ExerciseTab
+from .session_state import collect_results, collect_slider_values, restore_slider_values
 from .widgets import ParameterSidebar, PlaybackControls
 
-matplotlib.use("QtAgg")
+try:
+    matplotlib.use("QtAgg")
+except ImportError:
+    matplotlib.use("Agg")
 
 logger = logging.getLogger(__name__)
 
@@ -333,22 +337,7 @@ class MainWindow(QMainWindow):
     def _save_session_state(self) -> None:
         """Persist current results and slider values on close."""
         try:
-            results_dict: dict[str, OptimizationResult] = {}
-            for i, (_, etype) in enumerate(self.EXERCISE_CONFIGS):
-                res = self.results[i]
-                if res is not None:
-                    results_dict[etype] = res
-            slider_values = {
-                "body_mass": self.sidebar.mass_slider.value(),
-                "height": self.sidebar.height_slider.value(),
-                "lower_leg": self.sidebar.ll_slider.value(),
-                "upper_leg": self.sidebar.ul_slider.value(),
-                "torso": self.sidebar.to_slider.value(),
-                "bar_mass": self.sidebar.bar_slider.value(),
-                "duration": self.sidebar.dur_slider.value(),
-                "smoothness": self.sidebar.smooth_slider.value(),
-            }
-            save_app_state(results_dict, slider_values)
+            save_app_state(collect_results(self), collect_slider_values(self.sidebar))
         except (OSError, TypeError, ValueError):
             logger.warning("Failed to save session state: %s", traceback.format_exc())
 
@@ -367,23 +356,7 @@ class MainWindow(QMainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
         try:
-            sv = state.get("slider_values", {})
-            if "body_mass" in sv:
-                self.sidebar.mass_slider.set_value(sv["body_mass"])
-            if "height" in sv:
-                self.sidebar.height_slider.set_value(sv["height"])
-            if "lower_leg" in sv:
-                self.sidebar.ll_slider.set_value(sv["lower_leg"])
-            if "upper_leg" in sv:
-                self.sidebar.ul_slider.set_value(sv["upper_leg"])
-            if "torso" in sv:
-                self.sidebar.to_slider.set_value(sv["torso"])
-            if "bar_mass" in sv:
-                self.sidebar.bar_slider.set_value(sv["bar_mass"])
-            if "duration" in sv:
-                self.sidebar.dur_slider.set_value(sv["duration"])
-            if "smoothness" in sv:
-                self.sidebar.smooth_slider.set_value(sv["smoothness"])
+            restore_slider_values(self.sidebar, state.get("slider_values", {}))
             self.status_label.setText("Previous session restored (slider values).")
         except (OSError, KeyError, TypeError, ValueError):
             logger.warning("Failed to restore session: %s", traceback.format_exc())
@@ -535,8 +508,6 @@ class MainWindow(QMainWindow):
 
     # _ensure_idle removed: signals guarantee delivery to the main thread,
     # so _on_done / _on_cancelled / _on_err always fire reliably.
-
-    # 3D support removed
 
     def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
         def cb(report: ProgressReport) -> None:

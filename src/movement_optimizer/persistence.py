@@ -13,18 +13,15 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+from .config import load_app_paths
 from .trajectory import OptimizationResult
 
 logger = logging.getLogger(__name__)
-
-# Default state directory
-_DEFAULT_STATE_DIR = os.path.join(Path.home(), ".movement_optimizer")
 
 # Array field names in OptimizationResult
 _ARRAY_FIELDS = ("t", "q", "qd", "qdd", "torques", "power", "com", "bar")
@@ -63,7 +60,7 @@ def _dict_to_result(d: dict[str, Any]) -> OptimizationResult:
 
 
 def save_solution(
-    path: str,
+    path: str | Path,
     result: OptimizationResult,
     body_params: dict[str, Any],
     exercise_type: str,
@@ -81,13 +78,13 @@ def save_solution(
         "body_params": body_params,
         **_result_to_dict(result),
     }
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    logger.info("Saved solution to %s", path)
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    logger.info("Saved solution to %s", output_path)
 
 
-def load_solution(path: str) -> dict[str, Any]:
+def load_solution(path: str | Path) -> dict[str, Any]:
     """Load an optimization solution from a JSON file.
 
     Returns a dict with keys: exercise_type, bar_mass, body_params,
@@ -97,11 +94,11 @@ def load_solution(path: str) -> dict[str, Any]:
         FileNotFoundError: if path does not exist.
         json.JSONDecodeError: if file is not valid JSON.
     """
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Solution file not found: {path}")
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    logger.info("Loaded solution from %s", path)
+    input_path = Path(path)
+    if not input_path.exists():
+        raise FileNotFoundError(f"Solution file not found: {input_path}")
+    data = json.loads(input_path.read_text(encoding="utf-8"))
+    logger.info("Loaded solution from %s", input_path)
     return data
 
 
@@ -109,7 +106,7 @@ def save_app_state(
     results_dict: dict[str, OptimizationResult],
     slider_values: dict[str, float],
     *,
-    state_dir: str | None = None,
+    state_dir: str | Path | None = None,
 ) -> None:
     """Save the current app state to the state directory.
 
@@ -117,9 +114,10 @@ def save_app_state(
         results_dict maps exercise_type -> OptimizationResult.
         slider_values maps slider_name -> float value.
     """
-    sdir = state_dir or _DEFAULT_STATE_DIR
-    os.makedirs(sdir, exist_ok=True)
-    path = os.path.join(sdir, "last_state.json")
+    state_path = (
+        load_app_paths().state_file if state_dir is None else Path(state_dir) / "last_state.json"
+    )
+    state_path.parent.mkdir(parents=True, exist_ok=True)
 
     serialized_results = {}
     for etype, result in results_dict.items():
@@ -130,26 +128,25 @@ def save_app_state(
         "slider_values": slider_values,
         "results": serialized_results,
     }
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    logger.info("Saved app state to %s", path)
+    state_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    logger.info("Saved app state to %s", state_path)
 
 
-def load_app_state(*, state_dir: str | None = None) -> dict[str, Any] | None:
+def load_app_state(*, state_dir: str | Path | None = None) -> dict[str, Any] | None:
     """Load the last app state from the state directory.
 
     Returns None if no state file exists or if it is corrupt.
     """
-    sdir = state_dir or _DEFAULT_STATE_DIR
-    path = os.path.join(sdir, "last_state.json")
+    state_path = (
+        load_app_paths().state_file if state_dir is None else Path(state_dir) / "last_state.json"
+    )
 
-    if not os.path.exists(path):
+    if not state_path.exists():
         return None
 
     try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        logger.info("Loaded app state from %s", path)
+        data = json.loads(state_path.read_text(encoding="utf-8"))
+        logger.info("Loaded app state from %s", state_path)
         return data
     except (json.JSONDecodeError, KeyError, OSError) as exc:
         logger.warning("Failed to load app state: %s", exc)

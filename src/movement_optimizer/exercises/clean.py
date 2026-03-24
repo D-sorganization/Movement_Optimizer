@@ -14,7 +14,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..constants import PLATE_RADIUS_STD_M
-from ..models import BodyModel, LagrangianDynamics, balance_pose
+from ..models import BodyModel, LagrangianDynamics
+from ._common import balance_config_pose, default_bounds_deg, pose_deg
 
 
 def _clean_start_angles(body: BodyModel) -> NDArray:
@@ -38,10 +39,8 @@ def _clean_end_angles(body: BodyModel) -> NDArray:
     Torso near vertical (~5 deg), knees nearly straight.
     The bar rests on the front of the shoulders -- NOT overhead.
     """
-    q0 = np.radians(5)  # slight shin forward lean
-    q1 = np.radians(-8)  # nearly straight knees (standing)
-    q2 = np.radians(5)  # torso near vertical
-    return np.array([q0, q1, q2])
+    del body
+    return pose_deg(5, -8, 5)
 
 
 def _clean_via_angles(body: BodyModel) -> NDArray:
@@ -50,10 +49,8 @@ def _clean_via_angles(body: BodyModel) -> NDArray:
     Hips extended, bar at mid-thigh level.  This is the transition
     between the pull phase and the catch phase.
     """
-    q0 = np.radians(8)  # shins near vertical
-    q1 = np.radians(-15)  # knees slightly bent
-    q2 = np.radians(20)  # torso still leaning forward (pulling)
-    return np.array([q0, q1, q2])
+    del body
+    return pose_deg(8, -15, 20)
 
 
 def make_clean_config(
@@ -71,20 +68,14 @@ def make_clean_config(
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
 
     q_start_raw = _clean_start_angles(body)
-    q_start = balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
+    q_start = balance_config_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
 
     q_end_raw = _clean_end_angles(body)
-    q_end = balance_pose(dyn, q_end_raw, "deadlift", bar_mass, adjust_joint=2)
+    q_end = balance_config_pose(dyn, q_end_raw, "deadlift", bar_mass, adjust_joint=2)
 
     q_via_raw = _clean_via_angles(body)
-    q_via = balance_pose(dyn, q_via_raw, "deadlift", bar_mass, adjust_joint=2)
+    q_via = balance_config_pose(dyn, q_via_raw, "deadlift", bar_mass, adjust_joint=2)
 
-    q_bounds = np.array(
-        [
-            [np.radians(-5), np.radians(35)],
-            [np.radians(-110), np.radians(10)],
-            [np.radians(-10), np.radians(80)],
-        ]
-    )
+    q_bounds = default_bounds_deg((-5, 35), (-110, 10), (-10, 80))
 
     return dyn, q_start, q_end, q_bounds, q_via

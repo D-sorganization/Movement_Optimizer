@@ -11,32 +11,50 @@ Design Principles:
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 from numpy.typing import NDArray
 
 from .backend import PhysicsBackend
 from .constants import (
     BENCH_FOREARM_FRAC,
-    BENCH_PRESS_HILL_OPTIMAL_ANGLES,
     BENCH_PRESS_JOINT_LIMITS,
-    BENCH_PRESS_JOINT_NAMES,
-    BENCH_PRESS_MAX_JOINT_TORQUES,
     BENCH_UPPER_ARM_FRAC,
     BOS_INNER_FRACTION,
     COM_FRAC,
-    DEFAULT_MAX_JOINT_TORQUES,
-    HILL_ANGLE_WIDTH,
-    HILL_ECCENTRIC_FACTOR,
-    HILL_K_SHAPE,
-    HILL_MAX_ANGULAR_VELOCITY,
-    HILL_MAX_ECCENTRIC_RATIO,
-    HILL_OPTIMAL_ANGLES,
     JOINT_LIMITS,
     JOINT_NAMES,
     LENGTH_FRAC,
     MASS_FRAC,
     PLATE_RADIUS_STD_M,
 )
+from .strength import (
+    HillTorqueModel,
+    JointTorqueSet,
+    compute_max_load,
+    make_bench_press_torque_set,
+    make_default_torque_set,
+)
+
+logger = logging.getLogger(__name__)
+
+__all__ = [
+    "BodyModel",
+    "HillTorqueModel",
+    "JointTorqueSet",
+    "LagrangianDynamics",
+    "balance_pose",
+    "clamp_joint_angles",
+    "compute_max_load",
+    "joint_angles_within_limits",
+    "make_bench_press_config",
+    "make_bench_press_torque_set",
+    "make_deadlift_config",
+    "make_default_torque_set",
+    "make_full_squat_config",
+    "make_squat_config",
+]
 
 
 class BodyModel:
@@ -227,303 +245,6 @@ def joint_angles_within_limits(
     return True
 
 
-class HillTorqueModel:
-    """Hill-type torque-angle-velocity model for a joint.
-
-    Computes the maximum available torque at a joint given its angle
-    and angular velocity:
-
-        τ_avail = τ_max · f_angle(q) · f_velocity(qd)
-
-    f_angle is a Gaussian curve centered at the optimal angle.
-    f_velocity follows Hill's force-velocity relationship.
-
-    Preconditions:
-        tau_max > 0
-        angle_width > 0
-        v_max > 0
-    """
-
-    def __init__(
-        self,
-        tau_max: float,
-        q_optimal: float,
-        angle_width: float = HILL_ANGLE_WIDTH,
-        v_max: float = HILL_MAX_ANGULAR_VELOCITY,
-        k_shape: float = HILL_K_SHAPE,
-        ecc_factor: float = HILL_ECCENTRIC_FACTOR,
-        max_ecc_ratio: float = HILL_MAX_ECCENTRIC_RATIO,
-    ) -> None:
-        if tau_max <= 0:
-            raise ValueError("tau_max must be positive")
-        if angle_width <= 0:
-            raise ValueError("angle_width must be positive")
-        if v_max <= 0:
-            raise ValueError("v_max must be positive")
-
-        self.tau_max = tau_max
-        self.q_optimal = q_optimal
-        self.angle_width = angle_width
-        self.v_max = v_max
-        self.k_shape = k_shape
-        self.ecc_factor = ecc_factor
-        self.max_ecc_ratio = max_ecc_ratio
-
-    def torque_angle_factor(self, q: float | NDArray) -> NDArray:
-        """Gaussian torque-angle scaling factor in [0, 1]."""
-        return np.exp(-(((np.asarray(q) - self.q_optimal) / self.angle_width) ** 2))
-
-    def torque_velocity_factor(self, qd: float | NDArray) -> NDArray:
-        """Hill-type force-velocity scaling factor.
-
-        Concentric (shortening, same sign as torque direction):
-            f = (v_max - |qd|) / (v_max + |qd| / k_shape)
-        Eccentric (lengthening):
-            f = (1 + ecc_factor * |qd|) / (1 + |qd| / k_shape)
-
-        Clamped to [0, max_ecc_ratio].
-        """
-        qd = np.asarray(qd)
-        speed = np.abs(qd)
-        # Concentric branch
-        conc = (self.v_max - speed) / (self.v_max + speed / self.k_shape)
-        # Eccentric branch
-        ecc = (1.0 + self.ecc_factor * speed) / (1.0 + speed / self.k_shape)
-        # Use concentric when speed < v_max, eccentric otherwise
-        # Actually: concentric when the muscle is shortening (speed < v_max)
-        # eccentric when lengthening (always positive factor)
-        # We select based on whether concentric factor is still positive
-        f = np.where(conc > 0, conc, ecc)
-        return np.clip(f, 0.0, self.max_ecc_ratio)
-
-    def available_torque(self, q: float | NDArray, qd: float | NDArray) -> NDArray:
-        """Maximum torque the joint can produce at given angle and velocity.
-
-        Returns τ_max * f_angle(q) * f_velocity(qd), always >= 0.
-        """
-        return self.tau_max * self.torque_angle_factor(q) * self.torque_velocity_factor(qd)
-
-
-class JointTorqueSet:
-    """Collection of Hill torque models for all joints in a chain.
-
-    Provides batch evaluation of torque capacity and identification
-    of the limiting joint (sticking point).
-
-    Preconditions:
-        joint_names and max_torques must have the same keys
-        optimal_angles must have the same keys
-    """
-
-    def __init__(
-        self,
-        joint_names: tuple[str, ...],
-        max_torques: dict[str, float],
-        optimal_angles: dict[str, float],
-        angle_width: float = HILL_ANGLE_WIDTH,
-        v_max: float = HILL_MAX_ANGULAR_VELOCITY,
-    ) -> None:
-        if not all(n in max_torques for n in joint_names):
-            raise ValueError("max_torques must cover all joints")
-        if not all(n in optimal_angles for n in joint_names):
-            raise ValueError("optimal_angles must cover all joints")
-
-        self.joint_names = joint_names
-        self._models: dict[str, HillTorqueModel] = {}
-        for name in joint_names:
-            self._models[name] = HillTorqueModel(
-                tau_max=max_torques[name],
-                q_optimal=optimal_angles[name],
-                angle_width=angle_width,
-                v_max=v_max,
-            )
-
-    def set_max_torque(self, joint_name: str, tau_max: float) -> None:
-        """Update the maximum isometric torque for a joint.
-
-        Preconditions:
-            joint_name is a valid joint in this set
-            tau_max > 0
-        """
-        if joint_name not in self._models:
-            raise ValueError(f"Unknown joint: {joint_name}")
-        if tau_max <= 0:
-            raise ValueError("tau_max must be positive")
-        self._models[joint_name].tau_max = tau_max
-
-    def get_max_torque(self, joint_name: str) -> float:
-        """Return current max isometric torque for a joint."""
-        if joint_name not in self._models:
-            raise ValueError(f"Unknown joint: {joint_name}")
-        return self._models[joint_name].tau_max
-
-    def available_torques(self, q: NDArray, qd: NDArray) -> NDArray:
-        """Compute available torque at each joint for a single pose.
-
-        Returns array of shape (n_joints,) with positive values.
-        """
-        result = np.empty(len(self.joint_names))
-        for i, name in enumerate(self.joint_names):
-            result[i] = self._models[name].available_torque(q[i], qd[i])
-        return result
-
-    def available_torques_batch(self, q: NDArray, qd: NDArray) -> NDArray:
-        """Compute available torque at each joint for N poses.
-
-        Parameters:
-            q, qd: shape (N, n_joints)
-        Returns:
-            shape (N, n_joints) with positive values
-        """
-        n = q.shape[0]
-        result = np.empty((n, len(self.joint_names)))
-        for i, name in enumerate(self.joint_names):
-            result[:, i] = self._models[name].available_torque(q[:, i], qd[:, i])
-        return result
-
-    def torque_utilization(self, q: NDArray, qd: NDArray, required_torques: NDArray) -> NDArray:
-        """Ratio of required torque to available torque.
-
-        Parameters:
-            q, qd: shape (N, n_joints)
-            required_torques: shape (N, n_joints)
-        Returns:
-            shape (N, n_joints) — values > 1.0 mean the joint is overloaded
-        """
-        available = self.available_torques_batch(q, qd)
-        # Avoid division by zero
-        safe_avail = np.maximum(available, 1e-10)
-        return np.abs(required_torques) / safe_avail
-
-    def find_sticking_point(
-        self, q: NDArray, qd: NDArray, required_torques: NDArray
-    ) -> tuple[int, str, float]:
-        """Find the time step and joint where torque utilization is highest.
-
-        Returns:
-            (time_index, joint_name, peak_utilization)
-
-        The sticking point is the moment in the lift where the lifter
-        is closest to (or exceeds) their torque capacity.
-        """
-        utilization = self.torque_utilization(q, qd, required_torques)
-        flat_idx = int(np.argmax(utilization))
-        time_idx, joint_idx = np.unravel_index(flat_idx, utilization.shape)
-        return (
-            int(time_idx),
-            self.joint_names[joint_idx],
-            float(utilization[time_idx, joint_idx]),
-        )
-
-
-def make_default_torque_set() -> JointTorqueSet:
-    """Create a JointTorqueSet with default parameters for the standing chain."""
-    return JointTorqueSet(
-        joint_names=JOINT_NAMES,
-        max_torques=DEFAULT_MAX_JOINT_TORQUES,
-        optimal_angles=HILL_OPTIMAL_ANGLES,
-    )
-
-
-def make_bench_press_torque_set() -> JointTorqueSet:
-    """Create a JointTorqueSet with bench press parameters."""
-    return JointTorqueSet(
-        joint_names=BENCH_PRESS_JOINT_NAMES,
-        max_torques=BENCH_PRESS_MAX_JOINT_TORQUES,
-        optimal_angles=BENCH_PRESS_HILL_OPTIMAL_ANGLES,
-    )
-
-
-def compute_max_load(
-    dynamics_factory,
-    body: BodyModel,
-    torque_set: JointTorqueSet,
-    exercise_type: str,
-    load_range: tuple[float, float] = (0.0, 500.0),
-    tol: float = 0.5,
-    n_eval: int = 40,
-) -> tuple[float, int, str, float]:
-    """Binary search for the maximum load a lifter can handle.
-
-    Uses the torque model to find the heaviest bar_mass where peak
-    torque utilization stays <= 1.0 across the optimized trajectory.
-
-    Parameters:
-        dynamics_factory: callable(body, bar_mass) -> (dyn, qs, qe, qb[, q_via])
-        body: BodyModel instance
-        torque_set: JointTorqueSet with current max torques
-        exercise_type: "squat", "deadlift", "bench_press", etc.
-        load_range: (min_load, max_load) search bounds in kg
-        tol: convergence tolerance in kg
-        n_eval: number of evaluation points for the trajectory
-
-    Returns:
-        (max_load_kg, sticking_time_idx, sticking_joint, peak_utilization)
-
-    Preconditions:
-        load_range[0] >= 0
-        load_range[1] > load_range[0]
-        tol > 0
-    """
-    from .trajectory import TrajectoryOptimizer
-
-    if load_range[0] < 0:
-        raise ValueError("min load must be non-negative")
-    if load_range[1] <= load_range[0]:
-        raise ValueError("max must exceed min")
-    if tol <= 0:
-        raise ValueError("tolerance must be positive")
-
-    lo, hi = load_range
-
-    def _is_feasible(bar_mass: float) -> tuple[bool, int, str, float]:
-        """Check if bar_mass is liftable; return sticking point info."""
-        config = dynamics_factory(body, bar_mass)
-        if len(config) == 5:
-            dyn, qs, qe, qb, q_via = config
-        else:
-            dyn, qs, qe, qb = config
-            q_via = None
-
-        opt = TrajectoryOptimizer(
-            body,
-            dyn,
-            exercise_type,
-            bar_mass,
-            qs,
-            qe,
-            qb,
-            q_via=q_via,
-            duration=2.0,
-            n_waypoints=8,
-            n_eval=n_eval,
-            n_starts=1,
-        )
-        result = opt.optimize()
-        if not result.success:
-            return False, 0, "", float("inf")
-
-        time_idx, joint_name, peak_util = torque_set.find_sticking_point(
-            result.q, result.qd, result.torques
-        )
-        return peak_util <= 1.0, time_idx, joint_name, peak_util
-
-    best_time_idx, best_joint, best_util = 0, "", 0.0
-    last_feasible_load = lo
-
-    while hi - lo > tol:
-        mid = (lo + hi) / 2.0
-        feasible, t_idx, j_name, util = _is_feasible(mid)
-        if feasible:
-            lo = mid
-            last_feasible_load = mid
-            best_time_idx, best_joint, best_util = t_idx, j_name, util
-        else:
-            hi = mid
-
-    return last_feasible_load, best_time_idx, best_joint, best_util
-
-
 class LagrangianDynamics(PhysicsBackend):
     """Analytical inverse dynamics for a 3-link planar chain.
 
@@ -670,7 +391,9 @@ class LagrangianDynamics(PhysicsBackend):
                 self._g2,
             )
         except ImportError:
-            pass
+            logger.debug(
+                "Rust accelerator unavailable; falling back to NumPy batch inverse dynamics"
+            )
 
         n = q.shape[0]
         sq = np.sin(q)
