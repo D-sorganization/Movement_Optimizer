@@ -65,7 +65,10 @@ from .exercise_tab import ExerciseTab
 from .session_state import collect_results, collect_slider_values, restore_slider_values
 from .widgets import ParameterSidebar, PlaybackControls
 
-matplotlib.use("QtAgg")
+try:
+    matplotlib.use("QtAgg")
+except ImportError:
+    matplotlib.use("Agg")
 
 logger = logging.getLogger(__name__)
 
