@@ -388,23 +388,40 @@ class TrajectoryOptimizer:
         if self.cancel_event.is_set():
             raise CancelledError("Optimization cancelled by user")
 
+    def _joint_limit_constraint_values(self, x: NDArray) -> NDArray:
+        """Return joint limit constraint violation for SLSQP.
+        
+        Ensures all evaluated trajectory points stay within joint limits,
+        preventing spline overshoot between control points from violating
+        the physical bounds.
+        """
+        splines = self.build_splines(x)
+        q = np.column_stack([s(self.t_eval) for s in splines])
+        
+        # lower shape: (n_eval, n_dof)
+        lower = q - self.q_bounds[:, 0]
+        upper = self.q_bounds[:, 1] - q
+        
+        return np.concatenate([lower.flatten(), upper.flatten()])
+
     def _build_constraints(self) -> list[dict]:
         """Build SLSQP inequality constraints.
 
         Bench press has no COM/balance constraints because the lifter
         is lying on a bench, not standing.
         """
-        if self.exercise_type == "bench_press":
-            return []
-
         constraints = [
-            {"type": "ineq", "fun": self._com_constraint_values},
+            {"type": "ineq", "fun": self._joint_limit_constraint_values},
         ]
-        pulling_exercises = {"deadlift", "clean", "snatch"}
-        if self.exercise_type in pulling_exercises:
-            constraints.append(
-                {"type": "ineq", "fun": self._bar_knee_clearance},
-            )
+        
+        if self.exercise_type != "bench_press":
+            constraints.append({"type": "ineq", "fun": self._com_constraint_values})
+
+            pulling_exercises = {"deadlift", "clean", "snatch"}
+            if self.exercise_type in pulling_exercises:
+                constraints.append(
+                    {"type": "ineq", "fun": self._bar_knee_clearance},
+                )
         return constraints
 
     def _run_single_start(self, seed: int) -> tuple[object, int] | None:
