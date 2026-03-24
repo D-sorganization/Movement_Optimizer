@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
 
 from movement_optimizer.backend import PhysicsBackend
 from movement_optimizer.three_d.body3d import BodyModel3D
@@ -34,57 +33,44 @@ class TestInterface:
 
 
 class TestInverseDynamics:
-    """Inverse dynamics computations."""
+    """Inverse dynamics raises NotImplementedError (GitHub issues #76, #77)."""
 
-    def test_standing_torques_near_zero(self, dynamics: Dynamics3D):
-        """At standing (q=0, qd=0, qdd=0) joint torques should be near zero."""
+    def test_inverse_dynamics_not_implemented(self, dynamics: Dynamics3D):
+        """inverse_dynamics must raise NotImplementedError (issue #77)."""
         q = np.zeros(16)
         qd = np.zeros(16)
         qdd = np.zeros(16)
-        tau = dynamics.inverse_dynamics(q, qd, qdd)
-        # Standing is an equilibrium; gravity torques should be small
-        # (not exactly zero because of how COM aligns, but small)
-        assert_allclose(tau, np.zeros(16), atol=50.0)
+        with pytest.raises(NotImplementedError):
+            dynamics.inverse_dynamics(q, qd, qdd)
 
-    def test_inverse_dynamics_shape(self, dynamics: Dynamics3D):
-        """Inverse dynamics returns shape (16,) for single timestep."""
-        q = np.zeros(16)
-        qd = np.zeros(16)
-        qdd = np.zeros(16)
-        tau = dynamics.inverse_dynamics(q, qd, qdd)
-        assert tau.shape == (16,)
-
-    def test_batch_shape(self, dynamics: Dynamics3D):
-        """Batch inverse dynamics returns (N, 16) for N timesteps."""
+    def test_inverse_dynamics_batch_not_implemented(self, dynamics: Dynamics3D):
+        """inverse_dynamics_batch must raise NotImplementedError (issue #77)."""
         N = 5
         q = np.zeros((N, 16))
         qd = np.zeros((N, 16))
         qdd = np.zeros((N, 16))
-        tau = dynamics.inverse_dynamics_batch(q, qd, qdd)
-        assert tau.shape == (N, 16)
-
-    def test_bilateral_symmetry(self, dynamics: Dynamics3D):
-        """Symmetric pose should give symmetric torques for left/right."""
-        q = np.zeros(16)
-        qd = np.zeros(16)
-        qdd = np.zeros(16)
-        tau = dynamics.inverse_dynamics(q, qd, qdd)
-        # DOF layout: [ankle_l, knee_l, hip_flex_l, hip_abd_l,
-        #              ankle_r, knee_r, hip_flex_r, hip_abd_r,
-        #              spine_flex, spine_lat,
-        #              sh_flex_l, sh_abd_l, elbow_l,
-        #              sh_flex_r, sh_abd_r, elbow_r]
-        # Left leg (0:4) should mirror right leg (4:8)
-        assert_allclose(tau[0:4], tau[4:8], atol=1e-6)
+        with pytest.raises(NotImplementedError):
+            dynamics.inverse_dynamics_batch(q, qd, qdd)
 
 
 class TestCOM:
-    """Centre of mass computations."""
+    """Centre of mass raises NotImplementedError (GitHub issues #76, #77)."""
 
-    def test_com_at_standing(self, dynamics: Dynamics3D):
-        """COM at standing should be roughly at body centre height."""
+    def test_com_position_not_implemented(self, dynamics: Dynamics3D):
+        """com_position must raise NotImplementedError (issue #77)."""
         q = np.zeros(16)
-        com = dynamics.com_position(q)
-        # COM z should be roughly 55% of height (Winter anthropometry)
-        expected_z = 0.55 * 1.75
-        assert abs(com[2] - expected_z) < 0.3 * 1.75
+        with pytest.raises(NotImplementedError):
+            dynamics.com_position(q)
+
+    def test_bar_position_not_implemented(self, dynamics: Dynamics3D):
+        """bar_position must raise NotImplementedError (issue #77)."""
+        q = np.zeros(16)
+        with pytest.raises(NotImplementedError):
+            dynamics.bar_position(q, "squat")
+
+    def test_com_x_batch_not_implemented(self, dynamics: Dynamics3D):
+        """com_x_batch must raise NotImplementedError (issue #77)."""
+        N = 5
+        q = np.zeros((N, 16))
+        with pytest.raises(NotImplementedError):
+            dynamics.com_x_batch(q, "squat", 0.0)

@@ -763,6 +763,18 @@ class TrajectoryOptimizer:
 
         success = cost_finite and com_in_bounds
 
+        # Warn if optimized trajectory violates joint limits between control points
+        if self.q_bounds is not None:
+            _lower = np.array([b[0] for b in self.q_bounds])
+            _upper = np.array([b[1] for b in self.q_bounds])
+            _n_violated = int(np.sum((q < _lower) | (q > _upper)))
+            if _n_violated > 0:
+                logger.warning(
+                    "Trajectory has %d point(s) violating joint limits "
+                    "(spline overshoot between control points).",
+                    _n_violated,
+                )
+
         return OptimizationResult(
             t=self.t_eval,
             q=q,
