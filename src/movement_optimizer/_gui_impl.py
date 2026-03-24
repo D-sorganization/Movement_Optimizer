@@ -705,15 +705,19 @@ class ExerciseTab(QWidget):
         result: OptimizationResult,
         body: BodyModel,
         bar_mass: float,
+        exercise_type: str = "squat",
     ) -> None:
         for k in self.axes:
             if k != "anim":
                 self.axes[k].clear()
                 style_axis(self.axes[k])
 
-        self._plot_angles(result)
-        self._plot_torques(result)
-        self._plot_power(result)
+        is_bench = exercise_type == "bench_press"
+        labels = Palette.BENCH_LABELS if is_bench else Palette.SEG_LABELS
+
+        self._plot_angles(result, labels)
+        self._plot_torques(result, labels)
+        self._plot_power(result, labels)
         self._plot_com_path(result, body)
         self._plot_com_balance(result, body)
         self._plot_spine_loads(result, body, bar_mass)
@@ -726,15 +730,16 @@ class ExerciseTab(QWidget):
         )
         self.canvas.draw()
 
-    def _plot_angles(self, r: OptimizationResult) -> None:
+    def _plot_angles(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
         ax = self.axes["angles"]
-        for j in range(3):
+        n_dof = min(r.q.shape[1], len(labels))
+        for j in range(n_dof):
             ax.plot(
                 r.t,
                 np.degrees(r.q[:, j]),
-                color=Palette.SEG_COLORS[j],
+                color=Palette.SEG_COLORS[j % len(Palette.SEG_COLORS)],
                 lw=2,
-                label=Palette.SEG_LABELS[j],
+                label=labels[j],
             )
         ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
         ax.set_ylabel("Angle (deg)", color=Palette.FG_DIM, fontsize=8)
@@ -746,15 +751,16 @@ class ExerciseTab(QWidget):
             labelcolor=Palette.FG,
         )
 
-    def _plot_torques(self, r: OptimizationResult) -> None:
+    def _plot_torques(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
         ax = self.axes["torques"]
-        for j in range(3):
+        n_dof = min(r.torques.shape[1], len(labels))
+        for j in range(n_dof):
             ax.plot(
                 r.t,
                 r.torques[:, j],
-                color=Palette.SEG_COLORS[j],
+                color=Palette.SEG_COLORS[j % len(Palette.SEG_COLORS)],
                 lw=2,
-                label=Palette.SEG_LABELS[j],
+                label=labels[j],
             )
         ax.axhline(0, color=Palette.FG_DIM, lw=0.5, alpha=0.3)
         ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
@@ -767,15 +773,16 @@ class ExerciseTab(QWidget):
             labelcolor=Palette.FG,
         )
 
-    def _plot_power(self, r: OptimizationResult) -> None:
+    def _plot_power(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
         ax = self.axes["power"]
-        for j in range(3):
+        n_dof = min(r.power.shape[1], len(labels))
+        for j in range(n_dof):
             ax.plot(
                 r.t,
                 r.power[:, j],
-                color=Palette.SEG_COLORS[j],
+                color=Palette.SEG_COLORS[j % len(Palette.SEG_COLORS)],
                 lw=2,
-                label=Palette.SEG_LABELS[j],
+                label=labels[j],
             )
         ax.plot(
             r.t,
@@ -1695,11 +1702,10 @@ class MainWindow(QMainWindow):
             self.sidebar.progress.setValue(100)
             name = self.EXERCISE_CONFIGS[idx][0]
 
-            self._update_result_summary(name, result)
-
             _, etype = self.EXERCISE_CONFIGS[idx]
+            self._update_result_summary(name, result, exercise_type=etype)
             tab = self.exercise_tabs[idx]
-            tab.draw_all_plots(result, body, bar)
+            tab.draw_all_plots(result, body, bar, exercise_type=etype)
             tab.draw_anim_frame(0, result, self.dynamics_list[idx], body, etype)
 
             elapsed = result.elapsed_s
@@ -1745,19 +1751,29 @@ class MainWindow(QMainWindow):
         self.status_label.setText("Optimization cancelled by user.")
         self.sidebar.cancel_btn.setEnabled(True)
 
-    def _update_result_summary(self, name: str, r: OptimizationResult) -> None:
+    def _update_result_summary(
+        self, name: str, r: OptimizationResult, exercise_type: str = "squat"
+    ) -> None:
         pk = np.max(np.abs(r.torques), axis=0)
         work = trapezoid(np.sum(np.abs(r.power), axis=1), r.t)
-        balance_ok = "BALANCED" if r.success else "OUT OF BOUNDS"
-        self.sidebar.result_label.setText(
-            f"{name} results:\n"
-            f"  Ankle: {pk[0]:>6.0f} N\u00b7m\n"
-            f"  Knee:  {pk[1]:>6.0f} N\u00b7m\n"
-            f"  Hip:   {pk[2]:>6.0f} N\u00b7m\n"
-            f"  Work:  {work:>6.0f} J\n"
-            f"  COM sway: {r.com_horizontal_range_cm:.1f} cm\n"
-            f"  Balance: {balance_ok}"
-        )
+
+        if exercise_type == "bench_press":
+            joint_lines = (
+                f"  Shoulder: {pk[0]:>6.0f} N\u00b7m\n"
+                f"  Elbow:    {pk[1]:>6.0f} N\u00b7m\n"
+                f"  Wrist:    {pk[2]:>6.0f} N\u00b7m"
+            )
+        else:
+            balance_ok = "BALANCED" if r.success else "OUT OF BOUNDS"
+            joint_lines = (
+                f"  Ankle: {pk[0]:>6.0f} N\u00b7m\n"
+                f"  Knee:  {pk[1]:>6.0f} N\u00b7m\n"
+                f"  Hip:   {pk[2]:>6.0f} N\u00b7m\n"
+                f"  COM sway: {r.com_horizontal_range_cm:.1f} cm\n"
+                f"  Balance: {balance_ok}"
+            )
+
+        self.sidebar.result_label.setText(f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J")
 
     def _on_err(self, msg: str) -> None:
         self._opt_running = False

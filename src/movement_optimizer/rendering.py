@@ -39,6 +39,7 @@ class Palette:
     YELLOW = "#ffd54f"
     SEG_COLORS = ("#569cd6", "#f44747", "#4ec9b0")
     SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
+    BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
 
 
 class BarbellRenderer:
