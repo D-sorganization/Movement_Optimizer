@@ -8,10 +8,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-import numpy as np
 from numpy.typing import NDArray
-
-from .math3d import rotation_x, rotation_z
 
 
 class BodyModel3D:

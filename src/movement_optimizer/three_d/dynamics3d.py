@@ -193,12 +193,12 @@ class Dynamics3D(PhysicsBackend):
 
         .. warning::
             **Performance bottleneck** (GitHub issue #79): This method requires
-            2 × n_dof = 32 forward kinematics evaluations per call due to numerical
+            2 x n_dof = 32 forward kinematics evaluations per call due to numerical
             differentiation with hardcoded step ``eps=1e-6``.
 
             Replace with analytical gravity torques when FK is implemented:
                 ``tau_g = -J_com(q).T @ (total_mass * g_vec)``
-            where ``J_com`` is the 3×n_dof Jacobian of the system COM w.r.t. ``q``.
+            where ``J_com`` is the 3 x n_dof Jacobian of the system COM w.r.t. ``q``.
 
         """
         # NOTE (GitHub issue #78): This method references joint names that must match
