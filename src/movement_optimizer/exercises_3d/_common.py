@@ -12,8 +12,13 @@ For symmetric exercises, left DOFs (0-3, 10-12) mirror right DOFs (4-7, 13-15).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import numpy as np
 from numpy.typing import NDArray
+
+from ..three_d.body3d import BodyModel3D
+from ..three_d.dynamics3d import Dynamics3D
 
 # Named indices for clarity
 ANKLE_L, KNEE_L, HIP_L_FLEX, HIP_L_ABD = 0, 1, 2, 3
@@ -74,3 +79,33 @@ def default_bounds() -> NDArray:
     # Elbow flexion
     bounds[ELBOW_L] = bounds[ELBOW_R] = [rad(0), rad(145)]
     return bounds
+
+
+def make_symmetric_config(
+    body: BodyModel3D,
+    bar_mass: float,
+    *,
+    start: Mapping[str, float],
+    end: Mapping[str, float],
+) -> tuple[Dynamics3D, NDArray, NDArray, NDArray]:
+    """Create a symmetric 3D config without an intermediate pose."""
+    dynamics = Dynamics3D(body=body, load_mass=bar_mass)
+    return dynamics, symmetric_pose(**start), symmetric_pose(**end), default_bounds()
+
+
+def make_symmetric_config_with_via(
+    body: BodyModel3D,
+    bar_mass: float,
+    *,
+    start: Mapping[str, float],
+    end: Mapping[str, float],
+    via: Mapping[str, float],
+) -> tuple[Dynamics3D, NDArray, NDArray, NDArray, NDArray]:
+    """Create a symmetric 3D config with an intermediate pose."""
+    dynamics, q_start, q_end, q_bounds = make_symmetric_config(
+        body,
+        bar_mass,
+        start=start,
+        end=end,
+    )
+    return dynamics, q_start, q_end, q_bounds, symmetric_pose(**via)

@@ -5,7 +5,7 @@ A biomechanics tool for optimizing barbell exercise trajectories using Lagrangia
 ## Features
 
 - **Multi-exercise support**: Squat, Full Squat, Deadlift, Bench Press, Clean, Jerk, Snatch
-- **2D and 3D models**: Sagittal-plane 3-link chain and full 3D bilateral 16-DOF model
+- **2D and 3D models**: Production-ready sagittal-plane 3-link chain plus an explicit 3D fail-fast placeholder
 - **Real-time animation**: Stick-figure visualization with playback controls
 - **Spinal load analysis**: L5/S1 compression and shear estimation with NIOSH limits
 - **Trajectory optimization**: Multi-start parallel L-BFGS-B with COM balance constraints
@@ -67,6 +67,17 @@ python3 -m movement_optimizer.cli --exercise deadlift --body-mass 90 --bar-mass 
 python3 -m movement_optimizer.cli --exercise snatch --body-mass 75 --bar-mass 60 --duration 3.0 --smoothness 1.5
 ```
 
+### Runtime Configuration
+
+The application keeps its GUI/session state in `~/.movement_optimizer` by default.
+To override that location for local development, CI, or sandboxed runs, set:
+
+```bash
+export MOVEMENT_OPTIMIZER_STATE_DIR=/tmp/movement-optimizer-state
+```
+
+An example override is included in [.env.example](.env.example).
+
 ### Docker
 
 ```bash
@@ -114,6 +125,13 @@ tests/                   # pytest test suite
 - **DBC (Design by Contract)**: Public methods check preconditions and raise `ValueError`/`TypeError` on violation
 - **Logging over print**: `src/` code uses `logging.getLogger(__name__)`; a pre-commit hook blocks `print()` in `src/`
 - **Thread parallelism**: scipy's L-BFGS-B releases the GIL, enabling real parallelism via `ThreadPoolExecutor`
+
+### 3D Backend Status
+
+The 3D backend is intentionally fail-fast today. `BodyModel3D.forward_kinematics()` and
+the public `Dynamics3D` computation methods raise `NotImplementedError` with a consistent
+message directing users to the 2D optimizer. This is deliberate: partial 3D dynamics that
+silently return physically incorrect torques are worse than an explicit unsupported-path error.
 
 ## Development
 

@@ -10,6 +10,8 @@ from typing import ClassVar
 
 from numpy.typing import NDArray
 
+from .errors import unsupported_3d_error
+
 
 class BodyModel3D:
     """3D bilateral body model with anatomical segments.
@@ -139,20 +141,7 @@ class BodyModel3D:
     # -- forward kinematics --------------------------------------------
 
     def forward_kinematics(self, q: NDArray) -> dict[str, NDArray]:
-        """Return 3D positions of all joints given 16-DOF vector *q*.
-
-        .. warning::
-            **Not yet implemented.** The 3D kinematics chain is planned for a future
-            release. Use the 2D optimizer (``movement_optimizer.trajectory``) for
-            functional trajectory optimization.
-
-        Raises:
-            NotImplementedError: Always — this method is not yet implemented.
-        """
+        """Return 3D positions of all joints given 16-DOF vector *q*."""
         if len(q) != 16:
             raise ValueError(f"q must be 16-DOF, got {len(q)}")
-        raise NotImplementedError(
-            "3D forward kinematics is not yet implemented. "
-            "Use the 2D optimizer (movement_optimizer.trajectory.TrajectoryOptimizer) "
-            "for functional trajectory optimization. See GitHub issue #76."
-        )
+        raise unsupported_3d_error("3D forward kinematics")

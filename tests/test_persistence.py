@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
 from conftest import make_test_result
 
+from movement_optimizer.config import load_app_paths
 from movement_optimizer.persistence import (
     load_app_state,
     load_solution,
@@ -101,3 +103,14 @@ class TestAppState:
         (state_dir / "last_state.json").write_text("corrupted{{{")
         loaded = load_app_state(state_dir=str(state_dir))
         assert loaded is None
+
+    def test_env_override_controls_default_state_path(self, tmp_path, monkeypatch):
+        override_dir = tmp_path / "custom-state"
+        monkeypatch.setenv("MOVEMENT_OPTIMIZER_STATE_DIR", str(override_dir))
+
+        save_app_state({"squat": make_test_result()}, {"body_mass": 80.0})
+        loaded = load_app_state()
+
+        assert loaded is not None
+        assert load_app_paths().state_file == override_dir / "last_state.json"
+        assert Path(load_app_paths().state_file).exists()

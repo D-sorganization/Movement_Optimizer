@@ -78,6 +78,7 @@ def comparison_metrics(trials: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     if not trials:
         return []
+    assert trapezoid is not None
 
     metrics = []
     for trial in trials:

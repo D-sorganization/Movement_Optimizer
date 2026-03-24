@@ -14,7 +14,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..constants import PLATE_RADIUS_STD_M
-from ..models import BodyModel, LagrangianDynamics, balance_pose
+from ..models import BodyModel, LagrangianDynamics
+from ._common import balance_config_pose, default_bounds_deg, pose_deg
 
 
 def _snatch_start_angles(body: BodyModel) -> NDArray:
@@ -40,10 +41,7 @@ def _snatch_via_angles() -> NDArray:
     This is the unique snatch catch -- a deep squat with arms locked
     out above.
     """
-    q0 = np.radians(25)  # shins forward (deep squat)
-    q1 = np.radians(-90)  # deep knee bend
-    q2 = np.radians(10)  # torso relatively upright for overhead position
-    return np.array([q0, q1, q2])
+    return pose_deg(25, -90, 10)
 
 
 def _snatch_end_angles() -> NDArray:
@@ -52,10 +50,7 @@ def _snatch_end_angles() -> NDArray:
     Nearly identical to jerk end -- the bar is overhead with the
     torso as vertical as possible.
     """
-    q0 = np.radians(3)
-    q1 = np.radians(-5)
-    q2 = np.radians(2)
-    return np.array([q0, q1, q2])
+    return pose_deg(3, -5, 2)
 
 
 def make_snatch_config(
@@ -74,22 +69,16 @@ def make_snatch_config(
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
 
     q_start_raw = _snatch_start_angles(body)
-    q_start = balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
+    q_start = balance_config_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
 
     # End: standing with bar overhead -- use squat-style COM for balance check
     # but keep the same dynamics object
     q_end_raw = _snatch_end_angles()
-    q_end = balance_pose(dyn, q_end_raw, "squat", bar_mass, adjust_joint=0)
+    q_end = balance_config_pose(dyn, q_end_raw, "squat", bar_mass, adjust_joint=0)
 
     q_via_raw = _snatch_via_angles()
-    q_via = balance_pose(dyn, q_via_raw, "deadlift", bar_mass, adjust_joint=2)
+    q_via = balance_config_pose(dyn, q_via_raw, "deadlift", bar_mass, adjust_joint=2)
 
-    q_bounds = np.array(
-        [
-            [np.radians(-5), np.radians(35)],
-            [np.radians(-110), np.radians(10)],
-            [np.radians(-10), np.radians(80)],
-        ]
-    )
+    q_bounds = default_bounds_deg((-5, 35), (-110, 10), (-10, 80))
 
     return dyn, q_start, q_end, q_bounds, q_via
