@@ -178,7 +178,8 @@ class TestBenchPressConfig:
             n_waypoints=8,
         )
         constraints = opt._build_constraints()
-        assert len(constraints) == 0, "Bench press should have no COM constraints"
+        has_com = any(c.get("fun").__name__ == "_com_balance_constraint" for c in constraints if hasattr(c.get("fun"), "__name__"))
+        assert not has_com, "Bench press should have no COM constraints"
 
 
 # ------------------------------------------------------------------

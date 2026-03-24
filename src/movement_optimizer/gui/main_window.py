@@ -71,7 +71,6 @@ from ..persistence import load_app_state, load_solution, save_app_state, save_so
 from ..rendering import (
     Palette,
 )
-from ..three_d.body3d import BodyModel3D
 from ..trajectory import (
     CancelledError,
     OptimizationResult,
