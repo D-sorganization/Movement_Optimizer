@@ -19,7 +19,6 @@ import csv
 import json
 import logging
 import os
-import sys
 import threading
 import traceback
 from collections.abc import Callable
@@ -348,7 +347,6 @@ class MainWindow(QMainWindow):
         self._stop_anim()
         self._cancel_event.set()
         event.accept()
-        sys.exit(0)
 
     def _save_session_state(self) -> None:
         """Persist current results and slider values on close."""
@@ -541,6 +539,10 @@ class MainWindow(QMainWindow):
             self._sig_done.emit(idx, result, body, bar, then_chain)
         except CancelledError:
             self._sig_cancelled.emit()
+        except NotImplementedError as exc:
+            tb = traceback.format_exc()
+            logger.error("Optimisation failed (feature not implemented):\n%s", tb)
+            self._sig_error.emit(f"Feature not yet implemented: {exc}")
         except (ValueError, RuntimeError, OSError, np.linalg.LinAlgError) as exc:
             tb = traceback.format_exc()
             logger.error("Optimisation failed:\n%s", tb)

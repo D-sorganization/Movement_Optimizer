@@ -178,6 +178,12 @@ class ParameterSidebar(QScrollArea):
         model_row.addWidget(QLabel("Model:"))
         self.model_combo = QComboBox()
         self.model_combo.addItems(["2D Sagittal", "3D Bilateral"])
+        # Disable 3D mode until forward kinematics is implemented
+        idx_3d = self.model_combo.findText("3D Bilateral")
+        if idx_3d >= 0:
+            item = self.model_combo.model().item(idx_3d)
+            item.setEnabled(False)
+            item.setToolTip("3D mode not yet implemented")
         model_row.addWidget(self.model_combo)
         lay.addLayout(model_row)
 
