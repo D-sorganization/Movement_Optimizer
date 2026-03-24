@@ -6,292 +6,64 @@ benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=
 rootdir: C:\Users\diete\Repositories\Movement-Optimizer
 configfile: pyproject.toml
 plugins: hypothesis-6.151.9, benchmark-5.2.3, cov-7.1.0, mock-3.15.1, timeout-2.4.0, xdist-3.8.0
-collecting ... collected 253 items
+collecting ... collected 214 items / 5 errors
 
-tests/test_bench_press.py::TestBenchPressConfig::test_bench_config_shapes PASSED [  0%]
-tests/test_bench_press.py::TestBenchPressConfig::test_bench_horizontal_orientation PASSED [  0%]
-tests/test_bench_press.py::TestBenchPressConfig::test_arm_angle_default PASSED [  1%]
-tests/test_bench_press.py::TestBenchPressConfig::test_arm_effective_length PASSED [  1%]
-tests/test_bench_press.py::TestBenchPressConfig::test_arm_angle_zero_gives_zero_eff PASSED [  1%]
-tests/test_bench_press.py::TestBenchPressConfig::test_arm_angle_90_gives_full_length PASSED [  2%]
-tests/test_bench_press.py::TestBenchPressConfig::test_bar_above_body PASSED [  2%]
-tests/test_bench_press.py::TestBenchPressConfig::test_bench_start_is_lockout PASSED [  3%]
-tests/test_bench_press.py::TestBenchPressConfig::test_bench_via_is_chest PASSED [  3%]
-tests/test_bench_press.py::TestBenchPressConfig::test_bench_full_rep PASSED [  3%]
-tests/test_benchmarks.py::TestInverseDynamicsBenchmark::test_single_inverse_dynamics_speed PASSED [  4%]
-tests/test_benchmarks.py::TestInverseDynamicsBenchmark::test_batch_inverse_dynamics_speed FAILED [  4%]
-tests/test_benchmarks.py::TestMassMatrixBenchmark::test_mass_matrix_speed PASSED [  5%]
-tests/test_benchmarks.py::TestForwardKinematicsBenchmark::test_forward_kinematics_speed PASSED [  5%]
-tests/test_benchmarks.py::TestBodyModelBenchmark::test_body_model_construction_speed PASSED [  5%]
-tests/test_body3d.py::TestConstruction::test_default_construction PASSED [  6%]
-tests/test_body3d.py::TestConstruction::test_segment_count PASSED        [  6%]
-tests/test_body3d.py::TestConstruction::test_mass_sums_to_body_mass PASSED [  7%]
-tests/test_body3d.py::TestConstruction::test_hip_width_positive PASSED   [  7%]
-tests/test_body3d.py::TestConstruction::test_shoulder_width_positive PASSED [  7%]
-tests/test_body3d.py::TestForwardKinematics::test_fk_not_implemented PASSED [  8%]
-tests/test_body3d.py::TestForwardKinematics::test_fk_wrong_dof_raises_value_error PASSED [  8%]
-tests/test_bos3d.py::TestBOS3D::test_construction PASSED                 [  9%]
-tests/test_bos3d.py::TestBOS3D::test_center_point_inside PASSED          [  9%]
-tests/test_bos3d.py::TestBOS3D::test_far_point_outside PASSED            [  9%]
-tests/test_bos3d.py::TestBOS3D::test_inner_zone_smaller PASSED           [ 10%]
-tests/test_bos3d.py::TestBOS3D::test_distance_at_center_is_negative PASSED [ 10%]
-tests/test_bos3d.py::TestBOS3D::test_distance_outside_is_positive PASSED [ 11%]
-tests/test_cli.py::TestCLIParser::test_required_exercise PASSED          [ 11%]
-tests/test_cli.py::TestCLIParser::test_valid_exercise PASSED             [ 11%]
-tests/test_cli.py::TestCLIParser::test_defaults PASSED                   [ 12%]
-tests/test_cli.py::TestCLIParser::test_custom_args PASSED                [ 12%]
-tests/test_cli.py::TestResultSummary::test_summary_keys PASSED           [ 13%]
-tests/test_comparison.py::TestComparisonStore::test_add_and_get_trials PASSED [ 13%]
-tests/test_comparison.py::TestComparisonStore::test_clear PASSED         [ 13%]
-tests/test_comparison.py::TestComparisonStore::test_empty_store PASSED   [ 14%]
-tests/test_comparison.py::TestComparisonMetrics::test_metrics_keys FAILED [ 14%]
-tests/test_comparison.py::TestComparisonMetrics::test_metrics_values_are_reasonable FAILED [ 15%]
-tests/test_comparison.py::TestComparisonMetrics::test_empty_trials PASSED [ 15%]
-tests/test_dynamics3d.py::TestInterface::test_implements_backend PASSED  [ 15%]
-tests/test_dynamics3d.py::TestInterface::test_n_dof PASSED               [ 16%]
-tests/test_dynamics3d.py::TestInverseDynamics::test_inverse_dynamics_not_implemented PASSED [ 16%]
-tests/test_dynamics3d.py::TestInverseDynamics::test_inverse_dynamics_batch_not_implemented PASSED [ 16%]
-tests/test_dynamics3d.py::TestCOM::test_com_position_not_implemented PASSED [ 17%]
-tests/test_dynamics3d.py::TestCOM::test_bar_position_not_implemented PASSED [ 17%]
-tests/test_dynamics3d.py::TestCOM::test_com_x_batch_not_implemented PASSED [ 18%]
-tests/test_exercises.py::TestCleanConfig::test_clean_config_shapes PASSED [ 18%]
-tests/test_exercises.py::TestCleanConfig::test_clean_start_near_floor PASSED [ 18%]
-tests/test_exercises.py::TestCleanConfig::test_clean_end_at_front_rack PASSED [ 19%]
-tests/test_exercises.py::TestCleanConfig::test_clean_has_via_point PASSED [ 19%]
-tests/test_exercises.py::TestJerkConfig::test_jerk_config_shapes PASSED  [ 20%]
-tests/test_exercises.py::TestJerkConfig::test_jerk_start_at_rack PASSED  [ 20%]
-tests/test_exercises.py::TestJerkConfig::test_jerk_end_overhead PASSED   [ 20%]
-tests/test_exercises.py::TestSnatchConfig::test_snatch_config_shapes PASSED [ 21%]
-tests/test_exercises.py::TestSnatchConfig::test_snatch_start_near_floor PASSED [ 21%]
-tests/test_exercises.py::TestSnatchConfig::test_snatch_end_overhead PASSED [ 22%]
-tests/test_exercises.py::TestSnatchConfig::test_snatch_has_via_points PASSED [ 22%]
-tests/test_exercises.py::TestSnatchConfig::test_snatch_via_is_overhead_squat PASSED [ 22%]
-tests/test_exercises.py::TestBenchPressConfig::test_bench_is_full_rep PASSED [ 23%]
-tests/test_exercises.py::TestBenchPressConfig::test_bench_config_shapes PASSED [ 23%]
-tests/test_exercises.py::TestBenchPressConfig::test_bench_no_com_constraint PASSED [ 24%]
-tests/test_exercises.py::TestAllEndpointsBalanced::test_clean_endpoints_balanced PASSED [ 24%]
-tests/test_exercises.py::TestAllEndpointsBalanced::test_jerk_endpoints_balanced PASSED [ 24%]
-tests/test_exercises.py::TestAllEndpointsBalanced::test_snatch_endpoints_balanced PASSED [ 25%]
-tests/test_exercises3d.py::TestSquat3D::test_squat_3d_shapes PASSED      [ 25%]
-tests/test_exercises3d.py::TestDeadlift3D::test_deadlift_3d_shapes PASSED [ 26%]
-tests/test_exercises3d.py::TestBench3D::test_bench_3d_shapes PASSED      [ 26%]
-tests/test_exercises3d.py::TestClean3D::test_clean_3d_shapes PASSED      [ 26%]
-tests/test_exercises3d.py::TestJerk3D::test_jerk_3d_shapes PASSED        [ 27%]
-tests/test_exercises3d.py::TestSnatch3D::test_snatch_3d_shapes PASSED    [ 27%]
-tests/test_exercises3d.py::TestAll16DOF::test_all_configs_return_16_dof PASSED [ 28%]
-tests/test_export.py::TestExportPNG::test_produces_nonempty_file PASSED  [ 28%]
-tests/test_export.py::TestExportPNG::test_creates_parent_dirs PASSED     [ 28%]
-tests/test_export.py::TestExportPDF::test_produces_nonempty_file PASSED  [ 29%]
-tests/test_export.py::TestExportGIF::test_produces_nonempty_file PASSED  [ 29%]
-tests/test_gui_widgets.py::TestWidgetImports::test_import_main_window PASSED [ 30%]
-tests/test_gui_widgets.py::TestWidgetImports::test_import_exercise_tab PASSED [ 30%]
-tests/test_gui_widgets.py::TestWidgetImports::test_import_comparison_dialog PASSED [ 30%]
-tests/test_gui_widgets.py::TestWidgetImports::test_import_labelled_slider PASSED [ 31%]
-tests/test_gui_widgets.py::TestWidgetImports::test_import_parameter_sidebar PASSED [ 31%]
-tests/test_gui_widgets.py::TestWidgetImports::test_import_playback_controls PASSED [ 32%]
-tests/test_gui_widgets.py::TestGuiPackageStructure::test_main_window_module PASSED [ 32%]
-tests/test_gui_widgets.py::TestGuiPackageStructure::test_exercise_tab_module PASSED [ 32%]
-tests/test_gui_widgets.py::TestGuiPackageStructure::test_comparison_dialog_module PASSED [ 33%]
-tests/test_gui_widgets.py::TestGuiPackageStructure::test_widgets_module PASSED [ 33%]
-tests/test_gui_widgets.py::TestMainWindowAttributes::test_exercise_configs_defined PASSED [ 33%]
-tests/test_gui_widgets.py::TestMainWindowAttributes::test_signals_defined PASSED [ 34%]
-tests/test_gui_widgets.py::TestComparisonDialogAttributes::test_trial_colors_defined PASSED [ 34%]
-tests/test_hypothesis.py::TestBodyModelProperties::test_body_model_valid_inputs PASSED [ 35%]
-tests/test_hypothesis.py::TestBodyModelProperties::test_body_model_rejects_nonpositive_mass PASSED [ 35%]
-tests/test_hypothesis.py::TestBodyModelProperties::test_segment_multipliers_preserve_proportionality PASSED [ 35%]
-tests/test_hypothesis.py::TestHillTorqueModelProperties::test_available_torque_nonnegative PASSED [ 36%]
-tests/test_hypothesis.py::TestHillTorqueModelProperties::test_peak_torque_at_optimal_angle PASSED [ 36%]
-tests/test_hypothesis.py::TestClampJointAnglesProperties::test_clamped_angles_within_limits PASSED [ 37%]
-tests/test_hypothesis.py::TestInverseDynamicsProperties::test_static_torques_finite PASSED [ 37%]
-tests/test_hypothesis.py::TestInverseDynamicsProperties::test_mass_matrix_positive_definite PASSED [ 37%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_clamp_within_limits_unchanged PASSED [ 38%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_clamp_exceeding_upper PASSED [ 38%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_clamp_exceeding_lower PASSED [ 39%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_clamp_returns_copy PASSED [ 39%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_clamp_wrong_length_raises PASSED [ 39%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_within_limits_true PASSED [ 40%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_within_limits_false PASSED [ 40%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_within_limits_at_boundary PASSED [ 41%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_clamp_handles_nan_gracefully PASSED [ 41%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_clamp_handles_inf_gracefully PASSED [ 41%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_custom_limits PASSED [ 42%]
-tests/test_joint_limits.py::TestJointAngleLimits::test_bench_press_limits PASSED [ 42%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_peak_at_optimal_angle PASSED [ 43%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_max_at_zero_velocity PASSED [ 43%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_concentric_decreases_with_speed PASSED [ 43%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_eccentric_above_isometric PASSED [ 44%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_available_torque_always_nonneg PASSED [ 44%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_tau_max_zero_raises PASSED [ 45%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_angle_width_zero_raises PASSED [ 45%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_batch_angle_factor PASSED [ 45%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_batch_velocity_factor PASSED [ 46%]
-tests/test_joint_limits.py::TestHillTorqueModel::test_eccentric_capped PASSED [ 46%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_default_construction PASSED [ 47%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_set_max_torque PASSED [ 47%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_set_invalid_joint_raises PASSED [ 47%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_set_negative_torque_raises PASSED [ 48%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_available_torques_shape PASSED [ 48%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_available_torques_batch_shape PASSED [ 49%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_utilization_shape PASSED [ 49%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_utilization_zero_torque PASSED [ 49%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_find_sticking_point PASSED [ 50%]
-tests/test_joint_limits.py::TestJointTorqueSet::test_bench_press_torque_set PASSED [ 50%]
-tests/test_joint_limits.py::TestBenchPressConfig::test_config_shapes PASSED [ 50%]
-tests/test_joint_limits.py::TestBenchPressConfig::test_start_is_extended PASSED [ 51%]
-tests/test_joint_limits.py::TestBenchPressConfig::test_end_is_extended PASSED [ 51%]
-tests/test_joint_limits.py::TestBenchPressConfig::test_bounds_respect_joint_limits PASSED [ 52%]
-tests/test_joint_limits.py::TestBenchPressConfig::test_dynamics_produces_torques PASSED [ 52%]
-tests/test_joint_limits.py::TestBenchPressConfig::test_mass_matrix_positive_definite PASSED [ 52%]
-tests/test_joint_limits.py::TestBenchPressConfig::test_forward_kinematics PASSED [ 53%]
-tests/test_joint_limits.py::TestMaxLoad::test_max_load_returns_tuple PASSED [ 53%]
-tests/test_joint_limits.py::TestMaxLoad::test_max_load_increases_with_stronger_joints PASSED [ 54%]
-tests/test_joint_limits.py::TestMaxLoad::test_sticking_point_identified PASSED [ 54%]
-tests/test_joint_limits.py::TestMaxLoad::test_invalid_range_raises PASSED [ 54%]
-tests/test_joint_limits.py::TestMaxLoad::test_negative_range_raises PASSED [ 55%]
-tests/test_math3d.py::TestRotations::test_rotation_x_identity PASSED     [ 55%]
-tests/test_math3d.py::TestRotations::test_rotation_y_90 PASSED           [ 56%]
-tests/test_math3d.py::TestRotations::test_rotation_composition PASSED    [ 56%]
-tests/test_math3d.py::TestRotations::test_rotation_inverse PASSED        [ 56%]
-tests/test_math3d.py::TestTransforms::test_transform_translation PASSED  [ 57%]
-tests/test_math3d.py::TestTransforms::test_transform_rotation_and_translation PASSED [ 57%]
-tests/test_math3d.py::TestMeshes::test_cylinder_mesh_shape PASSED        [ 58%]
-tests/test_math3d.py::TestMeshes::test_ellipsoid_mesh_shape PASSED       [ 58%]
-tests/test_math3d.py::TestMeshes::test_sphere_mesh PASSED                [ 58%]
-tests/test_models.py::TestBodyModel::test_default_construction PASSED    [ 59%]
-tests/test_models.py::TestBodyModel::test_custom_multipliers PASSED      [ 59%]
-tests/test_models.py::TestBodyModel::test_negative_mass_raises PASSED    [ 60%]
-tests/test_models.py::TestBodyModel::test_zero_height_raises PASSED      [ 60%]
-tests/test_models.py::TestBodyModel::test_multiplier_out_of_range_raises PASSED [ 60%]
-tests/test_models.py::TestBodyModel::test_mass_fractions_sum PASSED      [ 61%]
-tests/test_models.py::TestBodyModel::test_base_of_support PASSED         [ 61%]
-tests/test_models.py::TestBodyModel::test_inner_bos_bounds PASSED        [ 62%]
-tests/test_models.py::TestBodyModel::test_inner_bos_is_60_percent PASSED [ 62%]
-tests/test_models.py::TestBodyModel::test_inner_center_between_bounds PASSED [ 62%]
-tests/test_models.py::TestDynamics::test_mass_matrix_symmetric PASSED    [ 63%]
-tests/test_models.py::TestDynamics::test_mass_matrix_positive_definite PASSED [ 63%]
-tests/test_models.py::TestDynamics::test_inverse_dynamics_standing PASSED [ 64%]
-tests/test_models.py::TestDynamics::test_inverse_dynamics_shape PASSED   [ 64%]
-tests/test_models.py::TestDynamics::test_n_dof PASSED                    [ 64%]
-tests/test_models.py::TestDynamics::test_backend_name PASSED             [ 65%]
-tests/test_models.py::TestDynamics::test_negative_load_raises PASSED     [ 65%]
-tests/test_models.py::TestDynamics::test_precomputed_coefficients PASSED [ 66%]
-tests/test_models.py::TestKinematics::test_standing_shoulder_height PASSED [ 66%]
-tests/test_models.py::TestKinematics::test_ankle_at_origin PASSED        [ 66%]
-tests/test_models.py::TestKinematics::test_joint_positions_connected PASSED [ 67%]
-tests/test_models.py::TestBarAndCOM::test_squat_bar_at_shoulder PASSED   [ 67%]
-tests/test_models.py::TestBarAndCOM::test_deadlift_bar_below_shoulder PASSED [ 67%]
-tests/test_models.py::TestBarAndCOM::test_deadlift_start_bar_near_ground PASSED [ 68%]
-tests/test_models.py::TestBarAndCOM::test_com_between_heel_and_toe PASSED [ 68%]
-tests/test_models.py::TestBarAndCOM::test_com_positive_height PASSED     [ 69%]
-tests/test_models.py::TestBatchMethods::test_batch_torques_match_loop PASSED [ 69%]
-tests/test_models.py::TestBatchMethods::test_batch_com_x_matches_loop PASSED [ 69%]
-tests/test_models.py::TestExerciseConfigs::test_squat_config_shapes PASSED [ 70%]
-tests/test_models.py::TestExerciseConfigs::test_full_squat_has_via PASSED [ 70%]
-tests/test_models.py::TestExerciseConfigs::test_deadlift_config_shapes PASSED [ 71%]
-tests/test_models.py::TestExerciseConfigs::test_squat_endpoints_com_in_inner_bos PASSED [ 71%]
-tests/test_models.py::TestExerciseConfigs::test_full_squat_via_com_in_inner_bos PASSED [ 71%]
-tests/test_models.py::TestExerciseConfigs::test_deadlift_endpoints_com_in_inner_bos PASSED [ 72%]
-tests/test_models.py::TestLegAbductionCorrection::test_zero_abduction_unchanged PASSED [ 72%]
-tests/test_models.py::TestLegAbductionCorrection::test_30deg_reduces_effective_length PASSED [ 73%]
-tests/test_models.py::TestLegAbductionCorrection::test_torso_unaffected PASSED [ 73%]
-tests/test_models.py::TestLegAbductionCorrection::test_standing_height_decreases PASSED [ 73%]
-tests/test_models.py::TestLegAbductionCorrection::test_com_y_decreases PASSED [ 74%]
-tests/test_neck.py::TestNeckRendering::test_neck_length_in_constants PASSED [ 74%]
-tests/test_neck.py::TestNeckRendering::test_neck_max_angle PASSED        [ 75%]
-tests/test_neck.py::TestNeckRendering::test_neck_length_frac_matches_constants PASSED [ 75%]
-tests/test_persistence.py::TestSaveSolution::test_round_trip_preserves_all_fields PASSED [ 75%]
-tests/test_persistence.py::TestSaveSolution::test_round_trip_preserves_arrays PASSED [ 76%]
-tests/test_persistence.py::TestSaveSolution::test_load_missing_file_raises PASSED [ 76%]
-tests/test_persistence.py::TestSaveSolution::test_load_corrupt_file_raises PASSED [ 77%]
-tests/test_persistence.py::TestAppState::test_round_trip_state PASSED    [ 77%]
-tests/test_persistence.py::TestAppState::test_load_missing_state_returns_none PASSED [ 77%]
-tests/test_persistence.py::TestAppState::test_load_corrupt_state_returns_none PASSED [ 78%]
-tests/test_rendering3d.py::TestRenderer3D::test_construction PASSED      [ 78%]
-tests/test_rendering3d.py::TestRenderer3D::test_draw_segment_no_crash PASSED [ 79%]
-tests/test_rendering3d.py::TestRenderer3D::test_draw_joint_no_crash PASSED [ 79%]
-tests/test_rendering3d.py::TestRenderer3D::test_draw_ground_plane_no_crash PASSED [ 79%]
-tests/test_rendering3d.py::TestRenderer3D::test_draw_barbell_no_crash PASSED [ 80%]
-tests/test_spine_loads.py::TestStandingCompression::test_standing_compression_equals_gravity PASSED [ 80%]
-tests/test_spine_loads.py::TestStandingCompression::test_standing_compression_no_bar PASSED [ 81%]
-tests/test_spine_loads.py::TestStandingShear::test_standing_shear_near_zero PASSED [ 81%]
-tests/test_spine_loads.py::TestForwardLean::test_shear_increases_with_lean PASSED [ 81%]
-tests/test_spine_loads.py::TestForwardLean::test_shear_proportional_to_sin PASSED [ 82%]
-tests/test_spine_loads.py::TestForwardLean::test_compression_decreases_with_lean PASSED [ 82%]
-tests/test_spine_loads.py::TestForwardLean::test_compression_cos_component PASSED [ 83%]
-tests/test_spine_loads.py::TestBatchSpineLoads::test_batch_compression_shape PASSED [ 83%]
-tests/test_spine_loads.py::TestBatchSpineLoads::test_batch_shear_shape PASSED [ 83%]
-tests/test_spine_loads.py::TestBatchSpineLoads::test_batch_matches_loop PASSED [ 84%]
-tests/test_spine_loads.py::TestDeadliftExerciseType::test_deadlift_standing_compression PASSED [ 84%]
-tests/test_spine_loads.py::TestNIOSHConstant::test_niosh_limit_value PASSED [ 84%]
-tests/test_trajectory.py::TestConstruction::test_too_few_waypoints_raises PASSED [ 85%]
-tests/test_trajectory.py::TestConstruction::test_bad_bounds_shape_raises PASSED [ 85%]
-tests/test_trajectory.py::TestConstruction::test_inner_bos_stored PASSED [ 86%]
-tests/test_trajectory.py::TestSplines::test_spline_endpoints PASSED      [ 86%]
-tests/test_trajectory.py::TestSplines::test_clamped_boundary_velocities PASSED [ 86%]
-tests/test_trajectory.py::TestSplines::test_via_point_trajectory PASSED  [ 87%]
-tests/test_trajectory.py::TestCostTerms::test_torque_cost_positive PASSED [ 87%]
-tests/test_trajectory.py::TestCostTerms::test_jerk_cost_positive PASSED  [ 88%]
-tests/test_trajectory.py::TestCostTerms::test_torque_rate_cost_positive PASSED [ 88%]
-tests/test_trajectory.py::TestCostTerms::test_endpoint_damping_zero_at_rest PASSED [ 88%]
-tests/test_trajectory.py::TestCostTerms::test_balance_cost_inside_is_centering_only PASSED [ 89%]
-tests/test_trajectory.py::TestCostTerms::test_balance_cost_outside_is_very_high PASSED [ 89%]
-tests/test_trajectory.py::TestCostTerms::test_total_cost_is_sum PASSED   [ 90%]
-tests/test_trajectory.py::TestOptimization::test_optimize_returns_result PASSED [ 90%]
-tests/test_trajectory.py::TestOptimization::test_result_shapes PASSED    [ 90%]
-tests/test_trajectory.py::TestOptimization::test_cost_decreases PASSED   [ 91%]
-tests/test_trajectory.py::TestOptimization::test_horizontal_range_positive PASSED [ 91%]
-tests/test_trajectory.py::TestOptimization::test_full_squat_reaches_depth PASSED [ 92%]
-tests/test_trajectory.py::TestOptimization::test_optimization_succeeds PASSED [ 92%]
-tests/test_trajectory.py::TestOptimization::test_com_stays_in_inner_bos PASSED [ 92%]
-tests/test_trajectory.py::TestMultiStart::test_perturbed_guess_seed_0_is_baseline PASSED [ 93%]
-tests/test_trajectory.py::TestMultiStart::test_perturbed_guess_different_seeds_differ PASSED [ 93%]
-tests/test_trajectory.py::TestMultiStart::test_perturbed_guess_within_bounds PASSED [ 94%]
-tests/test_trajectory.py::TestMultiStart::test_parallel_multistart_runs PASSED [ 94%]
-tests/test_trajectory.py::TestCancellation::test_cancel_returns_inf PASSED [ 94%]
-tests/test_trajectory.py::TestCancellation::test_cancel_during_optimize PASSED [ 95%]
-tests/test_trajectory.py::TestCancellation::test_cancel_event_default PASSED [ 95%]
-tests/test_trajectory.py::TestProgressReporting::test_progress_callback_receives_report PASSED [ 96%]
-tests/test_trajectory.py::TestProgressReporting::test_stall_detection_flat_cost PASSED [ 96%]
-tests/test_trajectory.py::TestProgressReporting::test_stall_detection_improving PASSED [ 96%]
-tests/test_trajectory.py::TestSolutionCache::test_cache_miss_returns_none PASSED [ 97%]
-tests/test_trajectory.py::TestSolutionCache::test_cache_hit_returns_result PASSED [ 97%]
-tests/test_trajectory.py::TestSolutionCache::test_cache_clear PASSED     [ 98%]
-tests/test_trajectory.py::TestBarKneeClearance::test_clearance_active_for_deadlift PASSED [ 98%]
-tests/test_trajectory.py::TestBarKneeClearance::test_clearance_active_for_clean PASSED [ 98%]
-tests/test_trajectory.py::TestBarKneeClearance::test_clearance_active_for_snatch PASSED [ 99%]
-tests/test_trajectory.py::TestBarKneeClearance::test_clearance_not_active_for_squat PASSED [ 99%]
-tests/test_trajectory.py::TestBarKneeClearance::test_clearance_not_active_for_bench PASSED [100%]
-
-================================== FAILURES ===================================
-_______ TestInverseDynamicsBenchmark.test_batch_inverse_dynamics_speed ________
-tests\test_benchmarks.py:60: in test_batch_inverse_dynamics_speed
-    assert per_call_ms < 10.0, f"Batch ID (N=100) took {per_call_ms:.3f}ms (limit: 10ms)"
-E   AssertionError: Batch ID (N=100) took 16.642ms (limit: 10ms)
-E   assert 16.64150000000518 < 10.0
-___________________ TestComparisonMetrics.test_metrics_keys ___________________
-tests\test_comparison.py:44: in test_metrics_keys
-    metrics = comparison_metrics(trials)
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^
-src\movement_optimizer\comparison.py:89: in comparison_metrics
-    total_work = float(trapezoid(np.abs(r.power), dx=dt))
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: only 0-dimensional arrays can be converted to Python scalars
-__________ TestComparisonMetrics.test_metrics_values_are_reasonable ___________
-tests\test_comparison.py:55: in test_metrics_values_are_reasonable
-    metrics = comparison_metrics(trials)
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^
-src\movement_optimizer\comparison.py:89: in comparison_metrics
-    total_work = float(trapezoid(np.abs(r.power), dx=dt))
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TypeError: only 0-dimensional arrays can be converted to Python scalars
-============================== warnings summary ===============================
-tests/test_trajectory.py::TestCancellation::test_cancel_during_optimize
-  C:\Users\diete\AppData\Roaming\Python\Python314\site-packages\scipy\optimize\_numdiff.py:686: RuntimeWarning: invalid value encountered in subtract
-    df = [f_eval - f0 for f_eval in f_evals]
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================================== ERRORS ====================================
+____________________ ERROR collecting tests/test_body3d.py ____________________
+ImportError while importing test module 'C:\Users\diete\Repositories\Movement-Optimizer\tests\test_body3d.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_body3d.py:9: in <module>
+    from movement_optimizer.three_d.body3d import BodyModel3D
+E   ModuleNotFoundError: No module named 'movement_optimizer.three_d.body3d'
+____________________ ERROR collecting tests/test_bos3d.py _____________________
+ImportError while importing test module 'C:\Users\diete\Repositories\Movement-Optimizer\tests\test_bos3d.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_bos3d.py:7: in <module>
+    from movement_optimizer.three_d.bos3d import BaseOfSupport3D
+E   ModuleNotFoundError: No module named 'movement_optimizer.three_d.bos3d'
+__________________ ERROR collecting tests/test_dynamics3d.py __________________
+ImportError while importing test module 'C:\Users\diete\Repositories\Movement-Optimizer\tests\test_dynamics3d.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_dynamics3d.py:9: in <module>
+    from movement_optimizer.three_d.body3d import BodyModel3D
+E   ModuleNotFoundError: No module named 'movement_optimizer.three_d.body3d'
+____________________ ERROR collecting tests/test_math3d.py ____________________
+ImportError while importing test module 'C:\Users\diete\Repositories\Movement-Optimizer\tests\test_math3d.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_math3d.py:10: in <module>
+    from movement_optimizer.three_d.math3d import (
+E   ModuleNotFoundError: No module named 'movement_optimizer.three_d.math3d'
+_________________ ERROR collecting tests/test_rendering3d.py __________________
+ImportError while importing test module 'C:\Users\diete\Repositories\Movement-Optimizer\tests\test_rendering3d.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_rendering3d.py:7: in <module>
+    from movement_optimizer.three_d.rendering3d import Renderer3D
+E   ModuleNotFoundError: No module named 'movement_optimizer.three_d.rendering3d'
 =========================== short test summary info ===========================
-FAILED tests/test_benchmarks.py::TestInverseDynamicsBenchmark::test_batch_inverse_dynamics_speed
-FAILED tests/test_comparison.py::TestComparisonMetrics::test_metrics_keys - T...
-FAILED tests/test_comparison.py::TestComparisonMetrics::test_metrics_values_are_reasonable
-================== 3 failed, 250 passed, 1 warning in 50.18s ==================
+ERROR tests/test_body3d.py
+ERROR tests/test_bos3d.py
+ERROR tests/test_dynamics3d.py
+ERROR tests/test_math3d.py
+ERROR tests/test_rendering3d.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 5 errors during collection !!!!!!!!!!!!!!!!!!!
+============================== 5 errors in 3.12s ==============================
