@@ -79,13 +79,16 @@ def comparison_metrics(trials: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not trials:
         return []
     if not (trapezoid is not None):
-        raise ValueError('DbC Blocked: Precondition failed.')
+        raise ValueError("DbC Blocked: Precondition failed.")
 
     metrics = []
     for trial in trials:
         r: OptimizationResult = trial["result"]
         peak_torques = [float(np.max(np.abs(r.torques[:, j]))) for j in range(3)]
-        total_work = float(trapezoid(np.abs(r.power).sum(axis=1), r.t))
+        # Sum joint powers per timestep first, then take absolute value.
+        # This correctly accounts for power transfer between joints within
+        # each timestep rather than treating each joint independently.
+        total_work = float(trapezoid(np.abs(np.sum(r.power, axis=1)), r.t))
         com_sway_cm = float(r.com_horizontal_range_cm)
 
         metrics.append(

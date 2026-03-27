@@ -52,7 +52,7 @@ NECK_MAX_ANGLE_DEG: float = 45.0
 COM_FRAC: dict[str, float] = {
     "lower_leg": 0.433,
     "upper_leg": 0.433,
-    "torso": 0.500,
+    "torso": 0.600,  # combined trunk+head per Winter (2009)
     "arm": 0.530,
     "foot": 0.500,
 }
@@ -150,7 +150,7 @@ HILL_MAX_ECCENTRIC_RATIO: float = 1.4
 # Segment fractions for the arm chain (fraction of arm length):
 # ------------------------------------------------------------------
 BENCH_UPPER_ARM_FRAC: float = 0.56  # shoulder to elbow (anatomical ~48% + shoulder width)
-BENCH_FOREARM_FRAC: float = 0.38  # elbow to wrist (anatomical ~38%)
+BENCH_FOREARM_FRAC: float = 0.44  # elbow to wrist (Winter 2009: ~44% of arm length)
 
 BENCH_PRESS_JOINT_LIMITS: dict[str, tuple[float, float]] = {
     "shoulder": (np.radians(-5), np.radians(95)),  # main driver of the press
@@ -163,7 +163,7 @@ BENCH_PRESS_JOINT_NAMES: tuple[str, ...] = ("shoulder", "elbow", "wrist")
 BENCH_PRESS_MAX_JOINT_TORQUES: dict[str, float] = {
     "shoulder": 120.0,
     "elbow": 80.0,
-    "wrist": 30.0,
+    "wrist": 15.0,
 }
 
 BENCH_PRESS_HILL_OPTIMAL_ANGLES: dict[str, float] = {
@@ -194,6 +194,20 @@ TV_RATE_WEIGHT_RATIO: float = 0.1
 # snatch).  The bar must stay at least this many metres in front of the
 # knees throughout the lift.
 BAR_KNEE_CLEARANCE_M: float = 0.05
+
+# ------------------------------------------------------------------
+# Radius of gyration as fraction of segment length (about COM)
+#
+# Used with parallel axis theorem: I_prox = I_com + m * d_com^2
+# where I_com = m * (rho * L)^2.
+#
+# Source: Winter, D.A. (2009). Table 3.1.
+# ------------------------------------------------------------------
+RADIUS_OF_GYRATION_FRAC: dict[str, float] = {
+    "lower_leg": 0.302,
+    "upper_leg": 0.323,
+    "trunk": 0.496,
+}
 
 # numpy compat shim (trapz renamed to trapezoid in numpy 2.0)
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))

@@ -62,6 +62,12 @@ def make_snatch_config(
     reach the bar), while the end uses squat-style (bar overhead on
     shoulders).  We use the deadlift model for the pull phase dynamics.
 
+    Simplification: the same deadlift-style dynamics object is used for
+    the entire movement, including the overhead catch phase.  Ideally the
+    catch phase (bar overhead, deep squat) should transition to squat-style
+    dynamics where arm mass is lumped into the torso segment.  This would
+    require a dynamics-switching mechanism that is not yet implemented.
+
     Returns:
         (dynamics, q_start, q_end, q_bounds, q_via)
     """

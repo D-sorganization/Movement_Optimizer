@@ -226,8 +226,12 @@ class TrajectoryOptimizer:
         knee_x = L[0] * np.sin(q[:, 0])
         hip_x = knee_x + L[1] * np.sin(q[:, 1])
         shoulder_x = hip_x + L[2] * np.sin(q[:, 2])
-        # For pulling exercises, bar hangs from shoulders (at arm length below)
-        # Bar x == shoulder x in sagittal plane
+        # Approximation: bar_x = shoulder_x assumes the bar hangs directly
+        # below the shoulder in the sagittal plane.  In reality the arms
+        # swing slightly forward, so the true bar x-position is offset by
+        # a small amount that depends on arm angle.  This simplification
+        # is acceptable because the offset is small relative to knee-bar
+        # clearance and does not materially affect the constraint.
         bar_x = shoulder_x
         return bar_x - knee_x + BAR_KNEE_CLEARANCE_M
 
