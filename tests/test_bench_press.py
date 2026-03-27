@@ -7,6 +7,7 @@ import numpy as np
 from movement_optimizer.models import (
     BenchPressModel,
     BodyModel,
+    LagrangianDynamics,
     make_bench_press_config,
 )
 
@@ -92,3 +93,50 @@ class TestBenchPressConfig:
         """q_start should equal q_end (full rep returns to lockout)."""
         _dyn, qs, qe, _qb, _q_via = make_bench_press_config(default_body, 60.0)
         np.testing.assert_allclose(qs, qe, atol=1e-12)
+
+    def test_bench_supine_gravity(self, default_body: BodyModel) -> None:
+        """Bench press dynamics should use supine gravity (cos instead of sin).
+
+        At q=0 (lockout, arms straight up), gravity torque should be
+        maximal in supine (cos(0)=1) but zero in standing (sin(0)=0).
+        """
+        dyn, _qs, _qe, _qb, _q_via = make_bench_press_config(default_body, 60.0)
+        assert dyn.supine is True
+
+        q_lockout = np.zeros(3)
+        grav = dyn._gravity_vector(q_lockout)
+        # Supine: cos(0) = 1, so gravity torque is maximal at lockout
+        assert np.all(np.abs(grav) > 0), "Supine gravity should be nonzero at q=0"
+
+    def test_standing_vs_supine_gravity(self, default_body: BodyModel) -> None:
+        """Standing gravity uses sin(q), supine uses cos(q).
+
+        At q = pi/2, sin(pi/2) = 1, cos(pi/2) = 0, so the two should
+        give opposite extremes.
+        """
+        bp = BenchPressModel(default_body)
+        # Standing chain (supine=False)
+        dyn_standing = LagrangianDynamics(
+            default_body,
+            bp.m.copy(),
+            bp.I.copy(),
+            60.0,
+            body_override={"L": bp.L, "d": bp.d},
+            supine=False,
+        )
+        # Supine chain
+        dyn_supine = LagrangianDynamics(
+            default_body,
+            bp.m.copy(),
+            bp.I.copy(),
+            60.0,
+            body_override={"L": bp.L, "d": bp.d},
+            supine=True,
+        )
+
+        q_zero = np.zeros(3)
+        grav_standing = dyn_standing._gravity_vector(q_zero)
+        grav_supine = dyn_supine._gravity_vector(q_zero)
+        # At q=0: sin(0)=0, cos(0)=1
+        np.testing.assert_allclose(grav_standing, 0.0, atol=1e-12)
+        assert np.all(np.abs(grav_supine) > 0)
