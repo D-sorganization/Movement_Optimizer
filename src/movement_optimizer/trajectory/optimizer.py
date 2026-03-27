@@ -2,25 +2,29 @@ from numba import jit
 
 """Parallel multi-start trajectory optimiser engine."""
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: E402, F404
 
-import logging
-import os
-import threading
-import time
-from collections.abc import Callable
-from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+import logging  # noqa: E402
+import os  # noqa: E402
+import threading  # noqa: E402
+import time  # noqa: E402
+from collections.abc import Callable  # noqa: E402
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait  # noqa: E402
 
-import numpy as np
-from numpy.typing import NDArray
-from scipy.interpolate import CubicSpline
-from scipy.optimize import minimize
+import numpy as np  # noqa: E402
+from numpy.typing import NDArray  # noqa: E402
+from scipy.interpolate import CubicSpline  # noqa: E402
+from scipy.optimize import minimize  # noqa: E402
 
-from ..backend import PhysicsBackend
-from ..constants import BAR_KNEE_CLEARANCE_M, BENCH_BAR_PATH_WEIGHT, TV_RATE_WEIGHT_RATIO
-from ..models import BodyModel
-from .result import CancelledError, OptimizationResult, ProgressReport
-from .tuning import (
+from ..backend import PhysicsBackend  # noqa: E402
+from ..constants import (
+    BAR_KNEE_CLEARANCE_M,
+    BENCH_BAR_PATH_WEIGHT,
+    TV_RATE_WEIGHT_RATIO,
+)  # noqa: E402
+from ..models import BodyModel  # noqa: E402
+from .result import CancelledError, OptimizationResult, ProgressReport  # noqa: E402
+from .tuning import (  # noqa: E402
     BALANCE_BARRIER_WEIGHT,
     BALANCE_CENTER_WEIGHT,
     DEFAULT_ENDPOINT_WEIGHT,

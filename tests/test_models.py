@@ -219,12 +219,12 @@ class TestExerciseConfigs:
         com_start = dyn.com_position(qs, "squat", 60.0)[0]
         com_end = dyn.com_position(qe, "squat", 60.0)[0]
         b = default_body
-        assert b.inner_heel <= com_start <= b.inner_toe, (
-            f"Start COM {com_start:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
-        )
-        assert b.inner_heel <= com_end <= b.inner_toe, (
-            f"End COM {com_end:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
-        )
+        assert (
+            b.inner_heel <= com_start <= b.inner_toe
+        ), f"Start COM {com_start:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
+        assert (
+            b.inner_heel <= com_end <= b.inner_toe
+        ), f"End COM {com_end:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
 
     def test_full_squat_via_com_in_inner_bos(self, default_body) -> None:
         """Via-point should have COM in the inner 60% zone."""
@@ -233,9 +233,9 @@ class TestExerciseConfigs:
         dyn, _, _, _, q_via = make_full_squat_config(default_body, 60.0)
         com_via = dyn.com_position(q_via, "full_squat", 60.0)[0]
         b = default_body
-        assert b.inner_heel <= com_via <= b.inner_toe, (
-            f"Via COM {com_via:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
-        )
+        assert (
+            b.inner_heel <= com_via <= b.inner_toe
+        ), f"Via COM {com_via:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
 
     def test_deadlift_endpoints_com_in_inner_bos(self, default_body) -> None:
         """Deadlift start and end should have COM in the inner 60% zone."""
@@ -245,12 +245,12 @@ class TestExerciseConfigs:
         com_start = dyn.com_position(qs, "deadlift", 60.0)[0]
         com_end = dyn.com_position(qe, "deadlift", 60.0)[0]
         b = default_body
-        assert b.inner_heel <= com_start <= b.inner_toe, (
-            f"Start COM {com_start:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
-        )
-        assert b.inner_heel <= com_end <= b.inner_toe, (
-            f"End COM {com_end:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
-        )
+        assert (
+            b.inner_heel <= com_start <= b.inner_toe
+        ), f"Start COM {com_start:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
+        assert (
+            b.inner_heel <= com_end <= b.inner_toe
+        ), f"End COM {com_end:.4f} outside inner BOS [{b.inner_heel:.4f}, {b.inner_toe:.4f}]"
 
 
 class TestLegAbductionCorrection:
