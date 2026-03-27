@@ -78,12 +78,6 @@ def comparison_metrics(trials: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     if not trials:
         return []
-    if not (trapezoid is not None):
-<<<<<<< HEAD
-        raise ValueError('DbC Blocked: Precondition failed.')
-=======
-        raise ValueError("DbC Blocked: Precondition failed.")
->>>>>>> 409202a5de60591e447e36bb04119a1d257fd53f
 
     metrics = []
     for trial in trials:

@@ -1,5 +1,3 @@
-from typing import Any
-
 """GUI package for the Movement Optimizer.
 
 The original monolithic ``gui.py`` has been split into a package with
@@ -15,9 +13,10 @@ All public names are re-exported here for backward compatibility so that
 ``from movement_optimizer.gui import MainWindow`` continues to work.
 """
 
-from __future__ import annotations  # noqa: E402, F404
+from __future__ import annotations
 
-from importlib import import_module  # noqa: E402
+from importlib import import_module
+from typing import Any
 
 __all__ = [
     "ComparisonDialog",

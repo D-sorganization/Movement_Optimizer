@@ -27,7 +27,6 @@ from .constants import (
     JOINT_NAMES,
     LENGTH_FRAC,
     MASS_FRAC,
-    PLATE_RADIUS_STD_M,
     RADIUS_OF_GYRATION_FRAC,
     WRIST_SEGMENT_LENGTH,
 )
@@ -55,6 +54,8 @@ __all__ = [
     "make_deadlift_config",
     "make_default_torque_set",
     "make_full_squat_config",
+    "make_gait_config",
+    "make_sit_to_stand_config",
     "make_squat_config",
 ]
 
@@ -679,7 +680,9 @@ def make_deadlift_config(
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
     load = body.m_arms + bar_mass
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
-    q_start_raw = _deadlift_start_angles(body)
+    from .exercises._common import pull_start_angles
+
+    q_start_raw = pull_start_angles(body, q2_deg=52)
     q_start = balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
     q_end = _standing_balanced(dyn, bar_mass, "deadlift")
     q_bounds = np.array(
@@ -690,16 +693,6 @@ def make_deadlift_config(
         ]
     )
     return dyn, q_start, q_end, q_bounds
-
-
-def _deadlift_start_angles(body: BodyModel) -> NDArray:
-    target_shoulder_h = PLATE_RADIUS_STD_M + body.L_arm
-    q0 = np.radians(15)
-    q2 = np.radians(52)
-    needed = target_shoulder_h - body.L[0] * np.cos(q0) - body.L[2] * np.cos(q2)
-    cos_q1 = np.clip(needed / body.L[1], -1, 1)
-    q1 = -np.arccos(cos_q1)
-    return np.array([q0, q1, q2])
 
 
 # ==============================================================
@@ -805,3 +798,10 @@ def make_bench_press_config(
     )
 
     return dyn, q_start, q_end, q_bounds, q_via
+
+
+# Re-export exercise factories added in the exercises subpackage
+from .exercises.gait import make_gait_config as make_gait_config  # noqa: E402
+from .exercises.sit_to_stand import (  # noqa: E402
+    make_sit_to_stand_config as make_sit_to_stand_config,
+)

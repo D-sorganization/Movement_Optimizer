@@ -69,9 +69,10 @@ trajectories that minimize torque while respecting balance constraints.
 |---|---|
 | `backend.py` | Abstract physics backend interface |
 | `models.py` | Anthropometric body model, 3-link planar dynamics |
-| `trajectory.py` | Multi-start parallel trajectory optimizer (L-BFGS-B) |
+| `trajectory/` | Multi-start parallel trajectory optimizer (SLSQP) |
+| `exercises/` | Exercise configuration factories (clean, snatch, jerk, gait, sit-to-stand) |
 | `constants.py` | Physical constants, segment fractions, BOS parameters |
-| `gui.py` | PyQt6 interactive GUI with real-time visualization |
+| `gui/` | PyQt6 interactive GUI package with real-time visualization |
 | `rendering.py` | Matplotlib-based figure rendering |
 | `rust_core/` | Optional Rust extension (PyO3/maturin) for hot-path acceleration |
 
@@ -80,7 +81,7 @@ trajectories that minimize torque while respecting balance constraints.
   (inner_heel to inner_toe). This is stricter than full base-of-support and produces
   realistic, stable movement patterns.
 - **Multi-start parallelism**: Multiple perturbed initial guesses run concurrently via
-  `ThreadPoolExecutor`. scipy's Fortran L-BFGS-B releases the GIL for true thread parallelism.
+  `ThreadPoolExecutor`. scipy's Fortran SLSQP releases the GIL for true thread parallelism.
 - **Torque smoothing**: Torque-rate weighting + total-variation regularization eliminates
   oscillatory torque profiles.
 

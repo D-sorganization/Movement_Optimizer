@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from movement_optimizer.constants import PLATE_RADIUS_STD_M
 from movement_optimizer.exercises import (
@@ -12,12 +11,6 @@ from movement_optimizer.exercises import (
     make_snatch_config,
 )
 from movement_optimizer.models import BodyModel, LagrangianDynamics, make_bench_press_config
-
-
-@pytest.fixture()
-def default_body() -> BodyModel:
-    return BodyModel(75.0, 1.75)
-
 
 # ------------------------------------------------------------------
 # Clean

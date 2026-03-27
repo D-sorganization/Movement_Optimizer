@@ -38,17 +38,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ..cli import EXERCISE_FACTORIES
 from ..comparison import ComparisonStore
 from ..constants import trapezoid
-from ..exercises import make_clean_config, make_jerk_config, make_snatch_config
 from ..export import export_animation_gif, export_plots_pdf, export_plots_png
-from ..models import (
-    BodyModel,
-    make_bench_press_config,
-    make_deadlift_config,
-    make_full_squat_config,
-    make_squat_config,
-)
+from ..models import BodyModel
 from ..persistence import load_app_state, load_solution, save_app_state, save_solution
 from ..rendering import (
     Palette,
@@ -414,27 +408,24 @@ class MainWindow(QMainWindow):
             smoothness = self.sidebar.smooth_slider.value()
             _, etype = self.EXERCISE_CONFIGS[idx]
 
-            q_via = None
-
-            if etype == "squat":
-                dyn, qs, qe, qb = make_squat_config(body, bar)
-            elif etype == "full_squat":
-                dyn, qs, qe, qb, q_via = make_full_squat_config(body, bar)
-                dur = max(dur, 3.0)
-            elif etype == "bench_press":
-                dyn, qs, qe, qb, q_via = make_bench_press_config(body, bar)
-                dur = max(dur, 3.0)
-            elif etype == "clean":
-                dyn, qs, qe, qb, q_via = make_clean_config(body, bar)
-                dur = max(dur, 2.5)
-            elif etype == "jerk":
-                dyn, qs, qe, qb, q_via = make_jerk_config(body, bar)
-                dur = max(dur, 2.0)
-            elif etype == "snatch":
-                dyn, qs, qe, qb, q_via = make_snatch_config(body, bar)
-                dur = max(dur, 3.0)
+            factory = EXERCISE_FACTORIES[etype]
+            config = factory(body, bar)
+            if len(config) == 5:
+                dyn, qs, qe, qb, q_via = config
             else:
-                dyn, qs, qe, qb = make_deadlift_config(body, bar)
+                dyn, qs, qe, qb = config
+                q_via = None
+
+            # Enforce minimum duration for multi-phase exercises
+            _min_durations = {
+                "full_squat": 3.0,
+                "bench_press": 3.0,
+                "clean": 2.5,
+                "jerk": 2.0,
+                "snatch": 3.0,
+            }
+            if etype in _min_durations:
+                dur = max(dur, _min_durations[etype])
 
             self.dynamics_list[idx] = dyn
             self.bodies_list[idx] = body
@@ -587,12 +578,8 @@ class MainWindow(QMainWindow):
         self, name: str, r: OptimizationResult, exercise_type: str = "squat"
     ) -> None:
         pk = np.max(np.abs(r.torques), axis=0)
-        if not (trapezoid is not None):
-<<<<<<< HEAD
-            raise ValueError('DbC Blocked: Precondition failed.')
-=======
+        if trapezoid is None:
             raise ValueError("DbC Blocked: Precondition failed.")
->>>>>>> 409202a5de60591e447e36bb04119a1d257fd53f
         work = trapezoid(np.sum(np.abs(r.power), axis=1), r.t)
 
         if exercise_type == "bench_press":
@@ -646,12 +633,8 @@ class MainWindow(QMainWindow):
         fi = self.anim_frames[idx]
         _, etype = self.EXERCISE_CONFIGS[idx]
         body = self.bodies_list[idx]
-        if not (body is not None):
-<<<<<<< HEAD
-            raise ValueError('DbC Blocked: Precondition failed.')
-=======
+        if body is None:
             raise ValueError("DbC Blocked: Precondition failed.")
->>>>>>> 409202a5de60591e447e36bb04119a1d257fd53f
         self.exercise_tabs[idx].draw_anim_frame(
             fi,
             r,
@@ -861,12 +844,8 @@ class MainWindow(QMainWindow):
             dyn = self.dynamics_list[idx]
             n_frames = len(r.t)
 
-            if not (body is not None):
-<<<<<<< HEAD
-                raise ValueError('DbC Blocked: Precondition failed.')
-=======
+            if body is None:
                 raise ValueError("DbC Blocked: Precondition failed.")
->>>>>>> 409202a5de60591e447e36bb04119a1d257fd53f
 
             def draw_frame(fi: int) -> None:
                 tab.draw_anim_frame(fi, r, dyn, body, etype)

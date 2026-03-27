@@ -36,21 +36,12 @@ def _ensure_2d(arr: NDArray) -> NDArray:
     """Ensure the array is 2-D (N, 3).  If 1-D, reshape to (1, 3)."""
     arr = np.asarray(arr, dtype=float)
     if arr.ndim == 1:
-<<<<<<< HEAD
-        if not (arr.shape == (3):
-            raise ValueError(), f"Expected shape (3,), got {arr.shape}")
-        return arr.reshape(1, 3)
-    if not (arr.ndim == 2):
-        raise ValueError(f"Expected 2D array, got {arr.ndim}D")
-    if not (arr.shape[1] == 3):
-=======
         if arr.shape != (3,):
             raise ValueError(f"Expected shape (3,), got {arr.shape}")
         return arr.reshape(1, 3)
     if arr.ndim != 2:
         raise ValueError(f"Expected 2D array, got {arr.ndim}D")
     if arr.shape[1] != 3:
->>>>>>> 409202a5de60591e447e36bb04119a1d257fd53f
         raise ValueError(f"Expected 3 columns (ank, kn, hip), got {arr.shape[1]}")
     return arr
 
