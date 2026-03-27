@@ -78,8 +78,6 @@ def comparison_metrics(trials: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     if not trials:
         return []
-    if trapezoid is None:
-        raise ValueError("DbC Blocked: Precondition failed.")
 
     metrics = []
     for trial in trials:
