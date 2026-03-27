@@ -263,6 +263,7 @@ class LagrangianDynamics(PhysicsBackend):
         I_segments: NDArray,
         load_mass: float,
         body_override: dict[str, NDArray] | None = None,
+        supine: bool = False,
     ) -> None:
         """Initialise Lagrangian dynamics for a 3-link planar chain.
 
@@ -276,6 +277,9 @@ class LagrangianDynamics(PhysicsBackend):
                 coupling-coefficient calculations.  Used by non-leg kinematic
                 chains (e.g. the arm chain for bench press) without resorting
                 to post-hoc attribute surgery.
+            supine: If True, gravity acts perpendicular to the chain axis
+                (the lifter is lying down).  Gravity torque uses cos(q)
+                instead of sin(q).  Used for bench press.
         """
         if len(m_segments) != 3:
             raise ValueError("need 3 segment masses")
@@ -286,6 +290,7 @@ class LagrangianDynamics(PhysicsBackend):
         self.I = I_segments
         self.m_load = load_mass
         self.g = body.g
+        self.supine = supine
 
         # Allow callers to supply alternative segment geometry (e.g. arm chain).
         if body_override is not None:
@@ -295,7 +300,9 @@ class LagrangianDynamics(PhysicsBackend):
             self.L_eff = L.copy()
             self.d = d
             self.d_eff = d.copy()
-            self.joint_names = body_override.get("joint_names", ["link0", "link1", "link2", "link3"])
+            self.joint_names = body_override.get(
+                "joint_names", ["link0", "link1", "link2", "link3"]
+            )
         else:
             self.L = body.L
             self.L_eff = body.L_eff
@@ -358,9 +365,10 @@ class LagrangianDynamics(PhysicsBackend):
 
     def _gravity_vector(self, q: NDArray) -> NDArray:
         G = np.zeros(3)
-        G[0] = self._g0 * np.sin(q[0])
-        G[1] = self._g1 * np.sin(q[1])
-        G[2] = self._g2 * np.sin(q[2])
+        trig = np.cos if self.supine else np.sin
+        G[0] = self._g0 * trig(q[0])
+        G[1] = self._g1 * trig(q[1])
+        G[2] = self._g2 * trig(q[2])
         return G
 
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
@@ -398,7 +406,8 @@ class LagrangianDynamics(PhysicsBackend):
             )
 
         n = q.shape[0]
-        sq = np.sin(q)
+        # Supine (bench press): gravity perpendicular to chain → cos(q)
+        sq = np.cos(q) if self.supine else np.sin(q)
         d01 = q[:, 0] - q[:, 1]
         d02 = q[:, 0] - q[:, 2]
         d12 = q[:, 1] - q[:, 2]
@@ -721,6 +730,7 @@ def make_bench_press_config(
         bp.I.copy(),
         bar_mass,
         body_override={"L": bp.L, "d": bp.d},
+        supine=True,
     )
 
     # Start: lockout (arms straight up, perpendicular to supine body)
