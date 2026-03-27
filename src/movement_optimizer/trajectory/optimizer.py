@@ -15,7 +15,11 @@ from scipy.interpolate import CubicSpline
 from scipy.optimize import minimize
 
 from ..backend import PhysicsBackend
-from ..constants import BAR_KNEE_CLEARANCE_M, BENCH_BAR_PATH_WEIGHT, TV_RATE_WEIGHT_RATIO
+from ..constants import (
+    BAR_KNEE_CLEARANCE_M,
+    BENCH_BAR_PATH_WEIGHT,
+    TV_RATE_WEIGHT_RATIO,
+)
 from ..models import BodyModel
 from .result import CancelledError, OptimizationResult, ProgressReport
 from .tuning import (
@@ -379,8 +383,7 @@ class TrajectoryOptimizer:
     def _build_bounds(self) -> list[tuple[float, float]]:
         bounds: list[tuple[float, float]] = []
         for _ in range(self.n_waypoints):
-            for j in range(self.n_dof):
-                bounds.append((self.q_bounds[j, 0], self.q_bounds[j, 1]))
+            bounds.extend([(self.q_bounds[j, 0], self.q_bounds[j, 1]) for j in range(self.n_dof)])
         return bounds
 
     # ==========================================================
