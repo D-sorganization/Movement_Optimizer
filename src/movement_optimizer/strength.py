@@ -52,13 +52,31 @@ class HillTorqueModel:
         """Gaussian torque-angle scaling factor in [0, 1]."""
         return np.exp(-(((np.asarray(q) - self.q_optimal) / self.angle_width) ** 2))
 
-    def torque_velocity_factor(self, qd: float | NDArray) -> NDArray:
-        """Hill-type force-velocity scaling factor."""
+    def torque_velocity_factor(self, qd: float | NDArray, torque_sign: float = -1.0) -> NDArray:
+        """Hill-type force-velocity scaling factor.
+
+        Branch selection is based on whether the muscle is shortening
+        (concentric) or lengthening (eccentric).  The muscle shortens when
+        the angular velocity ``qd`` has the same sign as ``torque_sign``
+        (the direction in which the joint's prime movers produce torque).
+
+        Parameters:
+            qd: Joint angular velocity (rad/s).  Scalar or array.
+            torque_sign: Sign convention for the joint's primary torque
+                direction.  Default is -1.0 (flexor-dominant, e.g. elbow
+                curl produces negative qd).  Use +1.0 for extensor-dominant
+                joints.  When ``qd * torque_sign > 0`` the muscle is
+                shortening (concentric); otherwise it is lengthening
+                (eccentric).
+        """
         qd = np.asarray(qd)
         speed = np.abs(qd)
         conc = (self.v_max - speed) / (self.v_max + speed / self.k_shape)
         ecc = (1.0 + self.ecc_factor * speed) / (1.0 + speed / self.k_shape)
-        factor = np.where(conc > 0, conc, ecc)
+        # Concentric when the muscle is shortening: qd and torque_sign
+        # have the same sign.  Eccentric when lengthening (braking).
+        is_concentric = qd * torque_sign >= 0
+        factor = np.where(is_concentric, conc, ecc)
         return np.clip(factor, 0.0, self.max_ecc_ratio)
 
     def available_torque(self, q: float | NDArray, qd: float | NDArray) -> NDArray:

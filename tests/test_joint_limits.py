@@ -141,20 +141,27 @@ class TestHillTorqueModel:
         np.testing.assert_allclose(f_vel, 1.0, atol=0.01)
 
     def test_concentric_decreases_with_speed(self) -> None:
-        """Faster concentric contraction should reduce available torque."""
+        """Faster concentric contraction should reduce available torque.
+
+        With default torque_sign=-1, negative qd = concentric (shortening).
+        """
         model = HillTorqueModel(tau_max=200.0, q_optimal=0.0)
-        t_slow = model.available_torque(0.0, 1.0)
-        t_fast = model.available_torque(0.0, 5.0)
+        # Negative qd → concentric; larger magnitude → less force
+        t_slow = model.available_torque(0.0, -1.0)
+        t_fast = model.available_torque(0.0, -5.0)
         assert t_slow > t_fast
 
     def test_eccentric_above_isometric(self) -> None:
-        """Eccentric loading (past v_max) should exceed concentric near-zero."""
+        """Eccentric factor should exceed concentric near v_max.
+
+        With default torque_sign=-1, positive qd = eccentric (lengthening).
+        """
         model = HillTorqueModel(tau_max=200.0, q_optimal=0.0)
-        # At v_max, concentric → 0.  Just past v_max, eccentric activates.
-        f_at_vmax = model.torque_velocity_factor(model.v_max - 0.01)
-        f_past_vmax = model.torque_velocity_factor(model.v_max + 0.5)
-        # Eccentric branch should give more than the near-zero concentric
-        assert f_past_vmax > f_at_vmax
+        # Concentric at high speed (near v_max) → near zero
+        f_conc_fast = model.torque_velocity_factor(-(model.v_max - 0.01))
+        # Eccentric at moderate speed → above isometric
+        f_ecc = model.torque_velocity_factor(2.0)
+        assert f_ecc > f_conc_fast
 
     def test_available_torque_always_nonneg(self) -> None:
         """Available torque should never be negative."""
@@ -183,17 +190,24 @@ class TestHillTorqueModel:
         assert f[1] > f[2]
 
     def test_batch_velocity_factor(self) -> None:
-        """Velocity factor should vectorize correctly."""
+        """Velocity factor should vectorize correctly.
+
+        With default torque_sign=-1, negative qd = concentric.
+        """
         model = HillTorqueModel(tau_max=200.0, q_optimal=0.0)
-        qd = np.array([0.0, 2.0, 8.0])
+        # Negative qd → concentric; increasing magnitude → decreasing factor
+        qd = np.array([0.0, -2.0, -8.0])
         f = model.torque_velocity_factor(qd)
         assert f.shape == (3,)
-        # Should decrease with increasing speed (concentric)
         assert f[0] >= f[1] >= f[2]
 
     def test_eccentric_capped(self) -> None:
-        """Eccentric factor should not exceed max_ecc_ratio."""
+        """Eccentric factor should not exceed max_ecc_ratio.
+
+        With default torque_sign=-1, positive qd = eccentric.
+        """
         model = HillTorqueModel(tau_max=200.0, q_optimal=0.0, max_ecc_ratio=1.4)
+        # Positive qd → eccentric at very high speed
         f = model.torque_velocity_factor(np.radians(10000))
         assert f <= 1.4 + 1e-10
 
