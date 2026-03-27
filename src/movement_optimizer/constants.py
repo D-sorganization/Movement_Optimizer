@@ -66,12 +66,6 @@ PLATE_RADIUS_STD_M: float = 0.225
 BAR_RADIUS_M: float = 0.025
 
 # ------------------------------------------------------------------
-# Default exercise angles (radians)
-# ------------------------------------------------------------------
-SQUAT_BOTTOM = np.array([np.radians(20), np.radians(-90), np.radians(40)])
-STANDING = np.array([0.0, 0.0, 0.0])
-
-# ------------------------------------------------------------------
 # Anatomical joint angle limits (radians)
 #
 # These represent the physiological range of motion for each joint
@@ -119,6 +113,13 @@ DEFAULT_MAX_JOINT_TORQUES: dict[str, float] = {
 #   concentric (shortening):  f_vel = (v_max - |qd|) / (v_max + |qd| / k_shape)
 #   eccentric (lengthening):  f_vel = (1 + ecc_factor * |qd|) / (1 + |qd| / k_shape)
 #   clamped to [0, max_eccentric_ratio]
+#
+# References:
+#   Hill, A.V. (1938). The heat of shortening and the dynamic constants
+#       of muscle. Proc. R. Soc. Lond. B, 126(843), 136-195.
+#   Westing, S.H., Seger, J.Y., & Thorstensson, A. (1988). Effects of
+#       electrical stimulation on eccentric and concentric torque-velocity
+#       relationships during knee extension in man. Acta Physiol. Scand.
 # ------------------------------------------------------------------
 HILL_OPTIMAL_ANGLES: dict[str, float] = {
     "ankle": np.radians(15),
@@ -128,6 +129,16 @@ HILL_OPTIMAL_ANGLES: dict[str, float] = {
 
 HILL_ANGLE_WIDTH: float = np.radians(60)
 
+# Per-joint maximum angular velocities (deg/s), converted to rad/s.
+# Sources: Bobbert & van Ingen Schenau (1988), Westing et al. (1988).
+HILL_MAX_ANGULAR_VELOCITY_PER_JOINT: dict[str, float] = {
+    "ankle": np.radians(250),
+    "knee": np.radians(600),
+    "hip": np.radians(500),
+}
+
+# Scalar fallback for callers that expect a single value (uses the
+# fastest joint -- knee -- to avoid under-estimating capacity).
 HILL_MAX_ANGULAR_VELOCITY: float = np.radians(600)
 
 HILL_K_SHAPE: float = 0.25
@@ -149,6 +160,10 @@ HILL_MAX_ECCENTRIC_RATIO: float = 1.4
 #
 # Segment fractions for the arm chain (fraction of arm length):
 # ------------------------------------------------------------------
+# Wrist/hand segment length [m] — effectively a grip-only link with
+# negligible lever arm. Used in the bench press 3-link model.
+WRIST_SEGMENT_LENGTH: float = 0.01
+
 BENCH_UPPER_ARM_FRAC: float = 0.56  # shoulder to elbow (anatomical ~48% + shoulder width)
 BENCH_FOREARM_FRAC: float = 0.44  # elbow to wrist (Winter 2009: ~44% of arm length)
 

@@ -29,6 +29,7 @@ from .constants import (
     MASS_FRAC,
     PLATE_RADIUS_STD_M,
     RADIUS_OF_GYRATION_FRAC,
+    WRIST_SEGMENT_LENGTH,
 )
 from .strength import (
     HillTorqueModel,
@@ -722,7 +723,7 @@ class BenchPressModel:
             [
                 BENCH_UPPER_ARM_FRAC * arm_len,
                 BENCH_FOREARM_FRAC * arm_len,
-                0.01,  # wrist/hand (effectively zero — grip only)
+                WRIST_SEGMENT_LENGTH,  # wrist/hand (effectively zero — grip only)
             ]
         )
         self.body_mass = body.body_mass
