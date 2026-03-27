@@ -55,6 +55,8 @@ __all__ = [
     "make_deadlift_config",
     "make_default_torque_set",
     "make_full_squat_config",
+    "make_gait_config",
+    "make_sit_to_stand_config",
     "make_squat_config",
 ]
 
@@ -805,3 +807,10 @@ def make_bench_press_config(
     )
 
     return dyn, q_start, q_end, q_bounds, q_via
+
+
+# Re-export exercise factories added in the exercises subpackage
+from .exercises.gait import make_gait_config as make_gait_config  # noqa: E402
+from .exercises.sit_to_stand import (  # noqa: E402
+    make_sit_to_stand_config as make_sit_to_stand_config,
+)
