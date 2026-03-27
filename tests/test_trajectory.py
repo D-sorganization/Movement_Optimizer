@@ -333,12 +333,12 @@ class TestOptimization:
         )
         result = opt.optimize()
         com_x = result.com[:, 0]
-        assert np.all(
-            com_x >= body.inner_heel - 0.01
-        ), f"COM below inner_heel: min={com_x.min():.4f}, bound={body.inner_heel:.4f}"
-        assert np.all(
-            com_x <= body.inner_toe + 0.01
-        ), f"COM above inner_toe: max={com_x.max():.4f}, bound={body.inner_toe:.4f}"
+        assert np.all(com_x >= body.inner_heel - 0.01), (
+            f"COM below inner_heel: min={com_x.min():.4f}, bound={body.inner_heel:.4f}"
+        )
+        assert np.all(com_x <= body.inner_toe + 0.01), (
+            f"COM above inner_toe: max={com_x.max():.4f}, bound={body.inner_toe:.4f}"
+        )
         assert result.success, "Optimization should report success with COM in bounds"
 
 

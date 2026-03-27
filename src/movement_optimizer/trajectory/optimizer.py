@@ -17,11 +17,11 @@ from scipy.interpolate import CubicSpline  # noqa: E402
 from scipy.optimize import minimize  # noqa: E402
 
 from ..backend import PhysicsBackend  # noqa: E402
-from ..constants import (
+from ..constants import (  # noqa: E402
     BAR_KNEE_CLEARANCE_M,
     BENCH_BAR_PATH_WEIGHT,
     TV_RATE_WEIGHT_RATIO,
-)  # noqa: E402
+)
 from ..models import BodyModel  # noqa: E402
 from .result import CancelledError, OptimizationResult, ProgressReport  # noqa: E402
 from .tuning import (  # noqa: E402

@@ -10,9 +10,9 @@ from typing import Any  # noqa: E402
 import matplotlib.cm as cm  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas  # noqa: E402
-from matplotlib.backends.backend_qtagg import (
+from matplotlib.backends.backend_qtagg import (  # noqa: E402
     NavigationToolbar2QT as NavigationToolbar,
-)  # noqa: E402
+)
 from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.gridspec import GridSpec  # noqa: E402
 from PyQt6.QtWidgets import QVBoxLayout, QWidget  # noqa: E402

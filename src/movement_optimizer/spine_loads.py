@@ -36,12 +36,12 @@ def _ensure_2d(arr: NDArray) -> NDArray:
     """Ensure the array is 2-D (N, 3).  If 1-D, reshape to (1, 3)."""
     arr = np.asarray(arr, dtype=float)
     if arr.ndim == 1:
-        if not (arr.shape == (3):
-            raise ValueError(), f"Expected shape (3,), got {arr.shape}")
+        if arr.shape != (3,):
+            raise ValueError(f"Expected shape (3,), got {arr.shape}")
         return arr.reshape(1, 3)
-    if not (arr.ndim == 2):
+    if arr.ndim != 2:
         raise ValueError(f"Expected 2D array, got {arr.ndim}D")
-    if not (arr.shape[1] == 3):
+    if arr.shape[1] != 3:
         raise ValueError(f"Expected 3 columns (ank, kn, hip), got {arr.shape[1]}")
     return arr
 
@@ -108,9 +108,16 @@ def spinal_shear(
 ) -> NDArray:
     """Compute anterior-posterior shear force at L5/S1 (N).
 
-    The shear force perpendicular to the spine axis is:
+    The shear force perpendicular to the spine axis includes both
+    gravitational and inertial components:
 
         F_shear = (m_above + bar_mass) * g * sin(torso_angle)
+                  + m_torso * qdd_torso * d_com * cos(torso_angle)
+                  + m_torso * qd_torso^2 * d_com * sin(torso_angle)
+
+    The first term is the static gravitational shear.  The second is
+    the tangential (angular-acceleration) inertial shear, and the third
+    is the centripetal inertial shear.
 
     Parameters:
         q:  joint angles, shape (3,) or (N, 3)
@@ -126,11 +133,29 @@ def spinal_shear(
     """
     scalar_input = np.asarray(q).ndim == 1
     q2d = _ensure_2d(q)
+    qd2d = _ensure_2d(qd)
+    qdd2d = _ensure_2d(qdd)
 
     m_above = _mass_above_l5(body, exercise_type)
     torso_angle = q2d[:, 2]
 
-    result = (m_above + bar_mass) * body.g * np.sin(torso_angle)
+    # Static gravitational shear perpendicular to spine axis
+    gravity_shear = (m_above + bar_mass) * body.g * np.sin(torso_angle)
+
+    # Inertial shear from torso angular acceleration and centripetal force
+    m_torso = (
+        float(body.m_squat[2])
+        if exercise_type in ("squat", "full_squat")
+        else float(body.m_deadlift[2])
+    )
+    d_com = body.d[2]
+
+    # Tangential inertial shear: m * qdd * d_com * cos(angle)
+    tangential_shear = m_torso * qdd2d[:, 2] * d_com * np.cos(torso_angle)
+    # Centripetal inertial shear: m * qd^2 * d_com * sin(angle)
+    centripetal_shear = m_torso * qd2d[:, 2] ** 2 * d_com * np.sin(torso_angle)
+
+    result = gravity_shear + tangential_shear + centripetal_shear
 
     if scalar_input:
         return float(result[0])  # type: ignore[return-value]
