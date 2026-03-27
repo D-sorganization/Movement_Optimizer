@@ -176,6 +176,56 @@ class TestDeadliftExerciseType:
         np.testing.assert_allclose(comp, expected, rtol=1e-6)
 
 
+class TestShearInertialComponent:
+    """Spinal shear should include inertial terms from angular acceleration and velocity."""
+
+    def test_shear_with_acceleration(self, default_body: BodyModel) -> None:
+        """Angular acceleration adds tangential shear: m * qdd * d_com * cos(angle)."""
+        angle = np.radians(30)
+        q = np.array([0.0, 0.0, angle])
+        qd = np.zeros(3)
+        qdd = np.array([0.0, 0.0, 5.0])  # torso accelerating
+        bar_mass = 60.0
+
+        shear = spinal_shear(q, qd, qdd, default_body, bar_mass, "squat")
+
+        m_torso = default_body.m_squat[2]
+        d_com = default_body.d[2]
+        gravity_part = (m_torso + bar_mass) * default_body.g * np.sin(angle)
+        tangential_part = m_torso * 5.0 * d_com * np.cos(angle)
+        expected = gravity_part + tangential_part
+        np.testing.assert_allclose(shear, expected, rtol=1e-6)
+
+    def test_shear_with_velocity(self, default_body: BodyModel) -> None:
+        """Angular velocity adds centripetal shear: m * qd^2 * d_com * sin(angle)."""
+        angle = np.radians(30)
+        q = np.array([0.0, 0.0, angle])
+        qd = np.array([0.0, 0.0, 3.0])  # torso moving
+        qdd = np.zeros(3)
+        bar_mass = 60.0
+
+        shear = spinal_shear(q, qd, qdd, default_body, bar_mass, "squat")
+
+        m_torso = default_body.m_squat[2]
+        d_com = default_body.d[2]
+        gravity_part = (m_torso + bar_mass) * default_body.g * np.sin(angle)
+        centripetal_part = m_torso * 3.0**2 * d_com * np.sin(angle)
+        expected = gravity_part + centripetal_part
+        np.testing.assert_allclose(shear, expected, rtol=1e-6)
+
+    def test_shear_exceeds_static_during_motion(self, default_body: BodyModel) -> None:
+        """Shear with inertial terms should exceed pure-static shear."""
+        angle = np.radians(30)
+        q = np.array([0.0, 0.0, angle])
+        bar_mass = 60.0
+
+        static_shear = spinal_shear(q, np.zeros(3), np.zeros(3), default_body, bar_mass, "squat")
+        dynamic_shear = spinal_shear(
+            q, np.array([0.0, 0.0, 3.0]), np.array([0.0, 0.0, 5.0]), default_body, bar_mass, "squat"
+        )
+        assert abs(dynamic_shear) > abs(static_shear)
+
+
 class TestNIOSHConstant:
     """The NIOSH compression limit constant exists."""
 

@@ -1,30 +1,28 @@
-from numba import jit
-
 """Parallel multi-start trajectory optimiser engine."""
 
-from __future__ import annotations  # noqa: E402, F404
+from __future__ import annotations
 
-import logging  # noqa: E402
-import os  # noqa: E402
-import threading  # noqa: E402
-import time  # noqa: E402
-from collections.abc import Callable  # noqa: E402
-from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait  # noqa: E402
+import logging
+import os
+import threading
+import time
+from collections.abc import Callable
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
-import numpy as np  # noqa: E402
-from numpy.typing import NDArray  # noqa: E402
-from scipy.interpolate import CubicSpline  # noqa: E402
-from scipy.optimize import minimize  # noqa: E402
+import numpy as np
+from numpy.typing import NDArray
+from scipy.interpolate import CubicSpline
+from scipy.optimize import minimize
 
-from ..backend import PhysicsBackend  # noqa: E402
+from ..backend import PhysicsBackend
 from ..constants import (
     BAR_KNEE_CLEARANCE_M,
     BENCH_BAR_PATH_WEIGHT,
     TV_RATE_WEIGHT_RATIO,
-)  # noqa: E402
-from ..models import BodyModel  # noqa: E402
-from .result import CancelledError, OptimizationResult, ProgressReport  # noqa: E402
-from .tuning import (  # noqa: E402
+)
+from ..models import BodyModel
+from .result import CancelledError, OptimizationResult, ProgressReport
+from .tuning import (
     BALANCE_BARRIER_WEIGHT,
     BALANCE_CENTER_WEIGHT,
     DEFAULT_ENDPOINT_WEIGHT,
@@ -232,8 +230,12 @@ class TrajectoryOptimizer:
         knee_x = L[0] * np.sin(q[:, 0])
         hip_x = knee_x + L[1] * np.sin(q[:, 1])
         shoulder_x = hip_x + L[2] * np.sin(q[:, 2])
-        # For pulling exercises, bar hangs from shoulders (at arm length below)
-        # Bar x == shoulder x in sagittal plane
+        # Approximation: bar_x = shoulder_x assumes the bar hangs directly
+        # below the shoulder in the sagittal plane.  In reality the arms
+        # swing slightly forward, so the true bar x-position is offset by
+        # a small amount that depends on arm angle.  This simplification
+        # is acceptable because the offset is small relative to knee-bar
+        # clearance and does not materially affect the constraint.
         bar_x = shoulder_x
         return bar_x - knee_x + BAR_KNEE_CLEARANCE_M
 
@@ -338,7 +340,6 @@ class TrajectoryOptimizer:
     # Initial guess generation
     # ==========================================================
 
-    @jit(nopython=True, fastmath=True)
     def _initial_guess(self) -> NDArray:
         """Linear interpolation between start/end (or start/via/end)."""
         wp = np.zeros((self.n_waypoints, self.n_dof))
@@ -589,15 +590,17 @@ class TrajectoryOptimizer:
         torques = self.dynamics.inverse_dynamics_batch(q, qd, qdd)
         power = torques * qd
 
-        # Batch-vectorized COM and bar trajectories
+        # Batch-vectorized COM x-coordinate and per-row COM y / bar trajectories
         n_pts = q.shape[0]
+        com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
         com_traj = np.empty((n_pts, 2))
         bar_traj = np.empty((n_pts, 2))
         for n in range(n_pts):
-            com_traj[n] = self.dynamics.com_position(q[n], self.exercise_type, self.bar_mass)
+            com_full = self.dynamics.com_position(q[n], self.exercise_type, self.bar_mass)
+            com_traj[n, 0] = com_x[n]
+            com_traj[n, 1] = com_full[1]
             bar_traj[n] = self.dynamics.bar_position(q[n], self.exercise_type)
 
-        com_x = com_traj[:, 0]
         com_h_range = (np.max(com_x) - np.min(com_x)) * 100.0
 
         # Success: cost is finite AND COM stays within inner BOS (the hard constraint)
@@ -626,8 +629,8 @@ class TrajectoryOptimizer:
         # Warn and record joint limit violations from spline overshoot
         n_joint_limit_violations = 0
         if self.q_bounds is not None:
-            _lower = np.array([b[0] for b in self.q_bounds])
-            _upper = np.array([b[1] for b in self.q_bounds])
+            _lower = self.q_bounds[:, 0]
+            _upper = self.q_bounds[:, 1]
             n_joint_limit_violations = int(np.sum((q < _lower) | (q > _upper)))
             if n_joint_limit_violations > 0:
                 logger.warning(

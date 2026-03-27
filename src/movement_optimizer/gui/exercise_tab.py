@@ -1,27 +1,25 @@
-from numba import jit
-
 """ExerciseTab -- individual tab logic for movement visualizations."""
 
-from __future__ import annotations  # noqa: E402, F404
+from __future__ import annotations
 
-import logging  # noqa: E402
-from typing import Any  # noqa: E402
+import logging
+from typing import Any
 
-import matplotlib.cm as cm  # noqa: E402
-import numpy as np  # noqa: E402
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas  # noqa: E402
+import matplotlib.cm as cm
+import numpy as np
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import (
     NavigationToolbar2QT as NavigationToolbar,
-)  # noqa: E402
-from matplotlib.figure import Figure  # noqa: E402
-from matplotlib.gridspec import GridSpec  # noqa: E402
-from PyQt6.QtWidgets import QVBoxLayout, QWidget  # noqa: E402
+)
+from matplotlib.figure import Figure
+from matplotlib.gridspec import GridSpec
+from PyQt6.QtWidgets import QVBoxLayout, QWidget
 
-from ..constants import PLATE_RADIUS_STD_M  # noqa: E402
-from ..models import BodyModel  # noqa: E402
-from ..rendering import BarbellRenderer, BodyRenderer, Palette, style_axis  # noqa: E402
-from ..spine_loads import NIOSH_COMPRESSION_LIMIT, spinal_compression, spinal_shear  # noqa: E402
-from ..trajectory import OptimizationResult  # noqa: E402
+from ..constants import PLATE_RADIUS_STD_M
+from ..models import BodyModel
+from ..rendering import BarbellRenderer, BodyRenderer, Palette, style_axis
+from ..spine_loads import NIOSH_COMPRESSION_LIMIT, spinal_compression, spinal_shear
+from ..trajectory import OptimizationResult
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +193,6 @@ class ExerciseTab(QWidget):
             labelcolor=Palette.FG,
         )
 
-    @jit(nopython=True, fastmath=True)
     def _plot_com_path(self, r: OptimizationResult, body: BodyModel) -> None:
         ax = self.axes["com_path"]
         import matplotlib as mpl

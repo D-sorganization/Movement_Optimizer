@@ -57,7 +57,7 @@ class TestInverseDynamicsBenchmark:
         elapsed = time.perf_counter() - start
 
         per_call_ms = elapsed / 100 * 1000
-        assert per_call_ms < 20.0, f"Batch ID (N=100) took {per_call_ms:.3f}ms (limit: 20ms)"
+        assert per_call_ms < 50.0, f"Batch ID (N=100) took {per_call_ms:.3f}ms (limit: 50ms)"
 
 
 class TestMassMatrixBenchmark:

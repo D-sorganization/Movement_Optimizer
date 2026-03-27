@@ -27,7 +27,8 @@ from .constants import (
     JOINT_NAMES,
     LENGTH_FRAC,
     MASS_FRAC,
-    PLATE_RADIUS_STD_M,
+    RADIUS_OF_GYRATION_FRAC,
+    WRIST_SEGMENT_LENGTH,
 )
 from .strength import (
     HillTorqueModel,
@@ -53,6 +54,8 @@ __all__ = [
     "make_deadlift_config",
     "make_default_torque_set",
     "make_full_squat_config",
+    "make_gait_config",
+    "make_sit_to_stand_config",
     "make_squat_config",
 ]
 
@@ -194,8 +197,24 @@ class BodyModel:
         )
 
     def _compute_inertias(self) -> None:
-        self.I_squat = (1.0 / 12.0) * self.m_squat * self.L**2
-        self.I_deadlift = (1.0 / 12.0) * self.m_deadlift * self.L**2
+        """Compute segment inertias using radius of gyration + parallel axis theorem.
+
+        I_com = m * (rho * L)^2          (about segment COM)
+        I_prox = I_com + m * d_com^2     (about proximal joint)
+
+        Radius-of-gyration fractions (rho) from Winter (2009), Table 3.1.
+        """
+        rho = np.array(
+            [
+                RADIUS_OF_GYRATION_FRAC["lower_leg"],
+                RADIUS_OF_GYRATION_FRAC["upper_leg"],
+                RADIUS_OF_GYRATION_FRAC["trunk"],
+            ]
+        )
+        I_com_squat = self.m_squat * (rho * self.L) ** 2
+        I_com_deadlift = self.m_deadlift * (rho * self.L) ** 2
+        self.I_squat = I_com_squat + self.m_squat * self.d**2
+        self.I_deadlift = I_com_deadlift + self.m_deadlift * self.d**2
 
 
 def clamp_joint_angles(
@@ -263,6 +282,7 @@ class LagrangianDynamics(PhysicsBackend):
         I_segments: NDArray,
         load_mass: float,
         body_override: dict[str, NDArray] | None = None,
+        supine: bool = False,
     ) -> None:
         """Initialise Lagrangian dynamics for a 3-link planar chain.
 
@@ -276,6 +296,9 @@ class LagrangianDynamics(PhysicsBackend):
                 coupling-coefficient calculations.  Used by non-leg kinematic
                 chains (e.g. the arm chain for bench press) without resorting
                 to post-hoc attribute surgery.
+            supine: If True, gravity acts perpendicular to the chain axis
+                (the lifter is lying down).  Gravity torque uses cos(q)
+                instead of sin(q).  Used for bench press.
         """
         if len(m_segments) != 3:
             raise ValueError("need 3 segment masses")
@@ -286,6 +309,7 @@ class LagrangianDynamics(PhysicsBackend):
         self.I = I_segments
         self.m_load = load_mass
         self.g = body.g
+        self.supine = supine
 
         # Allow callers to supply alternative segment geometry (e.g. arm chain).
         if body_override is not None:
@@ -349,6 +373,15 @@ class LagrangianDynamics(PhysicsBackend):
         return M
 
     def _coriolis_vector(self, q: NDArray, qd: NDArray) -> NDArray:
+        """Centrifugal terms of the Coriolis/centrifugal vector.
+
+        NOTE: This implementation includes only the centrifugal (qd_j^2)
+        terms and omits the cross-velocity Coriolis terms (qd_i * qd_j,
+        i != j).  This is a known simplification that is acceptable for
+        slow barbell movements where cross-velocity products are small
+        relative to centrifugal and gravitational terms.  A full
+        Christoffel-symbol formulation would be needed for fast movements.
+        """
         s01 = np.sin(q[0] - q[1])
         s02 = np.sin(q[0] - q[2])
         s12 = np.sin(q[1] - q[2])
@@ -360,9 +393,10 @@ class LagrangianDynamics(PhysicsBackend):
 
     def _gravity_vector(self, q: NDArray) -> NDArray:
         G = np.zeros(3)
-        G[0] = self._g0 * np.sin(q[0])
-        G[1] = self._g1 * np.sin(q[1])
-        G[2] = self._g2 * np.sin(q[2])
+        trig = np.cos if self.supine else np.sin
+        G[0] = self._g0 * trig(q[0])
+        G[1] = self._g1 * trig(q[1])
+        G[2] = self._g2 * trig(q[2])
         return G
 
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
@@ -400,7 +434,8 @@ class LagrangianDynamics(PhysicsBackend):
             )
 
         n = q.shape[0]
-        sq = np.sin(q)
+        # Supine (bench press): gravity perpendicular to chain → cos(q)
+        sq = np.cos(q) if self.supine else np.sin(q)
         d01 = q[:, 0] - q[:, 1]
         d02 = q[:, 0] - q[:, 2]
         d12 = q[:, 1] - q[:, 2]
@@ -553,22 +588,42 @@ def balance_pose(
 
     body = dyn.body
     target_x = body.inner_center
-    lo, hi = np.radians(-10), np.radians(80)
+    # Use actual joint limits from JOINT_LIMITS for the bracket bounds
+    # instead of hardcoded values.  For non-monotonic residuals (e.g. hip
+    # in a deep squat), scan the bracket to find the first sign change so
+    # brentq converges to the nearest root.
+    joint_names = ("ankle", "knee", "hip")
+    lo, hi = JOINT_LIMITS[joint_names[adjust_joint]]
 
     def residual(angle: float) -> float:
         q = q_init.copy()
         q[adjust_joint] = angle
         return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x
 
-    # Check if a root exists in the bracket
-    f_lo, f_hi = residual(lo), residual(hi)
-    if f_lo * f_hi > 0:
-        # No root — pick whichever end is closer to target
+    # Scan for the first sign change within the bracket.  The residual
+    # may be non-monotonic (e.g. hip COM_x peaks mid-range then falls),
+    # so a full-bracket brentq can miss roots.  We subdivide into steps
+    # and use the first sub-interval that contains a sign change, which
+    # yields the smallest-magnitude solution closest to the lower limit.
+    n_scan = 20
+    angles = np.linspace(lo, hi, n_scan + 1)
+    f_vals = np.array([residual(a) for a in angles])
+    bracket_lo, bracket_hi = lo, hi
+    found_bracket = False
+    for k in range(n_scan):
+        if f_vals[k] * f_vals[k + 1] <= 0:
+            bracket_lo, bracket_hi = angles[k], angles[k + 1]
+            found_bracket = True
+            break
+
+    if not found_bracket:
+        # No root in the joint range -- pick the angle with smallest residual
+        best_idx = int(np.argmin(np.abs(f_vals)))
         q = q_init.copy()
-        q[adjust_joint] = lo if abs(f_lo) < abs(f_hi) else hi
+        q[adjust_joint] = angles[best_idx]
         return q
 
-    angle_opt = brentq(residual, lo, hi, xtol=1e-6)
+    angle_opt = brentq(residual, bracket_lo, bracket_hi, xtol=1e-6)
     q = q_init.copy()
     q[adjust_joint] = angle_opt
     return q
@@ -625,7 +680,9 @@ def make_deadlift_config(
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
     load = body.m_arms + bar_mass
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
-    q_start_raw = _deadlift_start_angles(body)
+    from .exercises._common import pull_start_angles
+
+    q_start_raw = pull_start_angles(body, q2_deg=52)
     q_start = balance_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
     q_end = _standing_balanced(dyn, bar_mass, "deadlift")
     q_bounds = np.array(
@@ -636,16 +693,6 @@ def make_deadlift_config(
         ]
     )
     return dyn, q_start, q_end, q_bounds
-
-
-def _deadlift_start_angles(body: BodyModel) -> NDArray:
-    target_shoulder_h = PLATE_RADIUS_STD_M + body.L_arm
-    q0 = np.radians(15)
-    q2 = np.radians(52)
-    needed = target_shoulder_h - body.L[0] * np.cos(q0) - body.L[2] * np.cos(q2)
-    cos_q1 = np.clip(needed / body.L[1], -1, 1)
-    q1 = -np.arccos(cos_q1)
-    return np.array([q0, q1, q2])
 
 
 # ==============================================================
@@ -669,17 +716,18 @@ class BenchPressModel:
             [
                 BENCH_UPPER_ARM_FRAC * arm_len,
                 BENCH_FOREARM_FRAC * arm_len,
-                0.01,  # wrist/hand (effectively zero — grip only)
+                WRIST_SEGMENT_LENGTH,  # wrist/hand (effectively zero — grip only)
             ]
         )
         self.body_mass = body.body_mass
         # Arm segment masses: split arm mass into upper arm, forearm, hand
+        # Fractions per Winter (2009): upper arm 56%, forearm 32%, hand 12%
         arm_mass = MASS_FRAC["arms"] * body.body_mass
         self.m = np.array(
             [
-                0.50 * arm_mass,  # upper arm
-                0.35 * arm_mass,  # forearm
-                0.15 * arm_mass,  # hand/wrist
+                0.56 * arm_mass,  # upper arm (Winter 2009)
+                0.32 * arm_mass,  # forearm (Winter 2009)
+                0.12 * arm_mass,  # hand/wrist (Winter 2009)
             ]
         )
         self.d = np.array(
@@ -691,6 +739,10 @@ class BenchPressModel:
         )
         self.I = (1.0 / 12.0) * self.m * self.L**2
         self.g = body.g
+        # NOTE: BOS bounds are copied for API compatibility but are NOT
+        # physically meaningful for bench press.  The lifter is supine on
+        # a bench, so the standing base-of-support constraint does not
+        # apply.  The optimizer skips COM-in-BOS checks for bench_press.
         self.inner_heel = body.inner_heel
         self.inner_toe = body.inner_toe
         self.inner_center = body.inner_center
@@ -722,7 +774,12 @@ def make_bench_press_config(
         bp.m.copy(),
         bp.I.copy(),
         bar_mass,
-        body_override={"L": bp.L, "d": bp.d},
+        body_override={
+            "L": bp.L,
+            "d": bp.d,
+            "joint_names": ["shoulder", "elbow", "wrist", "hand"],
+        },
+        supine=True,
     )
 
     # Start: lockout (arms straight up, perpendicular to supine body)
@@ -741,3 +798,10 @@ def make_bench_press_config(
     )
 
     return dyn, q_start, q_end, q_bounds, q_via
+
+
+# Re-export exercise factories added in the exercises subpackage
+from .exercises.gait import make_gait_config as make_gait_config  # noqa: E402
+from .exercises.sit_to_stand import (  # noqa: E402
+    make_sit_to_stand_config as make_sit_to_stand_config,
+)

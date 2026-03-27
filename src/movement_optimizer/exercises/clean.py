@@ -10,26 +10,10 @@ squat/deadlift factories in ``models.py``.
 
 from __future__ import annotations
 
-import numpy as np
 from numpy.typing import NDArray
 
-from ..constants import PLATE_RADIUS_STD_M
 from ..models import BodyModel, LagrangianDynamics
-from ._common import balance_config_pose, default_bounds_deg, pose_deg
-
-
-def _clean_start_angles(body: BodyModel) -> NDArray:
-    """Compute starting joint angles for the clean (bar at plate height).
-
-    Similar to deadlift start: bar at plate height, arms hanging.
-    """
-    target_shoulder_h = PLATE_RADIUS_STD_M + body.L_arm
-    q0 = np.radians(15)
-    q2 = np.radians(52)
-    needed = target_shoulder_h - body.L[0] * np.cos(q0) - body.L[2] * np.cos(q2)
-    cos_q1 = np.clip(needed / body.L[1], -1, 1)
-    q1 = -np.arccos(cos_q1)
-    return np.array([q0, q1, q2])
+from ._common import balance_config_pose, default_bounds_deg, pose_deg, pull_start_angles
 
 
 def _clean_end_angles(body: BodyModel) -> NDArray:
@@ -67,7 +51,7 @@ def make_clean_config(
     load = body.m_arms + bar_mass
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
 
-    q_start_raw = _clean_start_angles(body)
+    q_start_raw = pull_start_angles(body, q2_deg=52)
     q_start = balance_config_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
 
     q_end_raw = _clean_end_angles(body)
