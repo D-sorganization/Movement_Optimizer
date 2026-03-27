@@ -1,3 +1,5 @@
+from typing import Any
+
 """GUI package for the Movement Optimizer.
 
 The original monolithic ``gui.py`` has been split into a package with
@@ -36,7 +38,7 @@ _EXPORT_MAP = {
 }
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Load GUI exports lazily so lightweight helpers can import safely."""
     if name not in _EXPORT_MAP:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

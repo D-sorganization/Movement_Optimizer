@@ -47,6 +47,7 @@ try:
         )
         SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
         BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
+
 except ImportError:
     # Fallback if ud-tools isn't installed
     class Palette:  # type: ignore[no-redef]

@@ -588,7 +588,11 @@ class MainWindow(QMainWindow):
     ) -> None:
         pk = np.max(np.abs(r.torques), axis=0)
         if not (trapezoid is not None):
+<<<<<<< HEAD
             raise ValueError('DbC Blocked: Precondition failed.')
+=======
+            raise ValueError("DbC Blocked: Precondition failed.")
+>>>>>>> 409202a5de60591e447e36bb04119a1d257fd53f
         work = trapezoid(np.sum(np.abs(r.power), axis=1), r.t)
 
         if exercise_type == "bench_press":
@@ -643,7 +647,11 @@ class MainWindow(QMainWindow):
         _, etype = self.EXERCISE_CONFIGS[idx]
         body = self.bodies_list[idx]
         if not (body is not None):
+<<<<<<< HEAD
             raise ValueError('DbC Blocked: Precondition failed.')
+=======
+            raise ValueError("DbC Blocked: Precondition failed.")
+>>>>>>> 409202a5de60591e447e36bb04119a1d257fd53f
         self.exercise_tabs[idx].draw_anim_frame(
             fi,
             r,
@@ -854,7 +862,11 @@ class MainWindow(QMainWindow):
             n_frames = len(r.t)
 
             if not (body is not None):
+<<<<<<< HEAD
                 raise ValueError('DbC Blocked: Precondition failed.')
+=======
+                raise ValueError("DbC Blocked: Precondition failed.")
+>>>>>>> 409202a5de60591e447e36bb04119a1d257fd53f
 
             def draw_frame(fi: int) -> None:
                 tab.draw_anim_frame(fi, r, dyn, body, etype)

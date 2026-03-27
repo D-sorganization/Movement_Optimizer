@@ -52,7 +52,7 @@ NECK_MAX_ANGLE_DEG: float = 45.0
 COM_FRAC: dict[str, float] = {
     "lower_leg": 0.433,
     "upper_leg": 0.433,
-    "torso": 0.500,
+    "torso": 0.600,  # combined trunk+head per Winter (2009)
     "arm": 0.530,
     "foot": 0.500,
 }
@@ -64,12 +64,6 @@ BAR_MASS_KG: float = 20.0
 BAR_LENGTH_M: float = 2.20
 PLATE_RADIUS_STD_M: float = 0.225
 BAR_RADIUS_M: float = 0.025
-
-# ------------------------------------------------------------------
-# Default exercise angles (radians)
-# ------------------------------------------------------------------
-SQUAT_BOTTOM = np.array([np.radians(20), np.radians(-90), np.radians(40)])
-STANDING = np.array([0.0, 0.0, 0.0])
 
 # ------------------------------------------------------------------
 # Anatomical joint angle limits (radians)
@@ -119,6 +113,13 @@ DEFAULT_MAX_JOINT_TORQUES: dict[str, float] = {
 #   concentric (shortening):  f_vel = (v_max - |qd|) / (v_max + |qd| / k_shape)
 #   eccentric (lengthening):  f_vel = (1 + ecc_factor * |qd|) / (1 + |qd| / k_shape)
 #   clamped to [0, max_eccentric_ratio]
+#
+# References:
+#   Hill, A.V. (1938). The heat of shortening and the dynamic constants
+#       of muscle. Proc. R. Soc. Lond. B, 126(843), 136-195.
+#   Westing, S.H., Seger, J.Y., & Thorstensson, A. (1988). Effects of
+#       electrical stimulation on eccentric and concentric torque-velocity
+#       relationships during knee extension in man. Acta Physiol. Scand.
 # ------------------------------------------------------------------
 HILL_OPTIMAL_ANGLES: dict[str, float] = {
     "ankle": np.radians(15),
@@ -128,6 +129,16 @@ HILL_OPTIMAL_ANGLES: dict[str, float] = {
 
 HILL_ANGLE_WIDTH: float = np.radians(60)
 
+# Per-joint maximum angular velocities (deg/s), converted to rad/s.
+# Sources: Bobbert & van Ingen Schenau (1988), Westing et al. (1988).
+HILL_MAX_ANGULAR_VELOCITY_PER_JOINT: dict[str, float] = {
+    "ankle": np.radians(250),
+    "knee": np.radians(600),
+    "hip": np.radians(500),
+}
+
+# Scalar fallback for callers that expect a single value (uses the
+# fastest joint -- knee -- to avoid under-estimating capacity).
 HILL_MAX_ANGULAR_VELOCITY: float = np.radians(600)
 
 HILL_K_SHAPE: float = 0.25
@@ -149,8 +160,12 @@ HILL_MAX_ECCENTRIC_RATIO: float = 1.4
 #
 # Segment fractions for the arm chain (fraction of arm length):
 # ------------------------------------------------------------------
+# Wrist/hand segment length [m] — effectively a grip-only link with
+# negligible lever arm. Used in the bench press 3-link model.
+WRIST_SEGMENT_LENGTH: float = 0.01
+
 BENCH_UPPER_ARM_FRAC: float = 0.56  # shoulder to elbow (anatomical ~48% + shoulder width)
-BENCH_FOREARM_FRAC: float = 0.38  # elbow to wrist (anatomical ~38%)
+BENCH_FOREARM_FRAC: float = 0.44  # elbow to wrist (Winter 2009: ~44% of arm length)
 
 BENCH_PRESS_JOINT_LIMITS: dict[str, tuple[float, float]] = {
     "shoulder": (np.radians(-5), np.radians(95)),  # main driver of the press
@@ -163,7 +178,7 @@ BENCH_PRESS_JOINT_NAMES: tuple[str, ...] = ("shoulder", "elbow", "wrist")
 BENCH_PRESS_MAX_JOINT_TORQUES: dict[str, float] = {
     "shoulder": 120.0,
     "elbow": 80.0,
-    "wrist": 30.0,
+    "wrist": 15.0,
 }
 
 BENCH_PRESS_HILL_OPTIMAL_ANGLES: dict[str, float] = {
@@ -194,6 +209,20 @@ TV_RATE_WEIGHT_RATIO: float = 0.1
 # snatch).  The bar must stay at least this many metres in front of the
 # knees throughout the lift.
 BAR_KNEE_CLEARANCE_M: float = 0.05
+
+# ------------------------------------------------------------------
+# Radius of gyration as fraction of segment length (about COM)
+#
+# Used with parallel axis theorem: I_prox = I_com + m * d_com^2
+# where I_com = m * (rho * L)^2.
+#
+# Source: Winter, D.A. (2009). Table 3.1.
+# ------------------------------------------------------------------
+RADIUS_OF_GYRATION_FRAC: dict[str, float] = {
+    "lower_leg": 0.302,
+    "upper_leg": 0.323,
+    "trunk": 0.496,
+}
 
 # numpy compat shim (trapz renamed to trapezoid in numpy 2.0)
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
