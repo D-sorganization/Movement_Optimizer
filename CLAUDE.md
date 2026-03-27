@@ -33,12 +33,15 @@ inverse dynamics in the sagittal plane. The body is modelled as a 3-link planar 
   implementation lives in `models.py`; a Rust-accelerated backend can be swapped in.
 - `src/movement_optimizer/models.py` -- `BodyModel` (anthropometrics) and `PlanarDynamics`
   (Lagrangian equations of motion). This is the core physics engine.
-- `src/movement_optimizer/trajectory.py` -- `TrajectoryOptimizer` with multi-start
-  parallel L-BFGS-B. Entry point: `optimize()`.
+- `src/movement_optimizer/trajectory/` -- `TrajectoryOptimizer` with multi-start
+  parallel SLSQP. Entry point: `optimize()`. Sub-modules: `optimizer.py`, `result.py`,
+  `cache.py`, `tuning.py`.
 - `src/movement_optimizer/constants.py` -- All physical constants, segment mass/length
   fractions, BOS parameters. Never hard-code numbers elsewhere.
-- `src/movement_optimizer/gui.py` -- PyQt6 GUI. Sliders for body params, exercise
-  selection, real-time stick-figure animation.
+- `src/movement_optimizer/exercises/` -- Exercise configuration factories (clean, snatch,
+  jerk, gait, sit-to-stand). Shared helpers in `_common.py`.
+- `src/movement_optimizer/gui/` -- PyQt6 GUI package. Sub-modules: `main_window.py`,
+  `exercise_tab.py`, `comparison_dialog.py`, `widgets.py`, `session_state.py`.
 - `src/movement_optimizer/rendering.py` -- Matplotlib rendering utilities.
 - `rust_core/` -- Optional PyO3/maturin Rust extension for hot-path dynamics.
 
@@ -71,7 +74,7 @@ the BOS fraction.
   violation. Follow this pattern in all new code.
 - **Logging, not print**: `src/` code uses `logging.getLogger(__name__)`. The pre-commit
   hook blocks `print()` in `src/`.
-- **Thread parallelism**: scipy's L-BFGS-B releases the GIL, so `ThreadPoolExecutor`
+- **Thread parallelism**: scipy's SLSQP releases the GIL, so `ThreadPoolExecutor`
   achieves real parallelism for multi-start optimization. Do not switch to
   `ProcessPoolExecutor` without benchmarking -- the overhead is not worth it for
   typical problem sizes.

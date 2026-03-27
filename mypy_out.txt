@@ -1,9 +1,0 @@
-src\movement_optimizer\persistence.py:48: error: Argument 1 to "OptimizationResult" has incompatible type "**dict[str, ndarray[tuple[Any, ...], dtype[Any]]]"; expected "int"  [arg-type]
-src\movement_optimizer\comparison.py:86: error: "None" not callable  [misc]
-src\movement_optimizer\gui\widgets.py:184: error: Item "QAbstractItemModel" of "QAbstractItemModel | None" has no attribute "item"  [union-attr]
-src\movement_optimizer\gui\widgets.py:184: error: Item "None" of "QAbstractItemModel | None" has no attribute "item"  [union-attr]
-tests\test_exercises3d.py:138: error: Item "Dynamics3D" of "Dynamics3D | ndarray[tuple[Any, ...], dtype[Any]]" has no attribute "shape"  [union-attr]
-tests\test_exercises3d.py:139: error: Item "Dynamics3D" of "Dynamics3D | ndarray[tuple[Any, ...], dtype[Any]]" has no attribute "shape"  [union-attr]
-tests\test_exercises3d.py:142: error: Item "Dynamics3D" of "Dynamics3D | ndarray[tuple[Any, ...], dtype[Any]]" has no attribute "shape"  [union-attr]
-tests\test_trajectory.py:676: error: Incompatible types in assignment (expression has type "ndarray[tuple[int], dtype[float64]]", variable has type "None")  [assignment]
-Found 8 errors in 5 files (checked 61 source files)
