@@ -587,15 +587,17 @@ class TrajectoryOptimizer:
         torques = self.dynamics.inverse_dynamics_batch(q, qd, qdd)
         power = torques * qd
 
-        # Batch-vectorized COM and bar trajectories
+        # Batch-vectorized COM x-coordinate and per-row COM y / bar trajectories
         n_pts = q.shape[0]
+        com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
         com_traj = np.empty((n_pts, 2))
         bar_traj = np.empty((n_pts, 2))
         for n in range(n_pts):
-            com_traj[n] = self.dynamics.com_position(q[n], self.exercise_type, self.bar_mass)
+            com_full = self.dynamics.com_position(q[n], self.exercise_type, self.bar_mass)
+            com_traj[n, 0] = com_x[n]
+            com_traj[n, 1] = com_full[1]
             bar_traj[n] = self.dynamics.bar_position(q[n], self.exercise_type)
 
-        com_x = com_traj[:, 0]
         com_h_range = (np.max(com_x) - np.min(com_x)) * 100.0
 
         # Success: cost is finite AND COM stays within inner BOS (the hard constraint)
@@ -624,8 +626,8 @@ class TrajectoryOptimizer:
         # Warn and record joint limit violations from spline overshoot
         n_joint_limit_violations = 0
         if self.q_bounds is not None:
-            _lower = np.array([b[0] for b in self.q_bounds])
-            _upper = np.array([b[1] for b in self.q_bounds])
+            _lower = self.q_bounds[:, 0]
+            _upper = self.q_bounds[:, 1]
             n_joint_limit_violations = int(np.sum((q < _lower) | (q > _upper)))
             if n_joint_limit_violations > 0:
                 logger.warning(
