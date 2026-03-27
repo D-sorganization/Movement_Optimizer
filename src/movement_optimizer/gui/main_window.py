@@ -844,7 +844,7 @@ class MainWindow(QMainWindow):
             dyn = self.dynamics_list[idx]
             n_frames = len(r.t)
 
-            if not (body is not None):
+            if body is None:
                 raise ValueError("DbC Blocked: Precondition failed.")
 
             def draw_frame(fi: int) -> None:

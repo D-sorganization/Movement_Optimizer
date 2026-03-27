@@ -16,6 +16,7 @@ All public names are re-exported here for backward compatibility so that
 from __future__ import annotations
 
 from importlib import import_module
+from typing import Any
 
 __all__ = [
     "ComparisonDialog",
@@ -36,7 +37,7 @@ _EXPORT_MAP = {
 }
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Load GUI exports lazily so lightweight helpers can import safely."""
     if name not in _EXPORT_MAP:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
