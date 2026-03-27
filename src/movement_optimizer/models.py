@@ -295,7 +295,9 @@ class LagrangianDynamics(PhysicsBackend):
             self.L_eff = L.copy()
             self.d = d
             self.d_eff = d.copy()
-            self.joint_names = body_override.get("joint_names", ["link0", "link1", "link2", "link3"])
+            self.joint_names = body_override.get(
+                "joint_names", ["link0", "link1", "link2", "link3"]
+            )
         else:
             self.L = body.L
             self.L_eff = body.L_eff

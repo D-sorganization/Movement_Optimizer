@@ -1,3 +1,5 @@
+from numba import jit
+
 """Parallel multi-start trajectory optimiser engine."""
 
 from __future__ import annotations
@@ -332,6 +334,7 @@ class TrajectoryOptimizer:
     # Initial guess generation
     # ==========================================================
 
+    @jit(nopython=True, fastmath=True)
     def _initial_guess(self) -> NDArray:
         """Linear interpolation between start/end (or start/via/end)."""
         wp = np.zeros((self.n_waypoints, self.n_dof))
@@ -375,8 +378,7 @@ class TrajectoryOptimizer:
     def _build_bounds(self) -> list[tuple[float, float]]:
         bounds: list[tuple[float, float]] = []
         for _ in range(self.n_waypoints):
-            for j in range(self.n_dof):
-                bounds.append((self.q_bounds[j, 0], self.q_bounds[j, 1]))
+            bounds.extend([(self.q_bounds[j, 0], self.q_bounds[j, 1]) for j in range(self.n_dof)])
         return bounds
 
     # ==========================================================

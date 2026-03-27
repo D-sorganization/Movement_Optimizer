@@ -1,3 +1,5 @@
+from numba import jit
+
 """ExerciseTab -- individual tab logic for movement visualizations."""
 
 from __future__ import annotations
@@ -191,6 +193,7 @@ class ExerciseTab(QWidget):
             labelcolor=Palette.FG,
         )
 
+    @jit(nopython=True, fastmath=True)
     def _plot_com_path(self, r: OptimizationResult, body: BodyModel) -> None:
         ax = self.axes["com_path"]
         import matplotlib as mpl
