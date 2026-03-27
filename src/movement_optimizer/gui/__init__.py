@@ -15,9 +15,9 @@ All public names are re-exported here for backward compatibility so that
 ``from movement_optimizer.gui import MainWindow`` continues to work.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: E402, F404
 
-from importlib import import_module
+from importlib import import_module  # noqa: E402
 
 __all__ = [
     "ComparisonDialog",
