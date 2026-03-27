@@ -66,12 +66,11 @@ class TestBenchPressConfig:
         dyn, qs, qe, _qb, _q_via = make_bench_press_config(default_body, 60.0)
         fk_start = dyn.forward_kinematics(qs)
         fk_end = dyn.forward_kinematics(qe)
-        # The wrist (end effector) y should be positive at both poses
-        # (bar is above the shoulder pivot which is at y=0)
-        # In the FK model, "shoulder" is the endpoint of the chain
-        # and all joints should have positive y component for a press
-        assert fk_start["shoulder"][1] > 0, "Bar should be above body at start"
-        assert fk_end["shoulder"][1] > 0, "Bar should be above body at end"
+        # The hand (end effector) y should be positive at both poses
+        # (bar is above the shoulder pivot which is at y=0).
+        # "shoulder" is the base of the chain (origin); "hand" is the tip.
+        assert fk_start["hand"][1] > 0, "Bar should be above body at start"
+        assert fk_end["hand"][1] > 0, "Bar should be above body at end"
 
     def test_bench_start_is_lockout(self, default_body: BodyModel) -> None:
         """q_start should have shoulder near 0 degrees (arms vertical/lockout)."""

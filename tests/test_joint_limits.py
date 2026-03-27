@@ -334,8 +334,8 @@ class TestBenchPressConfig:
     def test_forward_kinematics(self, bench_press_config) -> None:
         dyn, qs, _, _, _ = bench_press_config
         fk = dyn.forward_kinematics(qs)
-        assert "ankle" in fk  # uses same joint names as parent
-        assert "shoulder" in fk
+        assert "shoulder" in fk  # base of arm chain
+        assert "hand" in fk  # end effector (bar grip)
 
 
 # ==============================================================
