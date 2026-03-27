@@ -39,11 +39,23 @@ fn inverse_dynamics_batch_rs<'py>(
     g0: f64,
     g1: f64,
     g2: f64,
-) -> Bound<'py, PyArray2<f64>> {
+) -> PyResult<Bound<'py, PyArray2<f64>>> {
     let q = q.as_array();
     let qd = qd.as_array();
     let qdd = qdd.as_array();
+
+    // Validate input shapes: all must be (N, 3)
+    if q.shape()[1] != 3 || qd.shape()[1] != 3 || qdd.shape()[1] != 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "q, qd, qdd must each have exactly 3 columns",
+        ));
+    }
     let n = q.shape()[0];
+    if qd.shape()[0] != n || qdd.shape()[0] != n {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "q, qd, qdd must have the same number of rows",
+        ));
+    }
 
     let mut tau = Array2::<f64>::zeros((n, 3));
 
@@ -103,7 +115,7 @@ fn inverse_dynamics_batch_rs<'py>(
         }
     }
 
-    tau.into_pyarray_bound(py)
+    Ok(tau.into_pyarray_bound(py))
 }
 
 /// Compute COM x-coordinate for all timesteps.
@@ -138,8 +150,15 @@ fn com_x_batch_rs<'py>(
     body_mass: f64,
     is_squat: bool,
     m_arms: f64,
-) -> Bound<'py, PyArray1<f64>> {
+) -> PyResult<Bound<'py, PyArray1<f64>>> {
     let q = q.as_array();
+
+    // Validate input shape: q must be (N, 3)
+    if q.shape()[1] != 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "q must have exactly 3 columns",
+        ));
+    }
     let n = q.shape()[0];
     let total_mass = body_mass + bar_mass;
 
@@ -173,7 +192,7 @@ fn com_x_batch_rs<'py>(
         (0..n).map(compute_one).collect()
     };
 
-    Array1::from_vec(result).into_pyarray_bound(py)
+    Ok(Array1::from_vec(result).into_pyarray_bound(py))
 }
 
 /// Generic N-DOF inverse dynamics for all timesteps in batch.

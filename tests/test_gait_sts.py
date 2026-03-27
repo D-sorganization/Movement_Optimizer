@@ -10,12 +10,6 @@ import pytest
 from movement_optimizer.exercises import GaitAnalyzer, make_gait_config, make_sit_to_stand_config
 from movement_optimizer.models import BodyModel, LagrangianDynamics
 
-
-@pytest.fixture()
-def default_body() -> BodyModel:
-    return BodyModel(75.0, 1.75)
-
-
 # ------------------------------------------------------------------
 # Gait config
 # ------------------------------------------------------------------
@@ -152,3 +146,76 @@ class TestSitToStandConfig:
         lean_hip = via[1][3]
         start_hip = via[0][3]
         assert lean_hip > start_hip, "Forward lean should increase hip flexion"
+
+
+# ------------------------------------------------------------------
+# Optimization smoke tests (structure only -- no full solve)
+# ------------------------------------------------------------------
+
+
+class TestGaitOptimizationSmoke:
+    """Verify gait config can be wired into the optimizer without errors."""
+
+    def test_gait_optimizer_construction(self, default_body: BodyModel) -> None:
+        from movement_optimizer.trajectory import TrajectoryOptimizer
+
+        dyn, qs, qe, qb, _via = make_gait_config(default_body)
+        opt = TrajectoryOptimizer(
+            default_body, dyn, "gait", 0.0, qs, qe, qb, duration=1.0, n_waypoints=8
+        )
+        assert opt.n_dof == 3
+        assert opt.duration == 1.0
+
+    def test_gait_initial_guess_shape(self, default_body: BodyModel) -> None:
+        from movement_optimizer.trajectory import TrajectoryOptimizer
+
+        dyn, qs, qe, qb, _via = make_gait_config(default_body)
+        opt = TrajectoryOptimizer(
+            default_body, dyn, "gait", 0.0, qs, qe, qb, duration=1.0, n_waypoints=8
+        )
+        guess = opt._initial_guess()
+        assert guess.shape == (8, 3)
+
+    def test_gait_cost_is_finite(self, default_body: BodyModel) -> None:
+        from movement_optimizer.trajectory import TrajectoryOptimizer
+
+        dyn, qs, qe, qb, _via = make_gait_config(default_body)
+        opt = TrajectoryOptimizer(
+            default_body, dyn, "gait", 0.0, qs, qe, qb, duration=1.0, n_waypoints=8
+        )
+        cost = opt._compute_cost(opt._initial_guess().flatten())
+        assert np.isfinite(cost)
+
+
+class TestSitToStandOptimizationSmoke:
+    """Verify STS config can be wired into the optimizer without errors."""
+
+    def test_sts_optimizer_construction(self, default_body: BodyModel) -> None:
+        from movement_optimizer.trajectory import TrajectoryOptimizer
+
+        dyn, qs, qe, qb, _via = make_sit_to_stand_config(default_body)
+        opt = TrajectoryOptimizer(
+            default_body, dyn, "sit_to_stand", 0.0, qs, qe, qb, duration=2.0, n_waypoints=8
+        )
+        assert opt.n_dof == 3
+        assert opt.duration == 2.0
+
+    def test_sts_initial_guess_shape(self, default_body: BodyModel) -> None:
+        from movement_optimizer.trajectory import TrajectoryOptimizer
+
+        dyn, qs, qe, qb, _via = make_sit_to_stand_config(default_body)
+        opt = TrajectoryOptimizer(
+            default_body, dyn, "sit_to_stand", 0.0, qs, qe, qb, duration=2.0, n_waypoints=8
+        )
+        guess = opt._initial_guess()
+        assert guess.shape == (8, 3)
+
+    def test_sts_cost_is_finite(self, default_body: BodyModel) -> None:
+        from movement_optimizer.trajectory import TrajectoryOptimizer
+
+        dyn, qs, qe, qb, _via = make_sit_to_stand_config(default_body)
+        opt = TrajectoryOptimizer(
+            default_body, dyn, "sit_to_stand", 0.0, qs, qe, qb, duration=2.0, n_waypoints=8
+        )
+        cost = opt._compute_cost(opt._initial_guess().flatten())
+        assert np.isfinite(cost)
