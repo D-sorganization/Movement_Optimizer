@@ -15,6 +15,10 @@ import numpy as np
 # ------------------------------------------------------------------
 # Segment mass fractions  (fraction of total body mass)
 # Bilateral segments are lumped into a single 2-D sagittal-plane value.
+#
+# Note: "trunk_head" includes head and neck mass -- there is no
+# separate head/neck segment in the 2-D sagittal-plane model.
+# The five fractions must sum to exactly 1.0.
 # ------------------------------------------------------------------
 MASS_FRAC: dict[str, float] = {
     "feet": 0.028,
@@ -23,6 +27,9 @@ MASS_FRAC: dict[str, float] = {
     "trunk_head": 0.578,
     "arms": 0.100,
 }
+assert abs(sum(MASS_FRAC.values()) - 1.0) < 1e-9, (
+    f"MASS_FRAC values must sum to 1.0, got {sum(MASS_FRAC.values())}"
+)
 
 # ------------------------------------------------------------------
 # Segment length fractions  (fraction of body height)
@@ -85,6 +92,20 @@ JOINT_LIMITS: dict[str, tuple[float, float]] = {
 
 # Joint names for the 3-link chain (index → name)
 JOINT_NAMES: tuple[str, ...] = ("ankle", "knee", "hip")
+
+# ------------------------------------------------------------------
+# Canonical exercise poses (degrees)
+#
+# These define the raw (pre-balance) joint angles for key positions.
+# Factory functions in models.py feed these into balance_pose() to
+# obtain the final COM-balanced configuration.
+# ------------------------------------------------------------------
+
+# Squat bottom: deep knee bend with moderate ankle & hip flexion.
+SQUAT_BOTTOM_DEG: tuple[float, float, float] = (25.0, -90.0, 50.0)
+
+# Standing: anatomically neutral upright (all joints at zero).
+STANDING_DEG: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
 # ------------------------------------------------------------------
 # Default maximum isometric joint torques (N·m)
