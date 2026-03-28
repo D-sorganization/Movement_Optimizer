@@ -28,6 +28,8 @@ from .constants import (
     LENGTH_FRAC,
     MASS_FRAC,
     RADIUS_OF_GYRATION_FRAC,
+    SQUAT_BOTTOM_DEG,
+    STANDING_DEG,
     WRIST_SEGMENT_LENGTH,
 )
 from .strength import (
@@ -634,7 +636,7 @@ def _standing_balanced(dyn: LagrangianDynamics, bar_mass: float, exercise_type: 
 
     Adjusts shin angle (joint 0) to shift COM forward over mid-foot.
     """
-    q_stand = np.array([0.0, 0.0, 0.0])
+    q_stand = np.array([np.radians(a) for a in STANDING_DEG])
     return balance_pose(dyn, q_stand, exercise_type, bar_mass, adjust_joint=0)
 
 
@@ -643,7 +645,7 @@ def make_squat_config(
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
     dyn = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), bar_mass)
     # Squat bottom: deep knee bend, torso adjusted for COM balance
-    q_bottom_raw = np.array([np.radians(25), np.radians(-90), np.radians(50)])
+    q_bottom_raw = np.array([np.radians(a) for a in SQUAT_BOTTOM_DEG])
     q_start = balance_pose(dyn, q_bottom_raw, "squat", bar_mass, adjust_joint=2)
     q_end = _standing_balanced(dyn, bar_mass, "squat")
     q_bounds = np.array(
@@ -663,7 +665,7 @@ def make_full_squat_config(
     q_stand = _standing_balanced(dyn, bar_mass, "full_squat")
     q_start = q_stand.copy()
     q_end = q_stand.copy()
-    q_bottom_raw = np.array([np.radians(25), np.radians(-90), np.radians(50)])
+    q_bottom_raw = np.array([np.radians(a) for a in SQUAT_BOTTOM_DEG])
     q_via = balance_pose(dyn, q_bottom_raw, "full_squat", bar_mass, adjust_joint=2)
     q_bounds = np.array(
         [
