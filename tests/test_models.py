@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from movement_optimizer.constants import BOS_INNER_FRACTION, PLATE_RADIUS_STD_M
+from movement_optimizer.constants import BOS_INNER_FRACTION, MASS_FRAC, PLATE_RADIUS_STD_M
 from movement_optimizer.models import BodyModel, LagrangianDynamics
 
 
@@ -33,6 +33,13 @@ class TestBodyModel:
     def test_multiplier_out_of_range_raises(self) -> None:
         with pytest.raises(ValueError, match="out of range"):
             BodyModel(75, 1.75, seg_multipliers={"lower_leg": 3.0})
+
+    def test_mass_fractions_sum_to_one(self) -> None:
+        """MASS_FRAC values must sum to exactly 1.0 (issue #125)."""
+        total = sum(MASS_FRAC.values())
+        assert total == pytest.approx(1.0, abs=1e-9), (
+            f"MASS_FRAC values sum to {total}, expected 1.0"
+        )
 
     def test_mass_fractions_sum(self, default_body: BodyModel) -> None:
         total = default_body.m_feet + default_body.m_squat.sum()
