@@ -87,6 +87,20 @@ JOINT_LIMITS: dict[str, tuple[float, float]] = {
 JOINT_NAMES: tuple[str, ...] = ("ankle", "knee", "hip")
 
 # ------------------------------------------------------------------
+# Canonical exercise poses (degrees)
+#
+# These define the raw (pre-balance) joint angles for key positions.
+# Factory functions in models.py feed these into balance_pose() to
+# obtain the final COM-balanced configuration.
+# ------------------------------------------------------------------
+
+# Squat bottom: deep knee bend with moderate ankle & hip flexion.
+SQUAT_BOTTOM_DEG: tuple[float, float, float] = (25.0, -90.0, 50.0)
+
+# Standing: anatomically neutral upright (all joints at zero).
+STANDING_DEG: tuple[float, float, float] = (0.0, 0.0, 0.0)
+
+# ------------------------------------------------------------------
 # Default maximum isometric joint torques (N·m)
 #
 # Representative values for an average adult male.  These are the
