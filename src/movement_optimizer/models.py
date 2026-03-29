@@ -353,7 +353,19 @@ class LagrangianDynamics(PhysicsBackend):
             L = body.L
             d = body.d
 
-        # Pre-compute coupling coefficients (constant for given model)
+        self._init_coupling_coefficients(m_segments, I_segments, load_mass, L, d)
+        self._init_gravity_coefficients(m_segments, load_mass, L, d)
+
+    def _init_coupling_coefficients(
+        self,
+        m_segments: NDArray,
+        I_segments: NDArray,
+        load_mass: float,
+        L: NDArray,
+        d: NDArray,
+    ) -> None:
+        """Pre-compute coupling and diagonal mass-matrix constants."""
+        # Off-diagonal coupling coefficients
         self._a01 = (m_segments[1] * d[1] + (m_segments[2] + load_mass) * L[1]) * L[0]
         self._a02 = (m_segments[2] * d[2] + load_mass * L[2]) * L[0]
         self._a12 = (m_segments[2] * d[2] + load_mass * L[2]) * L[1]
@@ -369,12 +381,19 @@ class LagrangianDynamics(PhysicsBackend):
         )
         self._M22 = m_segments[2] * d[2] ** 2 + load_mass * L[2] ** 2 + I_segments[2]
 
-        # Gravity coefficients
-        self._g0 = body.g * (
+    def _init_gravity_coefficients(
+        self,
+        m_segments: NDArray,
+        load_mass: float,
+        L: NDArray,
+        d: NDArray,
+    ) -> None:
+        """Pre-compute gravity torque coefficients."""
+        self._g0 = self.body.g * (
             m_segments[0] * d[0] + (m_segments[1] + m_segments[2] + load_mass) * L[0]
         )
-        self._g1 = body.g * (m_segments[1] * d[1] + (m_segments[2] + load_mass) * L[1])
-        self._g2 = body.g * (m_segments[2] * d[2] + load_mass * L[2])
+        self._g1 = self.body.g * (m_segments[1] * d[1] + (m_segments[2] + load_mass) * L[1])
+        self._g2 = self.body.g * (m_segments[2] * d[2] + load_mass * L[2])
 
     @property
     def n_dof(self) -> int:

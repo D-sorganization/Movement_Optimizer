@@ -366,23 +366,28 @@ class ExerciseTab(QWidget):
         fk: dict[str, Any],
     ) -> None:
         """Render bench press: supine body on bench with arm chain."""
-        from matplotlib.patches import Circle as MplCircle
-
         ax.set_xlim(-0.6, 0.8)
         ax.set_ylim(-0.15, 1.4)
         ax.set_aspect("equal", adjustable="datalim")
 
         bench_h = 0.45
+        shoulder_x = -0.18
 
-        # Draw bench
-        ax.fill_between([-0.8, 0.5], bench_h - 0.05, bench_h, color="#8B4513", alpha=0.6)
+        self._draw_bench_body(ax, bench_h, shoulder_x)
+        arm_joints, fk_points = self._draw_bench_arm_segments(ax, bench_h, shoulder_x, fk)
+        self._draw_bench_barbell(ax, arm_joints, fk_points, bench_h, shoulder_x, fi, result)
+        self._draw_bench_annotations(ax, q, t_now)
 
-        # Draw body lying on bench (decorative -- not part of dynamics)
-        # Shoulder is near the head end (top of torso), not mid-body
+    def _draw_bench_body(self, ax: Any, bench_h: float, shoulder_x: float) -> None:
+        """Draw the decorative supine body on the bench (not part of dynamics)."""
+        from matplotlib.patches import Circle as MplCircle
+
         head_x, head_y = -0.40, bench_h + 0.05
         neck_x = -0.30
-        shoulder_x = -0.18
         hip_x = 0.30
+
+        # Bench surface
+        ax.fill_between([-0.8, 0.5], bench_h - 0.05, bench_h, color="#8B4513", alpha=0.6)
 
         # Neck
         ax.plot(
@@ -443,11 +448,12 @@ class ExerciseTab(QWidget):
         # Ground line
         ax.plot([-0.6, 0.8], [0, 0], color=Palette.FG_DIM, lw=2, alpha=0.3)
 
-        # Arm chain from FK (the actual dynamics)
-        # FK "ankle" = shoulder joint position, remap to bench shoulder position
+    def _draw_bench_arm_segments(
+        self, ax: Any, bench_h: float, shoulder_x: float, fk: dict[str, Any]
+    ) -> tuple[list[Any], list[Any]]:
+        """Draw the arm kinematic chain and return joint positions and FK points."""
         arm_base = np.array([shoulder_x, bench_h + 0.02])
         fk_points = [fk["ankle"], fk["knee"], fk["hip"], fk["shoulder"]]
-        # Offset FK relative to arm_base (FK has ankle at origin)
         arm_joints = [arm_base + (pt - fk_points[0]) for pt in fk_points]
 
         # Draw arm segments: upper arm, forearm, hand/wrist
@@ -475,15 +481,29 @@ class ExerciseTab(QWidget):
                 markeredgewidth=1,
             )
 
-        # Bar at hand position (end of chain)
+        return arm_joints, fk_points
+
+    def _draw_bench_barbell(
+        self,
+        ax: Any,
+        arm_joints: list[Any],
+        fk_points: list[Any],
+        bench_h: float,
+        shoulder_x: float,
+        fi: int,
+        result: OptimizationResult,
+    ) -> None:
+        """Draw the barbell at the hand position and the bar trace."""
         bar_pos = arm_joints[-1]
         BarbellRenderer.draw(ax, (bar_pos[0], bar_pos[1]))
 
-        # Bar trace — offset the FK-based trace to bench coordinates
+        arm_base = np.array([shoulder_x, bench_h + 0.02])
         bar_trace_offset = arm_base - fk_points[0]
         bench_bar_traj = result.bar + bar_trace_offset
         BodyRenderer.draw_bar_trace(ax, bench_bar_traj, fi)
 
+    def _draw_bench_annotations(self, ax: Any, q: Any, t_now: float) -> None:
+        """Draw the title annotation with current joint angles."""
         ax.set_title(
             f"{self.name}  t={t_now:.2f}s  |  "
             f"Shoulder {np.degrees(q[0]):.0f}\u00b0  "

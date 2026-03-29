@@ -400,90 +400,126 @@ class MainWindow(QMainWindow):
             daemon=True,
         ).start()
 
+    def _build_exercise_config(
+        self, idx: int
+    ) -> tuple[Any, Any, Any, Any, Any, str, float, float, float, dict[str, float]]:
+        """Build the dynamics, poses, and parameters for an exercise.
+
+        Returns:
+            (dyn, qs, qe, qb, q_via, etype, bar, dur, smoothness, seg_mults)
+        """
+        body = self.sidebar.get_body_model()
+        bar = self.sidebar.bar_slider.value()
+        dur = self.sidebar.dur_slider.value()
+        smoothness = self.sidebar.smooth_slider.value()
+        _, etype = self.EXERCISE_CONFIGS[idx]
+
+        factory = EXERCISE_FACTORIES[etype]
+        config = factory(body, bar)
+        if len(config) == 5:
+            dyn, qs, qe, qb, q_via = config  # type: ignore[misc]
+        else:
+            dyn, qs, qe, qb = config  # type: ignore[misc]
+            q_via = None
+
+        # Enforce minimum duration for multi-phase exercises
+        _min_durations = {
+            "full_squat": 3.0,
+            "bench_press": 3.0,
+            "clean": 2.5,
+            "jerk": 2.0,
+            "snatch": 3.0,
+        }
+        if etype in _min_durations:
+            dur = max(dur, _min_durations[etype])
+
+        self.dynamics_list[idx] = dyn
+        self.bodies_list[idx] = body
+
+        seg_mults = {
+            "lower_leg": self.sidebar.ll_slider.value(),
+            "upper_leg": self.sidebar.ul_slider.value(),
+            "torso": self.sidebar.to_slider.value(),
+        }
+        return dyn, qs, qe, qb, q_via, etype, bar, dur, smoothness, seg_mults
+
+    def _run_optimizer(
+        self,
+        idx: int,
+        body: BodyModel,
+        dyn: Any,
+        qs: Any,
+        qe: Any,
+        qb: Any,
+        q_via: Any,
+        etype: str,
+        bar: float,
+        dur: float,
+        smoothness: float,
+        seg_mults: dict[str, float],
+    ) -> OptimizationResult:
+        """Run the trajectory optimizer (or return a cached result).
+
+        Raises CancelledError if the user cancels mid-run.
+        """
+        cached = self._cache.get(
+            etype, body.body_mass, body.height, seg_mults, bar, dur, smoothness
+        )
+        if cached is not None:
+            logger.info("Cache hit for %s", etype)
+            return cached
+
+        logger.info(
+            "Starting %s optimisation: mass=%.0f, height=%.2f, bar=%.0f",
+            etype,
+            body.body_mass,
+            body.height,
+            bar,
+        )
+
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,  # type: ignore[arg-type]
+            etype,
+            bar,
+            qs,  # type: ignore[arg-type]
+            qe,  # type: ignore[arg-type]
+            qb,  # type: ignore[arg-type]
+            q_via=q_via,  # type: ignore[arg-type]
+            duration=dur,
+            n_waypoints=12,
+            smoothness=smoothness,
+            progress_cb=self._make_progress_cb(),
+            cancel_event=self._cancel_event,
+        )
+        result = opt.optimize()
+
+        self._cache.put(
+            etype,
+            body.body_mass,
+            body.height,
+            seg_mults,
+            bar,
+            dur,
+            smoothness,
+            result,
+        )
+        return result
+
     def _opt_worker(self, idx: int, then_chain: list[int] | None) -> None:
         try:
             body = self.sidebar.get_body_model()
-            bar = self.sidebar.bar_slider.value()
-            dur = self.sidebar.dur_slider.value()
-            smoothness = self.sidebar.smooth_slider.value()
-            _, etype = self.EXERCISE_CONFIGS[idx]
-
-            factory = EXERCISE_FACTORIES[etype]
-            config = factory(body, bar)
-            if len(config) == 5:
-                dyn, qs, qe, qb, q_via = config  # type: ignore[misc]
-            else:
-                dyn, qs, qe, qb = config  # type: ignore[misc]
-                q_via = None
-
-            # Enforce minimum duration for multi-phase exercises
-            _min_durations = {
-                "full_squat": 3.0,
-                "bench_press": 3.0,
-                "clean": 2.5,
-                "jerk": 2.0,
-                "snatch": 3.0,
-            }
-            if etype in _min_durations:
-                dur = max(dur, _min_durations[etype])
-
-            self.dynamics_list[idx] = dyn
-            self.bodies_list[idx] = body
-
-            seg_mults = {
-                "lower_leg": self.sidebar.ll_slider.value(),
-                "upper_leg": self.sidebar.ul_slider.value(),
-                "torso": self.sidebar.to_slider.value(),
-            }
-            cached = self._cache.get(
-                etype, body.body_mass, body.height, seg_mults, bar, dur, smoothness
-            )
-            if cached is not None:
-                logger.info("Cache hit for %s", etype)
-                result = cached
-                self.results[idx] = result
-                self.anim_frames[idx] = 0
-                self._sig_done.emit(idx, result, body, bar, then_chain)
-                return
-
-            logger.info(
-                "Starting %s optimisation: mass=%.0f, height=%.2f, bar=%.0f",
-                etype,
-                body.body_mass,
-                body.height,
-                bar,
+            dyn, qs, qe, qb, q_via, etype, bar, dur, smoothness, seg_mults = (
+                self._build_exercise_config(idx)
             )
 
-            opt = TrajectoryOptimizer(
-                body,
-                dyn,  # type: ignore[arg-type]
-                etype,
-                bar,
-                qs,  # type: ignore[arg-type]
-                qe,  # type: ignore[arg-type]
-                qb,  # type: ignore[arg-type]
-                q_via=q_via,  # type: ignore[arg-type]
-                duration=dur,
-                n_waypoints=12,
-                smoothness=smoothness,
-                progress_cb=self._make_progress_cb(),
-                cancel_event=self._cancel_event,
+            result = self._run_optimizer(
+                idx, body, dyn, qs, qe, qb, q_via, etype, bar, dur, smoothness, seg_mults
             )
-            result = opt.optimize()
+
             with self._opt_lock:
                 self.results[idx] = result
                 self.anim_frames[idx] = 0
-
-            self._cache.put(
-                etype,
-                body.body_mass,
-                body.height,
-                seg_mults,
-                bar,
-                dur,
-                smoothness,
-                result,
-            )
 
             self._sig_done.emit(idx, result, body, bar, then_chain)
         except CancelledError:
@@ -651,6 +687,23 @@ class MainWindow(QMainWindow):
             delay = 700
         self.anim_timer.start(delay)
 
+    def _draw_current_frame(self, idx: int) -> None:
+        """Render the current animation frame for the given exercise tab."""
+        r = self.results[idx]
+        if r is None:
+            return
+        fi = self.anim_frames[idx]
+        _, etype = self.EXERCISE_CONFIGS[idx]
+        self.exercise_tabs[idx].draw_anim_frame(
+            fi,
+            r,
+            self.dynamics_list[idx],
+            self.bodies_list[idx],  # type: ignore[arg-type]
+            etype,
+        )
+        n = len(r.t)
+        self.controls.frame_label.setText(f"Frame {fi + 1}/{n}")
+
     def _step_fwd(self) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
@@ -659,15 +712,7 @@ class MainWindow(QMainWindow):
         self._stop_anim()
         n = len(r.t)
         self.anim_frames[idx] = (self.anim_frames[idx] + 1) % n
-        _, etype = self.EXERCISE_CONFIGS[idx]
-        self.exercise_tabs[idx].draw_anim_frame(
-            self.anim_frames[idx],
-            r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
-            etype,
-        )
-        self.controls.frame_label.setText(f"Frame {self.anim_frames[idx] + 1}/{n}")
+        self._draw_current_frame(idx)
 
     def _step_back(self) -> None:
         idx = self.tabs.currentIndex()
@@ -677,14 +722,7 @@ class MainWindow(QMainWindow):
         self._stop_anim()
         n = len(r.t)
         self.anim_frames[idx] = (self.anim_frames[idx] - 1) % n
-        _, etype = self.EXERCISE_CONFIGS[idx]
-        self.exercise_tabs[idx].draw_anim_frame(
-            self.anim_frames[idx],
-            r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
-            etype,
-        )
+        self._draw_current_frame(idx)
 
     def _rewind(self) -> None:
         idx = self.tabs.currentIndex()
@@ -693,14 +731,7 @@ class MainWindow(QMainWindow):
             return
         self._stop_anim()
         self.anim_frames[idx] = 0
-        _, etype = self.EXERCISE_CONFIGS[idx]
-        self.exercise_tabs[idx].draw_anim_frame(
-            0,
-            r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
-            etype,
-        )
+        self._draw_current_frame(idx)
 
     def _on_speed(self, speed: float) -> None:
         self.controls.speed_label.setText(f"{speed:.1f}x")
