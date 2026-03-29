@@ -11,6 +11,7 @@ Design Principles:
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 
 import numpy as np
@@ -30,7 +31,7 @@ from .constants import (
     RADIUS_OF_GYRATION_FRAC,
     SQUAT_BOTTOM_DEG,
     STANDING_DEG,
-    WRIST_SEGMENT_LENGTH,
+    WRIST_SEGMENT_FRAC,
 )
 from .strength import (
     HillTorqueModel,
@@ -44,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "BodyModel",
+    "ChainGeometry",
     "HillTorqueModel",
     "JointTorqueSet",
     "LagrangianDynamics",
@@ -60,6 +62,28 @@ __all__ = [
     "make_sit_to_stand_config",
     "make_squat_config",
 ]
+
+
+@dataclasses.dataclass(frozen=True)
+class ChainGeometry:
+    """Explicit geometry for a non-default kinematic chain.
+
+    Used to configure LagrangianDynamics for chains other than the default
+    leg model (e.g. the arm chain for bench press).  Replaces the old
+    dict-based ``body_override`` parameter with a typed, self-documenting
+    structure.
+
+    Attributes:
+        L: Segment lengths (length-3 array).
+        d: Segment COM distances from proximal joint (length-3 array).
+        joint_names: Human-readable names for the 3 joints + tip.
+    """
+
+    L: NDArray
+    d: NDArray
+    joint_names: list[str] = dataclasses.field(
+        default_factory=lambda: ["link0", "link1", "link2", "link3"]
+    )
 
 
 class BodyModel:
@@ -283,7 +307,7 @@ class LagrangianDynamics(PhysicsBackend):
         m_segments: NDArray,
         I_segments: NDArray,
         load_mass: float,
-        body_override: dict[str, NDArray] | None = None,
+        chain_geometry: ChainGeometry | None = None,
         supine: bool = False,
     ) -> None:
         """Initialise Lagrangian dynamics for a 3-link planar chain.
@@ -293,11 +317,9 @@ class LagrangianDynamics(PhysicsBackend):
             m_segments: Length-3 array of segment masses (kg).
             I_segments: Length-3 array of segment moments of inertia (kg·m²).
             load_mass: Mass of the external load at the chain tip (kg).
-            body_override: Optional dict with keys 'L', 'd' containing
-                length-3 NDArrays that override the body geometry for the
-                coupling-coefficient calculations.  Used by non-leg kinematic
-                chains (e.g. the arm chain for bench press) without resorting
-                to post-hoc attribute surgery.
+            chain_geometry: Optional ChainGeometry providing segment lengths,
+                COM distances, and joint names for non-leg kinematic chains
+                (e.g. the arm chain for bench press).
             supine: If True, gravity acts perpendicular to the chain axis
                 (the lifter is lying down).  Gravity torque uses cos(q)
                 instead of sin(q).  Used for bench press.
@@ -314,16 +336,14 @@ class LagrangianDynamics(PhysicsBackend):
         self.supine = supine
 
         # Allow callers to supply alternative segment geometry (e.g. arm chain).
-        if body_override is not None:
-            L = body_override["L"]
-            d = body_override["d"]
+        if chain_geometry is not None:
+            L = chain_geometry.L
+            d = chain_geometry.d
             self.L = L
             self.L_eff = L.copy()
             self.d = d
             self.d_eff = d.copy()
-            self.joint_names = body_override.get(
-                "joint_names", ["link0", "link1", "link2", "link3"]
-            )
+            self.joint_names = list(chain_geometry.joint_names)
         else:
             self.L = body.L
             self.L_eff = body.L_eff
@@ -718,7 +738,7 @@ class BenchPressModel:
             [
                 BENCH_UPPER_ARM_FRAC * arm_len,
                 BENCH_FOREARM_FRAC * arm_len,
-                WRIST_SEGMENT_LENGTH,  # wrist/hand (effectively zero — grip only)
+                WRIST_SEGMENT_FRAC * arm_len,  # wrist/hand — scales with body height
             ]
         )
         self.body_mass = body.body_mass
@@ -769,18 +789,18 @@ def make_bench_press_config(
     bp = BenchPressModel(body)
 
     # Create a dynamics object using arm segment properties.
-    # Pass body_override so the constructor uses arm geometry (L, d) for all
+    # ChainGeometry provides typed arm geometry (L, d) for all
     # coupling-coefficient calculations — no post-hoc attribute surgery needed.
     dyn = LagrangianDynamics(
         body,
         bp.m.copy(),
         bp.I.copy(),
         bar_mass,
-        body_override={
-            "L": bp.L,
-            "d": bp.d,
-            "joint_names": ["shoulder", "elbow", "wrist", "hand"],
-        },
+        chain_geometry=ChainGeometry(
+            L=bp.L,
+            d=bp.d,
+            joint_names=["shoulder", "elbow", "wrist", "hand"],
+        ),
         supine=True,
     )
 

@@ -7,6 +7,7 @@ import numpy as np
 from movement_optimizer.models import (
     BenchPressModel,
     BodyModel,
+    ChainGeometry,
     LagrangianDynamics,
     make_bench_press_config,
 )
@@ -120,7 +121,7 @@ class TestBenchPressConfig:
             bp.m.copy(),
             bp.I.copy(),
             60.0,
-            body_override={"L": bp.L, "d": bp.d},
+            chain_geometry=ChainGeometry(L=bp.L, d=bp.d),
             supine=False,
         )
         # Supine chain
@@ -129,7 +130,7 @@ class TestBenchPressConfig:
             bp.m.copy(),
             bp.I.copy(),
             60.0,
-            body_override={"L": bp.L, "d": bp.d},
+            chain_geometry=ChainGeometry(L=bp.L, d=bp.d),
             supine=True,
         )
 

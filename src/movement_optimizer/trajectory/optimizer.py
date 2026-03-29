@@ -431,6 +431,34 @@ class TrajectoryOptimizer:
                 )
         return constraints
 
+    def _minimize_single(
+        self,
+        x0: NDArray,
+        cost_fn: Callable[[NDArray], float],
+        max_iter: int = MAX_ITER_PER_START,
+    ) -> object:
+        """Run one SLSQP solve — shared setup for both start paths.
+
+        Parameters:
+            x0: Flattened initial waypoint guess.
+            cost_fn: Objective function (may include eval counting).
+            max_iter: Maximum iterations for the solver.
+
+        Returns:
+            The scipy OptimizeResult object.
+        """
+        bounds = self._build_bounds()
+        constraints = self._build_constraints()
+        return minimize(
+            cost_fn,
+            x0,
+            method="SLSQP",
+            bounds=bounds,
+            constraints=constraints,
+            callback=self._cancel_callback,
+            options={"maxiter": max_iter, "ftol": 1e-6, "disp": False},
+        )
+
     def _run_single_start(self, seed: int) -> tuple[object, int] | None:
         """Run one SLSQP solve with a perturbed initial guess.
 
@@ -440,8 +468,6 @@ class TrajectoryOptimizer:
             return None
 
         wp0 = self._perturbed_guess(seed)
-        bounds = self._build_bounds()
-        constraints = self._build_constraints()
         eval_count = [0]
 
         def cost_fn(x: NDArray) -> float:
@@ -451,15 +477,7 @@ class TrajectoryOptimizer:
             return self._compute_cost(x)
 
         try:
-            res = minimize(
-                cost_fn,
-                wp0.flatten(),
-                method="SLSQP",
-                bounds=bounds,
-                constraints=constraints,
-                callback=self._cancel_callback,
-                options={"maxiter": MAX_ITER_PER_START, "ftol": 1e-6, "disp": False},
-            )
+            res = self._minimize_single(wp0.flatten(), cost_fn)
         except CancelledError:
             return None
 
@@ -559,23 +577,7 @@ class TrajectoryOptimizer:
         self._best_cost = float("inf")
 
         wp0 = self._initial_guess()
-        bounds = self._build_bounds()
-        constraints = self._build_constraints()
-
-        try:
-            res = minimize(
-                self.cost,
-                wp0.flatten(),
-                method="SLSQP",
-                bounds=bounds,
-                constraints=constraints,
-                callback=self._cancel_callback,
-                options={"maxiter": MAX_ITER_PER_START * 2, "ftol": 1e-6, "disp": False},
-            )
-        except CancelledError:
-            raise
-
-        return res
+        return self._minimize_single(wp0.flatten(), self.cost, max_iter=MAX_ITER_PER_START * 2)
 
     # ==========================================================
     # Result packaging
