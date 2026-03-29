@@ -181,9 +181,11 @@ HILL_MAX_ECCENTRIC_RATIO: float = 1.4
 #
 # Segment fractions for the arm chain (fraction of arm length):
 # ------------------------------------------------------------------
-# Wrist/hand segment length [m] — effectively a grip-only link with
-# negligible lever arm. Used in the bench press 3-link model.
-WRIST_SEGMENT_LENGTH: float = 0.01
+# Wrist/hand segment length as a fraction of arm length.  Replaces the
+# former fixed 0.01 m constant so the link scales allometrically with
+# the lifter's body height (via arm_len).  ~1% of arm length yields
+# ~7 mm for a 1.75 m person — effectively a grip-only link.
+WRIST_SEGMENT_FRAC: float = 0.01
 
 BENCH_UPPER_ARM_FRAC: float = 0.56  # shoulder to elbow (anatomical ~48% + shoulder width)
 BENCH_FOREARM_FRAC: float = 0.44  # elbow to wrist (Winter 2009: ~44% of arm length)
