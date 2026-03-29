@@ -356,6 +356,13 @@ class ExerciseTab(QWidget):
 
         self.canvas.draw()
 
+    # -- Bench press rendering constants ----------------------------
+    _BENCH_HEIGHT = 0.45
+    _BENCH_HEAD_X = -0.40
+    _BENCH_NECK_X = -0.30
+    _BENCH_SHOULDER_X = -0.18
+    _BENCH_HIP_X = 0.30
+
     def _draw_bench_press_frame(
         self,
         ax: Any,
@@ -366,28 +373,32 @@ class ExerciseTab(QWidget):
         fk: dict[str, Any],
     ) -> None:
         """Render bench press: supine body on bench with arm chain."""
-        from matplotlib.patches import Circle as MplCircle
-
         ax.set_xlim(-0.6, 0.8)
         ax.set_ylim(-0.15, 1.4)
         ax.set_aspect("equal", adjustable="datalim")
 
-        bench_h = 0.45
+        self._draw_bench_and_body(ax)
+        hand_pos, arm_base, fk_origin = self._draw_bench_arm_chain(ax, fk)
+        self._draw_bench_barbell_and_trace(ax, fi, result, hand_pos, arm_base, fk_origin)
+        self._draw_bench_title(ax, q, t_now)
 
-        # Draw bench
-        ax.fill_between([-0.8, 0.5], bench_h - 0.05, bench_h, color="#8B4513", alpha=0.6)
+    def _draw_bench_and_body(self, ax: Any) -> None:
+        """Draw the bench surface, supine body (decorative), and ground line."""
+        from matplotlib.patches import Circle as MplCircle
 
-        # Draw body lying on bench (decorative -- not part of dynamics)
-        # Shoulder is near the head end (top of torso), not mid-body
-        head_x, head_y = -0.40, bench_h + 0.05
-        neck_x = -0.30
-        shoulder_x = -0.18
-        hip_x = 0.30
+        bh = self._BENCH_HEIGHT
+        head_x = self._BENCH_HEAD_X
+        neck_x = self._BENCH_NECK_X
+        shoulder_x = self._BENCH_SHOULDER_X
+        hip_x = self._BENCH_HIP_X
+
+        # Bench surface
+        ax.fill_between([-0.8, 0.5], bh - 0.05, bh, color="#8B4513", alpha=0.6)
 
         # Neck
         ax.plot(
             [head_x + 0.08, neck_x],
-            [bench_h + 0.05, bench_h + 0.02],
+            [bh + 0.05, bh + 0.02],
             "-",
             color="#d4a574",
             lw=5,
@@ -396,7 +407,7 @@ class ExerciseTab(QWidget):
         # Head
         ax.add_patch(
             MplCircle(
-                (head_x, head_y),
+                (head_x, bh + 0.05),
                 0.08,
                 facecolor="#d4a574",
                 edgecolor="#333",
@@ -406,26 +417,19 @@ class ExerciseTab(QWidget):
             )
         )
         # Torso (horizontal on bench)
-        ax.plot(
-            [neck_x, shoulder_x],
-            [bench_h + 0.02, bench_h + 0.02],
-            "-",
-            color=Palette.SEG_COLORS[2],
-            lw=12,
-            solid_capstyle="round",
-        )
-        ax.plot(
-            [shoulder_x, hip_x],
-            [bench_h + 0.02, bench_h + 0.02],
-            "-",
-            color=Palette.SEG_COLORS[2],
-            lw=12,
-            solid_capstyle="round",
-        )
+        for x0, x1 in [(neck_x, shoulder_x), (shoulder_x, hip_x)]:
+            ax.plot(
+                [x0, x1],
+                [bh + 0.02, bh + 0.02],
+                "-",
+                color=Palette.SEG_COLORS[2],
+                lw=12,
+                solid_capstyle="round",
+            )
         # Legs hanging off bench to floor
         ax.plot(
             [hip_x, hip_x + 0.15],
-            [bench_h, 0],
+            [bh, 0],
             "-",
             color=Palette.SEG_COLORS[1],
             lw=9,
@@ -439,18 +443,22 @@ class ExerciseTab(QWidget):
             lw=6,
             solid_capstyle="round",
         )
-
         # Ground line
         ax.plot([-0.6, 0.8], [0, 0], color=Palette.FG_DIM, lw=2, alpha=0.3)
 
-        # Arm chain from FK (the actual dynamics)
-        # FK "ankle" = shoulder joint position, remap to bench shoulder position
-        arm_base = np.array([shoulder_x, bench_h + 0.02])
+    def _draw_bench_arm_chain(self, ax: Any, fk: dict[str, Any]) -> tuple[Any, Any, Any]:
+        """Draw the arm kinematic chain.
+
+        Returns (hand_position, arm_base, fk_origin) for barbell placement.
+        """
+        bh = self._BENCH_HEIGHT
+        shoulder_x = self._BENCH_SHOULDER_X
+
+        arm_base = np.array([shoulder_x, bh + 0.02])
         fk_points = [fk["ankle"], fk["knee"], fk["hip"], fk["shoulder"]]
-        # Offset FK relative to arm_base (FK has ankle at origin)
         arm_joints = [arm_base + (pt - fk_points[0]) for pt in fk_points]
 
-        # Draw arm segments: upper arm, forearm, hand/wrist
+        # Arm segments: upper arm, forearm, hand/wrist
         colors = [Palette.SEG_COLORS[0], Palette.SEG_COLORS[1], "#b0b0b0"]
         lws = [8, 6, 4]
         for k in range(3):
@@ -462,7 +470,6 @@ class ExerciseTab(QWidget):
                 lw=lws[k],
                 solid_capstyle="round",
             )
-
         # Joint markers
         for pt in arm_joints:
             ax.plot(
@@ -474,16 +481,26 @@ class ExerciseTab(QWidget):
                 markeredgecolor="#333",
                 markeredgewidth=1,
             )
+        return arm_joints[-1], arm_base, fk_points[0]
 
-        # Bar at hand position (end of chain)
-        bar_pos = arm_joints[-1]
-        BarbellRenderer.draw(ax, (bar_pos[0], bar_pos[1]))
+    def _draw_bench_barbell_and_trace(
+        self,
+        ax: Any,
+        fi: int,
+        result: OptimizationResult,
+        hand_pos: Any,
+        arm_base: Any,
+        fk_origin: Any,
+    ) -> None:
+        """Draw the barbell at hand position and the bar path trace."""
+        BarbellRenderer.draw(ax, (hand_pos[0], hand_pos[1]))
 
-        # Bar trace — offset the FK-based trace to bench coordinates
-        bar_trace_offset = arm_base - fk_points[0]
+        bar_trace_offset = arm_base - fk_origin
         bench_bar_traj = result.bar + bar_trace_offset
         BodyRenderer.draw_bar_trace(ax, bench_bar_traj, fi)
 
+    def _draw_bench_title(self, ax: Any, q: Any, t_now: float) -> None:
+        """Set the bench press animation title with joint angles."""
         ax.set_title(
             f"{self.name}  t={t_now:.2f}s  |  "
             f"Shoulder {np.degrees(q[0]):.0f}\u00b0  "
