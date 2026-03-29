@@ -37,7 +37,7 @@ def export_animation_gif(
 
     anim = FuncAnimation(fig, draw_frame_fn, frames=n_frames, blit=False)  # type: ignore[arg-type]
     writer = PillowWriter(fps=fps)
-    anim.save(path, writer=writer)
+    anim.save(path, writer=writer)  # type: ignore[arg-type]
     logger.info("Exported GIF animation to %s (%d frames, %d fps)", path, n_frames, fps)
 
 

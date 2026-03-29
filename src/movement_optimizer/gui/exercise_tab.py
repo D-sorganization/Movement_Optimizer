@@ -8,7 +8,7 @@ from typing import Any
 import matplotlib.cm as cm
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qtagg import (
+from matplotlib.backends.backend_qtagg import (  # type: ignore[attr-defined]
     NavigationToolbar2QT as NavigationToolbar,
 )
 from matplotlib.figure import Figure
