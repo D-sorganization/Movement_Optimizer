@@ -411,9 +411,9 @@ class MainWindow(QMainWindow):
             factory = EXERCISE_FACTORIES[etype]
             config = factory(body, bar)
             if len(config) == 5:
-                dyn, qs, qe, qb, q_via = config
+                dyn, qs, qe, qb, q_via = config  # type: ignore[misc]
             else:
-                dyn, qs, qe, qb = config
+                dyn, qs, qe, qb = config  # type: ignore[misc]
                 q_via = None
 
             # Enforce minimum duration for multi-phase exercises
@@ -456,13 +456,13 @@ class MainWindow(QMainWindow):
 
             opt = TrajectoryOptimizer(
                 body,
-                dyn,
+                dyn,  # type: ignore[arg-type]
                 etype,
                 bar,
-                qs,
-                qe,
-                qb,
-                q_via=q_via,
+                qs,  # type: ignore[arg-type]
+                qe,  # type: ignore[arg-type]
+                qb,  # type: ignore[arg-type]
+                q_via=q_via,  # type: ignore[arg-type]
                 duration=dur,
                 n_waypoints=12,
                 smoothness=smoothness,
