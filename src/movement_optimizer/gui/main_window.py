@@ -578,8 +578,6 @@ class MainWindow(QMainWindow):
         self, name: str, r: OptimizationResult, exercise_type: str = "squat"
     ) -> None:
         pk = np.max(np.abs(r.torques), axis=0)
-        if trapezoid is None:
-            raise ValueError("DbC Blocked: Precondition failed.")
         work = trapezoid(np.sum(np.abs(r.power), axis=1), r.t)
 
         if exercise_type == "bench_press":
