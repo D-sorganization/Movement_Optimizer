@@ -335,7 +335,22 @@ class LagrangianDynamics(PhysicsBackend):
         self.g = body.g
         self.supine = supine
 
-        # Allow callers to supply alternative segment geometry (e.g. arm chain).
+        L, d = self._init_chain_geometry(body, chain_geometry)
+        self._init_coupling_coefficients(m_segments, load_mass, L, d)
+        self._init_diagonal_mass_constants(m_segments, I_segments, load_mass, L, d)
+        self._init_gravity_coefficients(body.g, m_segments, load_mass, L, d)
+
+    # -- init helpers -----------------------------------------------
+
+    def _init_chain_geometry(
+        self,
+        body: BodyModel,
+        chain_geometry: ChainGeometry | None,
+    ) -> tuple[NDArray, NDArray]:
+        """Set segment lengths, COM distances, and joint names.
+
+        Returns the (L, d) arrays used by subsequent coefficient setup.
+        """
         if chain_geometry is not None:
             L = chain_geometry.L
             d = chain_geometry.d
@@ -352,29 +367,45 @@ class LagrangianDynamics(PhysicsBackend):
             self.joint_names = ["ankle", "knee", "hip", "shoulder"]
             L = body.L
             d = body.d
+        return L, d
 
-        # Pre-compute coupling coefficients (constant for given model)
-        self._a01 = (m_segments[1] * d[1] + (m_segments[2] + load_mass) * L[1]) * L[0]
-        self._a02 = (m_segments[2] * d[2] + load_mass * L[2]) * L[0]
-        self._a12 = (m_segments[2] * d[2] + load_mass * L[2]) * L[1]
+    def _init_coupling_coefficients(
+        self,
+        m: NDArray,
+        m_load: float,
+        L: NDArray,
+        d: NDArray,
+    ) -> None:
+        """Pre-compute off-diagonal coupling coefficients (constant for a given model)."""
+        self._a01 = (m[1] * d[1] + (m[2] + m_load) * L[1]) * L[0]
+        self._a02 = (m[2] * d[2] + m_load * L[2]) * L[0]
+        self._a12 = (m[2] * d[2] + m_load * L[2]) * L[1]
 
-        # Diagonal mass-matrix constants
-        self._M00 = (
-            m_segments[0] * d[0] ** 2
-            + (m_segments[1] + m_segments[2] + load_mass) * L[0] ** 2
-            + I_segments[0]
-        )
-        self._M11 = (
-            m_segments[1] * d[1] ** 2 + (m_segments[2] + load_mass) * L[1] ** 2 + I_segments[1]
-        )
-        self._M22 = m_segments[2] * d[2] ** 2 + load_mass * L[2] ** 2 + I_segments[2]
+    def _init_diagonal_mass_constants(
+        self,
+        m: NDArray,
+        inertia: NDArray,
+        m_load: float,
+        L: NDArray,
+        d: NDArray,
+    ) -> None:
+        """Pre-compute diagonal mass-matrix constants."""
+        self._M00 = m[0] * d[0] ** 2 + (m[1] + m[2] + m_load) * L[0] ** 2 + inertia[0]
+        self._M11 = m[1] * d[1] ** 2 + (m[2] + m_load) * L[1] ** 2 + inertia[1]
+        self._M22 = m[2] * d[2] ** 2 + m_load * L[2] ** 2 + inertia[2]
 
-        # Gravity coefficients
-        self._g0 = body.g * (
-            m_segments[0] * d[0] + (m_segments[1] + m_segments[2] + load_mass) * L[0]
-        )
-        self._g1 = body.g * (m_segments[1] * d[1] + (m_segments[2] + load_mass) * L[1])
-        self._g2 = body.g * (m_segments[2] * d[2] + load_mass * L[2])
+    def _init_gravity_coefficients(
+        self,
+        g: float,
+        m: NDArray,
+        m_load: float,
+        L: NDArray,
+        d: NDArray,
+    ) -> None:
+        """Pre-compute gravity torque coefficients."""
+        self._g0 = g * (m[0] * d[0] + (m[1] + m[2] + m_load) * L[0])
+        self._g1 = g * (m[1] * d[1] + (m[2] + m_load) * L[1])
+        self._g2 = g * (m[2] * d[2] + m_load * L[2])
 
     @property
     def n_dof(self) -> int:

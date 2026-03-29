@@ -15,10 +15,7 @@ Design Principles:
 
 from __future__ import annotations
 
-import csv
-import json
 import logging
-import os
 import threading
 import traceback
 from collections.abc import Callable
@@ -28,7 +25,6 @@ import matplotlib
 import numpy as np
 from PyQt6.QtCore import QSettings, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QFileDialog,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -41,9 +37,8 @@ from PyQt6.QtWidgets import (
 from ..cli import EXERCISE_FACTORIES
 from ..comparison import ComparisonStore
 from ..constants import trapezoid
-from ..export import export_animation_gif, export_plots_pdf, export_plots_png
 from ..models import BodyModel
-from ..persistence import load_app_state, load_solution, save_app_state, save_solution
+from ..persistence import load_app_state, save_app_state
 from ..rendering import (
     Palette,
 )
@@ -54,8 +49,10 @@ from ..trajectory import (
     SolutionCache,
     TrajectoryOptimizer,
 )
-from .comparison_dialog import ComparisonDialog
+from .animation_control import AnimationControlMixin
+from .comparison_mixin import ComparisonMixin
 from .exercise_tab import ExerciseTab
+from .file_operations import FileOperationsMixin
 from .session_state import collect_results, collect_slider_values, restore_slider_values
 from .widgets import ParameterSidebar, PlaybackControls
 
@@ -209,8 +206,13 @@ QScrollArea {{
 # ==============================================================
 
 
-class MainWindow(QMainWindow):
-    """Top-level application window."""
+class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QMainWindow):
+    """Top-level application window.
+
+    File I/O, animation playback, and comparison actions are provided
+    by mixin classes in ``file_operations``, ``animation_control``, and
+    ``comparison_mixin`` respectively.
+    """
 
     # Signals for thread-safe GUI updates from the optimizer worker.
     # Using signals instead of QTimer.singleShot is the Qt-correct way
@@ -604,310 +606,10 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"Error: {msg}")
         QMessageBox.critical(self, "Error", msg)
 
-    def _toggle_play(self) -> None:
-        idx = self.tabs.currentIndex()
-        if self.results[idx] is None:
-            return
-        if self.is_playing:
-            self._stop_anim()
-        else:
-            self.is_playing = True
-            self.controls.set_playing(True)
-            self._anim_step()
-
-    def _stop_anim(self) -> None:
-        self.is_playing = False
-        self.anim_timer.stop()
-        self.controls.set_playing(False)
-
-    def _anim_step(self) -> None:
-        if not self.is_playing:
-            return
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-
-        fi = self.anim_frames[idx]
-        _, etype = self.EXERCISE_CONFIGS[idx]
-        body = self.bodies_list[idx]
-        if body is None:
-            raise ValueError("DbC Blocked: Precondition failed.")
-        self.exercise_tabs[idx].draw_anim_frame(
-            fi,
-            r,
-            self.dynamics_list[idx],
-            body,
-            etype,
-        )
-
-        n = len(r.t)
-        self.anim_frames[idx] = (fi + 1) % n
-        self.controls.frame_label.setText(f"Frame {fi + 1}/{n}")
-
-        speed = self.controls.speed_slider.value() / 10.0
-        delay = max(15, int(40 / max(0.1, speed)))
-        if self.anim_frames[idx] == 0:
-            delay = 700
-        self.anim_timer.start(delay)
-
-    def _step_fwd(self) -> None:
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-        self._stop_anim()
-        n = len(r.t)
-        self.anim_frames[idx] = (self.anim_frames[idx] + 1) % n
-        _, etype = self.EXERCISE_CONFIGS[idx]
-        self.exercise_tabs[idx].draw_anim_frame(
-            self.anim_frames[idx],
-            r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
-            etype,
-        )
-        self.controls.frame_label.setText(f"Frame {self.anim_frames[idx] + 1}/{n}")
-
-    def _step_back(self) -> None:
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-        self._stop_anim()
-        n = len(r.t)
-        self.anim_frames[idx] = (self.anim_frames[idx] - 1) % n
-        _, etype = self.EXERCISE_CONFIGS[idx]
-        self.exercise_tabs[idx].draw_anim_frame(
-            self.anim_frames[idx],
-            r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
-            etype,
-        )
-
-    def _rewind(self) -> None:
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-        self._stop_anim()
-        self.anim_frames[idx] = 0
-        _, etype = self.EXERCISE_CONFIGS[idx]
-        self.exercise_tabs[idx].draw_anim_frame(
-            0,
-            r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
-            etype,
-        )
-
-    def _on_speed(self, speed: float) -> None:
-        self.controls.speed_label.setText(f"{speed:.1f}x")
-
-    def _export(self) -> None:
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-        name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Export CSV",
-            f"{name}_trajectory.csv",
-            "CSV Files (*.csv)",
-        )
-        if not path:
-            return
-        self._write_csv(path, r)
-
-    def _write_csv(self, path: str, r: OptimizationResult) -> None:
-        try:
-            with open(path, "w", newline="", encoding="utf-8") as f:
-                w = csv.writer(f)
-                w.writerow(
-                    [
-                        "time_s",
-                        "shin_angle_deg",
-                        "thigh_angle_deg",
-                        "torso_angle_deg",
-                        "shin_vel_deg_s",
-                        "thigh_vel_deg_s",
-                        "torso_vel_deg_s",
-                        "ankle_torque_Nm",
-                        "knee_torque_Nm",
-                        "hip_torque_Nm",
-                        "ankle_power_W",
-                        "knee_power_W",
-                        "hip_power_W",
-                        "com_x_m",
-                        "com_y_m",
-                        "bar_x_m",
-                        "bar_y_m",
-                    ]
-                )
-                for i in range(len(r.t)):
-                    w.writerow(
-                        [
-                            f"{r.t[i]:.4f}",
-                            *[f"{np.degrees(r.q[i, j]):.2f}" for j in range(3)],
-                            *[f"{np.degrees(r.qd[i, j]):.2f}" for j in range(3)],
-                            *[f"{r.torques[i, j]:.2f}" for j in range(3)],
-                            *[f"{r.power[i, j]:.2f}" for j in range(3)],
-                            f"{r.com[i, 0]:.4f}",
-                            f"{r.com[i, 1]:.4f}",
-                            f"{r.bar[i, 0]:.4f}",
-                            f"{r.bar[i, 1]:.4f}",
-                        ]
-                    )
-            self.status_label.setText(f"Exported: {os.path.basename(path)}")
-            QMessageBox.information(self, "Exported", f"Saved to:\n{path}")
-        except (OSError, ValueError) as e:
-            QMessageBox.critical(self, "Export Error", str(e))
-
-    def _save_solution(self) -> None:
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-        name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save Solution",
-            f"{name}_solution.json",
-            "JSON Files (*.json)",
-        )
-        if not path:
-            return
-        try:
-            body_params = {
-                "body_mass": self.sidebar.mass_slider.value(),
-                "height": self.sidebar.height_slider.value(),
-                "seg_multipliers": {
-                    "lower_leg": self.sidebar.ll_slider.value(),
-                    "upper_leg": self.sidebar.ul_slider.value(),
-                    "torso": self.sidebar.to_slider.value(),
-                },
-            }
-            _, etype = self.EXERCISE_CONFIGS[idx]
-            bar = self.sidebar.bar_slider.value()
-            save_solution(path, r, body_params, etype, bar)
-            self.status_label.setText(f"Saved: {os.path.basename(path)}")
-        except (OSError, TypeError, ValueError) as e:
-            QMessageBox.critical(self, "Save Error", str(e))
-
-    def _load_solution(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Load Solution",
-            "",
-            "JSON Files (*.json)",
-        )
-        if not path:
-            return
-        try:
-            data = load_solution(path)
-            self.status_label.setText(
-                f"Loaded solution: {data.get('exercise_type', 'unknown')} "
-                f"from {os.path.basename(path)}"
-            )
-            QMessageBox.information(
-                self,
-                "Solution Loaded",
-                f"Exercise: {data.get('exercise_type')}\n"
-                f"Bar mass: {data.get('bar_mass')} kg\n"
-                f"Cost: {data.get('metadata', {}).get('cost', 'N/A')}",
-            )
-        except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
-            QMessageBox.critical(self, "Load Error", str(e))
-
-    def _export_video(self) -> None:
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-        name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Export Animation GIF",
-            f"{name}_animation.gif",
-            "GIF Files (*.gif)",
-        )
-        if not path:
-            return
-        try:
-            tab = self.exercise_tabs[idx]
-            _, etype = self.EXERCISE_CONFIGS[idx]
-            body = self.bodies_list[idx]
-            dyn = self.dynamics_list[idx]
-            n_frames = len(r.t)
-
-            if body is None:
-                raise ValueError("DbC Blocked: Precondition failed.")
-
-            def draw_frame(fi: int) -> None:
-                tab.draw_anim_frame(fi, r, dyn, body, etype)
-
-            export_animation_gif(tab.fig, draw_frame, n_frames, path, fps=15)
-            self.status_label.setText(f"Exported GIF: {os.path.basename(path)}")
-            QMessageBox.information(self, "Exported", f"Animation saved to:\n{path}")
-        except (OSError, ValueError, RuntimeError) as e:
-            QMessageBox.critical(self, "Export Error", str(e))
-
-    def _export_plots(self) -> None:
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-        name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
-        path, _selected_filter = QFileDialog.getSaveFileName(
-            self,
-            "Export Plots",
-            f"{name}_plots.png",
-            "PNG Files (*.png);;PDF Files (*.pdf)",
-        )
-        if not path:
-            return
-        try:
-            tab = self.exercise_tabs[idx]
-            if path.lower().endswith(".pdf"):
-                export_plots_pdf(tab.fig, path)
-            else:
-                export_plots_png(tab.fig, path)
-            self.status_label.setText(f"Exported: {os.path.basename(path)}")
-            QMessageBox.information(self, "Exported", f"Plots saved to:\n{path}")
-        except (OSError, ValueError, RuntimeError) as e:
-            QMessageBox.critical(self, "Export Error", str(e))
-
-    def _add_comparison(self) -> None:
-        idx = self.tabs.currentIndex()
-        r = self.results[idx]
-        if r is None:
-            return
-        display_name, _etype = self.EXERCISE_CONFIGS[idx]
-        bar = self.sidebar.bar_slider.value()
-        body_params = {
-            "body_mass": self.sidebar.mass_slider.value(),
-            "height": self.sidebar.height_slider.value(),
-        }
-        n = len(self._comparison_store.get_trials()) + 1
-        trial_name = f"{display_name} #{n} ({bar:.0f}kg)"
-        self._comparison_store.add_trial(trial_name, r, body_params, bar)
-        self.sidebar.compare_btn.setEnabled(True)
-        self.status_label.setText(f"Added '{trial_name}' to comparison list.")
-
-    def _compare_trials(self) -> None:
-        trials = self._comparison_store.get_trials()
-        if not trials:
-            QMessageBox.information(self, "No Trials", "Add trials to compare first.")
-            return
-        dlg = ComparisonDialog(trials, self)
-        dlg.exec()
-
-    def _clear_comparison(self) -> None:
-        self._comparison_store.clear()
-        self.sidebar.compare_btn.setEnabled(False)
-        self.status_label.setText("Comparison list cleared.")
+    # Animation, file I/O, and comparison methods are provided by the
+    # mixin classes: AnimationControlMixin, FileOperationsMixin, and
+    # ComparisonMixin.  See animation_control.py, file_operations.py,
+    # and comparison_mixin.py.
 
     def _reset(self) -> None:
         self._stop_anim()
