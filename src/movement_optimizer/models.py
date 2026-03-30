@@ -107,6 +107,23 @@ class BodyModel:
         abduction_angle: float = 0.0,
         arm_angle: float = 0.0,
     ) -> None:
+        """Initialize body model with anthropometric parameters.
+
+        Args:
+            body_mass: Total body mass in kg (must be positive).
+            height: Standing height in meters (must be positive).
+            seg_multipliers: Optional per-segment length scale factors keyed
+                by ``"lower_leg"``, ``"upper_leg"``, ``"torso"``. Each value
+                must be in [0.5, 2.0]. Defaults to 1.0 for all segments.
+            abduction_angle: Hip abduction angle in degrees used to project
+                leg lengths into the sagittal plane (default 0).
+            arm_angle: Arm elevation angle in degrees used for bench press
+                sagittal projection (default 0).
+
+        Raises:
+            ValueError: If body_mass or height are not positive, or any
+                segment multiplier is outside [0.5, 2.0].
+        """
         if body_mass <= 0:
             raise ValueError("body_mass must be positive")
         if height <= 0:
@@ -131,6 +148,18 @@ class BodyModel:
     def _validated_multipliers(
         raw: dict[str, float] | None,
     ) -> dict[str, float]:
+        """Validate and normalise segment length multipliers.
+
+        Args:
+            raw: Raw multiplier dict or None (uses defaults of 1.0).
+
+        Returns:
+            Dict with validated multipliers for ``lower_leg``, ``upper_leg``,
+            and ``torso``.
+
+        Raises:
+            ValueError: If any multiplier is outside [0.5, 2.0].
+        """
         defaults = {"lower_leg": 1.0, "upper_leg": 1.0, "torso": 1.0}
         if raw is None:
             return defaults
@@ -143,6 +172,16 @@ class BodyModel:
         return out
 
     def _compute_lengths(self, height: float, mults: dict[str, float]) -> None:
+        """Compute segment lengths and sagittal-plane projections.
+
+        Sets ``self.L``, ``self.L_eff``, ``self.L_arm``, ``self.foot_length``,
+        and ``self.L_arm_eff`` based on Winter (2009) fractions scaled by
+        height and segment multipliers.
+
+        Args:
+            height: Standing height in meters.
+            mults: Validated per-segment length multipliers.
+        """
         self.L = np.array(
             [
                 LENGTH_FRAC["lower_leg"] * height * mults["lower_leg"],
@@ -185,6 +224,14 @@ class BodyModel:
         self.inner_center = 0.5 * (self.inner_heel + self.inner_toe)
 
     def _compute_masses(self, bm: float) -> None:
+        """Compute per-segment masses from body mass fractions (Winter 2009).
+
+        Sets ``self.m_feet``, ``self.m_squat``, ``self.m_deadlift``, and
+        related mass arrays for each exercise configuration.
+
+        Args:
+            bm: Total body mass in kg.
+        """
         self.m_feet = MASS_FRAC["feet"] * bm
         self.foot_com_x = self.bos_center
         self.foot_com_y = 0.0
@@ -206,6 +253,11 @@ class BodyModel:
         self.m_arms = MASS_FRAC["arms"] * bm
 
     def _compute_com_distances(self) -> None:
+        """Compute segment COM distances from proximal joint (Winter 2009 fractions).
+
+        Sets ``self.d`` (actual segment COM distances) and ``self.d_eff``
+        (sagittal-plane projected COM distances) using COM_FRAC constants.
+        """
         self.d = np.array(
             [
                 COM_FRAC["lower_leg"] * self.L[0],
@@ -409,13 +461,23 @@ class LagrangianDynamics(PhysicsBackend):
 
     @property
     def n_dof(self) -> int:
+        """Number of degrees of freedom for this dynamics model (always 3)."""
         return 3
 
     @property
     def name(self) -> str:
+        """Human-readable name identifying this dynamics backend."""
         return "Lagrangian (3-link planar)"
 
     def mass_matrix(self, q: NDArray) -> NDArray:
+        """Compute the symmetric 3x3 joint-space mass (inertia) matrix.
+
+        Args:
+            q: Joint angle vector of shape (3,) in radians.
+
+        Returns:
+            Symmetric (3, 3) mass matrix M(q).
+        """
         M = np.zeros((3, 3))
         M[0, 0] = self._M00
         M[1, 1] = self._M11
@@ -445,6 +507,14 @@ class LagrangianDynamics(PhysicsBackend):
         return C
 
     def _gravity_vector(self, q: NDArray) -> NDArray:
+        """Compute the gravity loading vector G(q).
+
+        Args:
+            q: Joint angle vector of shape (3,) in radians.
+
+        Returns:
+            Gravity vector G(q) of shape (3,).
+        """
         G = np.zeros(3)
         trig = np.cos if self.supine else np.sin
         G[0] = self._g0 * trig(q[0])
@@ -694,6 +764,18 @@ def _standing_balanced(dyn: LagrangianDynamics, bar_mass: float, exercise_type: 
 def make_squat_config(
     body: BodyModel, bar_mass: float
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
+    """Create dynamics and trajectory config for a standard back squat.
+
+    Start position is the squat bottom (deep knee bend, torso adjusted for
+    COM balance); end position is a balanced standing pose.
+
+    Args:
+        body: Anthropometric body model.
+        bar_mass: Barbell load in kg.
+
+    Returns:
+        Tuple of (dynamics, q_start, q_end, q_bounds).
+    """
     dyn = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), bar_mass)
     # Squat bottom: deep knee bend, torso adjusted for COM balance
     q_bottom_raw = np.array([np.radians(a) for a in SQUAT_BOTTOM_DEG])
@@ -712,6 +794,19 @@ def make_squat_config(
 def make_full_squat_config(
     body: BodyModel, bar_mass: float
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray, NDArray]:
+    """Create dynamics and trajectory config for a full squat (stand-to-stand via bottom).
+
+    Uses a via-point trajectory: standing -> squat bottom -> standing.
+    Both start and end are balanced standing poses; the via point is the
+    squat bottom with COM adjusted for inner-BOS balance.
+
+    Args:
+        body: Anthropometric body model.
+        bar_mass: Barbell load in kg.
+
+    Returns:
+        Tuple of (dynamics, q_start, q_end, q_bounds, q_via).
+    """
     dyn = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), bar_mass)
     q_stand = _standing_balanced(dyn, bar_mass, "full_squat")
     q_start = q_stand.copy()
@@ -731,6 +826,19 @@ def make_full_squat_config(
 def make_deadlift_config(
     body: BodyModel, bar_mass: float
 ) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray]:
+    """Create dynamics and trajectory config for a conventional deadlift.
+
+    The arm mass is added to the bar load to model the combined pulling
+    force.  Start is the pull position (bar off floor) with COM balanced;
+    end is a balanced standing lockout.
+
+    Args:
+        body: Anthropometric body model.
+        bar_mass: Barbell load in kg (arms mass is added internally).
+
+    Returns:
+        Tuple of (dynamics, q_start, q_end, q_bounds).
+    """
     load = body.m_arms + bar_mass
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
     from .exercises._common import pull_start_angles

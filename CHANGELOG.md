@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-03-30
+
+### Changed
+
+- **DRY**: Refactored `MainWindow._opt_worker` (95 lines) into three focused
+  private helpers: `_resolve_exercise_params`, `_seg_mults`, and
+  `_run_optimizer`; each helper is under 40 lines.
+- **DbC**: Added precondition guards in `export.py` (`n_frames > 0`,
+  `fps > 0`) and `cli.py` (`--body-mass`, `--height`, `--bar-mass`,
+  `--duration`) with explicit `ValueError`/`parser.error()` messages.
+- **LoD**: Fixed chained attribute access in `cli.py` (`_result_to_full_dict`)
+  by extracting `.tolist()` chains into named locals; fixed
+  `scripts/setup_dev.py` by naming `_SCRIPT_DIR` and `PROJECT_ROOT`.
+- **Docs**: Added Google-style docstrings to `make_squat_config`,
+  `make_full_squat_config`, `make_deadlift_config`, `BodyModel.__init__`,
+  `LagrangianDynamics` properties and helpers, `ComparisonStore.__init__`,
+  and `_build_parser` in the CLI module.
+
 ## [1.1.0] - 2026-03-23
 
 ### Added

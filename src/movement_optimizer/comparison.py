@@ -27,6 +27,7 @@ class ComparisonStore:
     """
 
     def __init__(self) -> None:
+        """Initialise an empty comparison store with a reentrant lock."""
         self._lock = threading.Lock()
         self._trials: list[dict[str, Any]] = []
 

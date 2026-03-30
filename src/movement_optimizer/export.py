@@ -27,12 +27,20 @@ def export_animation_gif(
 ) -> None:
     """Export a matplotlib animation as a GIF file.
 
-    Preconditions:
-        fig is a valid matplotlib Figure.
-        draw_frame_fn(frame_idx) redraws the figure for the given frame.
-        n_frames > 0.
-        path is a writable file path ending in .gif.
+    Args:
+        fig: Matplotlib Figure to animate.
+        draw_frame_fn: Callable that redraws the figure for a given frame index.
+        n_frames: Total number of animation frames (must be > 0).
+        path: Output file path (should end in ``.gif``).
+        fps: Frames per second for playback (default 15).
+
+    Raises:
+        ValueError: If n_frames <= 0 or fps <= 0.
     """
+    if n_frames <= 0:
+        raise ValueError(f"n_frames must be positive, got {n_frames}")
+    if fps <= 0:
+        raise ValueError(f"fps must be positive, got {fps}")
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
 
     anim = FuncAnimation(fig, draw_frame_fn, frames=n_frames, blit=False)  # type: ignore[arg-type]

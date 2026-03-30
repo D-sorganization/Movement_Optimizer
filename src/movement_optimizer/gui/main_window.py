@@ -250,6 +250,7 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
         self._opt_lock = threading.Lock()
         self._cache = SolutionCache()
         self._comparison_store = ComparisonStore()
+        self._last_config: tuple[Any, ...] = ()
 
         # Connect thread-safe signals
         self._sig_done.connect(self._on_done)
@@ -402,76 +403,119 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
             daemon=True,
         ).start()
 
+    # ------------------------------------------------------------------
+    # Private helpers for _opt_worker (DRY: each step is one function)
+    # ------------------------------------------------------------------
+
+    def _resolve_exercise_params(self, idx: int) -> tuple[Any, Any, str, float, float, float]:
+        """Read sidebar values and resolve exercise config for slot *idx*.
+
+        Returns:
+            Tuple of (body, dyn, etype, bar, dur, smoothness) where dur
+            has already been clamped to the exercise minimum.
+        """
+        body = self.sidebar.get_body_model()
+        bar = self.sidebar.bar_slider.value()
+        dur = self.sidebar.dur_slider.value()
+        smoothness = self.sidebar.smooth_slider.value()
+        _, etype = self.EXERCISE_CONFIGS[idx]
+
+        factory = EXERCISE_FACTORIES[etype]
+        config = factory(body, bar)
+        if len(config) == 5:
+            dyn, qs, qe, qb, q_via = config  # type: ignore[misc]
+        else:
+            dyn, qs, qe, qb = config  # type: ignore[misc]
+            q_via = None
+
+        _min_durations = {
+            "full_squat": 3.0,
+            "bench_press": 3.0,
+            "clean": 2.5,
+            "jerk": 2.0,
+            "snatch": 3.0,
+        }
+        if etype in _min_durations:
+            dur = max(dur, _min_durations[etype])
+
+        self.dynamics_list[idx] = dyn
+        self.bodies_list[idx] = body
+        # Store unpacked config items for use by the optimizer builder
+        self._last_config = (dyn, qs, qe, qb, q_via, etype)
+        return body, dyn, etype, bar, dur, smoothness
+
+    def _seg_mults(self) -> dict[str, float]:
+        """Read current segment multiplier values from the sidebar.
+
+        Returns:
+            Dict with keys lower_leg, upper_leg, torso.
+        """
+        return {
+            "lower_leg": self.sidebar.ll_slider.value(),
+            "upper_leg": self.sidebar.ul_slider.value(),
+            "torso": self.sidebar.to_slider.value(),
+        }
+
+    def _run_optimizer(
+        self,
+        body: Any,
+        bar: float,
+        dur: float,
+        smoothness: float,
+    ) -> OptimizationResult:
+        """Build and run the TrajectoryOptimizer using the last resolved config.
+
+        Args:
+            body: BodyModel resolved by _resolve_exercise_params.
+            bar: Barbell mass in kg.
+            dur: Movement duration in seconds.
+            smoothness: Smoothness weight.
+
+        Returns:
+            OptimizationResult from the optimizer.
+        """
+        dyn, qs, qe, qb, q_via, etype = self._last_config
+        logger.info(
+            "Starting %s optimisation: mass=%.0f, height=%.2f, bar=%.0f",
+            etype,
+            body.body_mass,
+            body.height,
+            bar,
+        )
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,  # type: ignore[arg-type]
+            etype,
+            bar,
+            qs,  # type: ignore[arg-type]
+            qe,  # type: ignore[arg-type]
+            qb,  # type: ignore[arg-type]
+            q_via=q_via,  # type: ignore[arg-type]
+            duration=dur,
+            n_waypoints=12,
+            smoothness=smoothness,
+            progress_cb=self._make_progress_cb(),
+            cancel_event=self._cancel_event,
+        )
+        return opt.optimize()
+
     def _opt_worker(self, idx: int, then_chain: list[int] | None) -> None:
+        """Background thread: resolve config, check cache, optimise, emit result."""
         try:
-            body = self.sidebar.get_body_model()
-            bar = self.sidebar.bar_slider.value()
-            dur = self.sidebar.dur_slider.value()
-            smoothness = self.sidebar.smooth_slider.value()
-            _, etype = self.EXERCISE_CONFIGS[idx]
+            body, _dyn, etype, bar, dur, smoothness = self._resolve_exercise_params(idx)
+            seg_mults = self._seg_mults()
 
-            factory = EXERCISE_FACTORIES[etype]
-            config = factory(body, bar)
-            if len(config) == 5:
-                dyn, qs, qe, qb, q_via = config  # type: ignore[misc]
-            else:
-                dyn, qs, qe, qb = config  # type: ignore[misc]
-                q_via = None
-
-            # Enforce minimum duration for multi-phase exercises
-            _min_durations = {
-                "full_squat": 3.0,
-                "bench_press": 3.0,
-                "clean": 2.5,
-                "jerk": 2.0,
-                "snatch": 3.0,
-            }
-            if etype in _min_durations:
-                dur = max(dur, _min_durations[etype])
-
-            self.dynamics_list[idx] = dyn
-            self.bodies_list[idx] = body
-
-            seg_mults = {
-                "lower_leg": self.sidebar.ll_slider.value(),
-                "upper_leg": self.sidebar.ul_slider.value(),
-                "torso": self.sidebar.to_slider.value(),
-            }
             cached = self._cache.get(
                 etype, body.body_mass, body.height, seg_mults, bar, dur, smoothness
             )
             if cached is not None:
                 logger.info("Cache hit for %s", etype)
-                result = cached
-                self.results[idx] = result
+                self.results[idx] = cached
                 self.anim_frames[idx] = 0
-                self._sig_done.emit(idx, result, body, bar, then_chain)
+                self._sig_done.emit(idx, cached, body, bar, then_chain)
                 return
 
-            logger.info(
-                "Starting %s optimisation: mass=%.0f, height=%.2f, bar=%.0f",
-                etype,
-                body.body_mass,
-                body.height,
-                bar,
-            )
-
-            opt = TrajectoryOptimizer(
-                body,
-                dyn,  # type: ignore[arg-type]
-                etype,
-                bar,
-                qs,  # type: ignore[arg-type]
-                qe,  # type: ignore[arg-type]
-                qb,  # type: ignore[arg-type]
-                q_via=q_via,  # type: ignore[arg-type]
-                duration=dur,
-                n_waypoints=12,
-                smoothness=smoothness,
-                progress_cb=self._make_progress_cb(),
-                cancel_event=self._cancel_event,
-            )
-            result = opt.optimize()
+            result = self._run_optimizer(body, bar, dur, smoothness)
             with self._opt_lock:
                 self.results[idx] = result
                 self.anim_frames[idx] = 0
@@ -486,7 +530,6 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
                 smoothness,
                 result,
             )
-
             self._sig_done.emit(idx, result, body, bar, then_chain)
         except CancelledError:
             self._sig_cancelled.emit()
