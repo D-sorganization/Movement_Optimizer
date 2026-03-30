@@ -6,11 +6,21 @@ import sys
 from pathlib import Path
 
 MIN_PYTHON = (3, 10)
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_SCRIPT_DIR: Path = Path(__file__).resolve().parent
+PROJECT_ROOT: Path = _SCRIPT_DIR.parent
 VENDOR_UD_TOOLS = PROJECT_ROOT / "vendor" / "ud-tools"
 
 
 def main() -> None:
+    """Bootstrap the developer environment for Movement-Optimizer.
+
+    Checks the Python version, initialises git submodules, installs the
+    package in editable mode, and installs the vendored ud-tools dependency.
+
+    Raises:
+        SystemExit: If the Python version is below the minimum or if
+            vendor/ud-tools is not found.
+    """
     if sys.version_info < MIN_PYTHON:
         sys.exit(f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required.")
 

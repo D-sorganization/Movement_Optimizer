@@ -40,6 +40,11 @@ EXERCISE_FACTORIES = {
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for the CLI.
+
+    Returns:
+        Configured ArgumentParser instance with all CLI flags registered.
+    """
     parser = argparse.ArgumentParser(
         prog="movement-optimizer-cli",
         description="Headless batch optimization for barbell exercises.",
@@ -115,15 +120,24 @@ def _result_to_summary(result: OptimizationResult, exercise: str) -> dict:
 def _result_to_full_dict(result: OptimizationResult, exercise: str) -> dict:
     """Convert to full JSON-serializable dict including arrays."""
     summary = _result_to_summary(result, exercise)
+    # Extract arrays first (LoD: avoid chaining .attribute.method())
+    t_list = result.t.tolist()
+    q_list = result.q.tolist()
+    qd_list = result.qd.tolist()
+    qdd_list = result.qdd.tolist()
+    torques_list = result.torques.tolist()
+    power_list = result.power.tolist()
+    com_list = result.com.tolist()
+    bar_list = result.bar.tolist()
     summary["arrays"] = {
-        "t": result.t.tolist(),
-        "q": result.q.tolist(),
-        "qd": result.qd.tolist(),
-        "qdd": result.qdd.tolist(),
-        "torques": result.torques.tolist(),
-        "power": result.power.tolist(),
-        "com": result.com.tolist(),
-        "bar": result.bar.tolist(),
+        "t": t_list,
+        "q": q_list,
+        "qd": qd_list,
+        "qdd": qdd_list,
+        "torques": torques_list,
+        "power": power_list,
+        "com": com_list,
+        "bar": bar_list,
     }
     return summary
 
@@ -138,9 +152,26 @@ def _emit_cli_summary(summary: dict) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run CLI optimization."""
+    """Run CLI optimization.
+
+    Args:
+        argv: Argument list (uses sys.argv if None).
+
+    Returns:
+        0 on successful optimization, 1 on failure.
+    """
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    # DbC: validate numeric CLI arguments
+    if args.body_mass <= 0:
+        parser.error(f"--body-mass must be positive, got {args.body_mass}")
+    if args.height <= 0:
+        parser.error(f"--height must be positive, got {args.height}")
+    if args.bar_mass < 0:
+        parser.error(f"--bar-mass must be non-negative, got {args.bar_mass}")
+    if args.duration <= 0:
+        parser.error(f"--duration must be positive, got {args.duration}")
 
     level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
