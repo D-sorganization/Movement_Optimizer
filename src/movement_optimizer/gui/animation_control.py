@@ -1,3 +1,6 @@
+# mypy: disable-error-code="misc,has-type"
+# Mixin pattern: methods annotate self as MainWindow to access its attributes,
+# but mypy cannot verify this pattern without the concrete class in scope.
 """Animation playback helpers extracted from MainWindow.
 
 Provides play/pause toggle, step forward/back, rewind, and frame

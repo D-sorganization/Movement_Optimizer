@@ -1,3 +1,6 @@
+# mypy: disable-error-code="misc,has-type"
+# Mixin pattern: methods annotate self as MainWindow to access its attributes,
+# but mypy cannot verify this pattern without the concrete class in scope.
 """Comparison trial helpers extracted from MainWindow.
 
 Provides add/compare/clear trial comparison actions as a mixin class.
@@ -18,7 +21,7 @@ if TYPE_CHECKING:
 class ComparisonMixin:
     """Mixin providing trial comparison actions for MainWindow."""
 
-    def _add_comparison(self: MainWindow) -> None:  # type: ignore[override]
+    def _add_comparison(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:
@@ -35,7 +38,7 @@ class ComparisonMixin:
         self.sidebar.compare_btn.setEnabled(True)
         self.status_label.setText(f"Added '{trial_name}' to comparison list.")
 
-    def _compare_trials(self: MainWindow) -> None:  # type: ignore[override]
+    def _compare_trials(self: MainWindow) -> None:  # type: ignore[misc]
         trials = self._comparison_store.get_trials()
         if not trials:
             QMessageBox.information(self, "No Trials", "Add trials to compare first.")
@@ -43,7 +46,7 @@ class ComparisonMixin:
         dlg = ComparisonDialog(trials, self)
         dlg.exec()
 
-    def _clear_comparison(self: MainWindow) -> None:  # type: ignore[override]
+    def _clear_comparison(self: MainWindow) -> None:  # type: ignore[misc]
         self._comparison_store.clear()
         self.sidebar.compare_btn.setEnabled(False)
         self.status_label.setText("Comparison list cleared.")
