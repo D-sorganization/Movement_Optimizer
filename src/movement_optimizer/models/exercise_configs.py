@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from ..constants import SQUAT_BOTTOM_DEG, STANDING_DEG
+from ..constants import SQUAT_BOTTOM_DEG
 from .body_model import BodyModel
 from .lagrangian_dynamics import LagrangianDynamics, _standing_balanced, balance_pose
 

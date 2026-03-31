@@ -17,10 +17,30 @@ Design Principles:
 
 from __future__ import annotations
 
+# Re-export exercise factories added in the exercises subpackage.
+from ..exercises.gait import make_gait_config as make_gait_config
+from ..exercises.sit_to_stand import make_sit_to_stand_config as make_sit_to_stand_config
+
+# Re-export strength helpers that the original models.py exposed at package level.
+from ..strength import (
+    HillTorqueModel as HillTorqueModel,
+)
+from ..strength import (
+    JointTorqueSet as JointTorqueSet,
+)
+from ..strength import (
+    compute_max_load as compute_max_load,
+)
+from ..strength import (
+    make_bench_press_torque_set as make_bench_press_torque_set,
+)
+from ..strength import (
+    make_default_torque_set as make_default_torque_set,
+)
+
 # Re-export everything from submodules for backwards compatibility.
 # All existing imports of the form ``from movement_optimizer.models import X``
 # continue to work without modification.
-
 from .bench_press_model import BenchPressModel as BenchPressModel
 from .bench_press_model import make_bench_press_config as make_bench_press_config
 from .body_model import BodyModel as BodyModel
@@ -33,22 +53,9 @@ from .exercise_configs import make_squat_config as make_squat_config
 from .lagrangian_dynamics import LagrangianDynamics as LagrangianDynamics
 from .lagrangian_dynamics import balance_pose as balance_pose
 
-# Re-export strength helpers that the original models.py exposed at package level.
-from ..strength import (
-    HillTorqueModel as HillTorqueModel,
-    JointTorqueSet as JointTorqueSet,
-    compute_max_load as compute_max_load,
-    make_bench_press_torque_set as make_bench_press_torque_set,
-    make_default_torque_set as make_default_torque_set,
-)
-
-# Re-export exercise factories added in the exercises subpackage.
-from ..exercises.gait import make_gait_config as make_gait_config
-from ..exercises.sit_to_stand import make_sit_to_stand_config as make_sit_to_stand_config
-
 __all__ = [
-    "BodyModel",
     "BenchPressModel",
+    "BodyModel",
     "ChainGeometry",
     "HillTorqueModel",
     "JointTorqueSet",

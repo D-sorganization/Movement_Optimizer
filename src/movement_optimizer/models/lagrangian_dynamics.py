@@ -321,8 +321,6 @@ class LagrangianDynamics(PhysicsBackend):
         return {names[0]: p0, names[1]: p1, names[2]: p2, names[3]: p3}
 
     def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
-        from ..constants import COM_FRAC
-
         fk = self.forward_kinematics(q)
         s = fk["shoulder"]
         if exercise_type == "deadlift":
