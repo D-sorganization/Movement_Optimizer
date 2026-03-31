@@ -17,10 +17,6 @@ Design Principles:
 
 from __future__ import annotations
 
-# Re-export exercise factories added in the exercises subpackage.
-from ..exercises.gait import make_gait_config as make_gait_config
-from ..exercises.sit_to_stand import make_sit_to_stand_config as make_sit_to_stand_config
-
 # Re-export strength helpers that the original models.py exposed at package level.
 from ..strength import (
     HillTorqueModel as HillTorqueModel,
@@ -69,7 +65,5 @@ __all__ = [
     "make_deadlift_config",
     "make_default_torque_set",
     "make_full_squat_config",
-    "make_gait_config",
-    "make_sit_to_stand_config",
     "make_squat_config",
 ]
