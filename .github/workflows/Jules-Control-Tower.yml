@@ -27,12 +27,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
+  # ── Dispatcher: route to self-hosted if available ──────────────────────────
+  pick-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      runner: ${{ steps.check.outputs.runner }}
+    steps:
+      - name: Check for self-hosted runner
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ONLINE=$(gh api /orgs/${{ github.repository_owner }}/actions/runners \
+            --jq '[.runners[] | select(.status == "online") | select(.labels[].name == "d-sorg-fleet")] | length' \
+            2>/dev/null || echo "0")
+          if [[ "$ONLINE" -gt 0 ]]; then
+            echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT
+            echo "Self-hosted runner online — routing locally"
+          else
+            echo "runner=ubuntu-latest" >> $GITHUB_OUTPUT
+            echo "No self-hosted runner — using GitHub-hosted"
+          fi
   auto-repair:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'auto-repair'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -47,11 +71,12 @@ jobs:
             Focus on src/movement_optimizer/ and tests/ directories.
 
   assessment-generator:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'assessment-generator'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -66,11 +91,12 @@ jobs:
             findings with actionable recommendations for improvement.
 
   code-quality-reviewer:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'code-quality-reviewer'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -85,11 +111,12 @@ jobs:
             PR with improvements or create issues for larger refactors.
 
   completist:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'completist'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -104,11 +131,12 @@ jobs:
             and submit a PR. Prioritize test completeness and core module docstrings.
 
   documentation-auditor:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'documentation-auditor'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -123,11 +151,12 @@ jobs:
             critical gaps, focusing on public API docstrings and module-level documentation.
 
   sentinel:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'sentinel'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -142,11 +171,12 @@ jobs:
             Create issues for any findings with severity labels. Fix trivial issues via PR.
 
   auto-refactor:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'auto-refactor'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -162,11 +192,12 @@ jobs:
             metrics in the PR description.
 
   issue-resolver:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'issue-resolver'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -198,11 +229,12 @@ jobs:
             and submit a PR referencing the issue number with "Closes #<number>".
 
   pr-compiler:
+    needs: pick-runner
     if: >-
       github.event_name == 'schedule' ||
       github.event.inputs.worker == 'all' ||
       github.event.inputs.worker == 'pr-compiler'
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
