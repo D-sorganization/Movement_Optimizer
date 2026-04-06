@@ -288,6 +288,14 @@ class TrajectoryOptimizer:
     def _emit_progress(self, current_cost: float) -> None:
         self._progress.emit(current_cost)
 
+    @property
+    def _cost_history(self) -> list[float]:
+        return self._progress._cost_history
+
+    @_cost_history.setter
+    def _cost_history(self, value: list[float]) -> None:
+        self._progress._cost_history = value
+
     def _detect_stall(self) -> tuple[bool, str]:
         from .optimizer_progress import detect_stall
 
