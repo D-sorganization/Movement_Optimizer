@@ -2,10 +2,10 @@ name: CI Standard
 on:
   push:
     branches: [main, staging]
-    paths-ignore: ["docs/**", "**.md", "LICENSE", ".gitignore"]
+    paths-ignore: ["docs/**", "LICENSE", ".gitignore"]
   pull_request:
     types: [opened, synchronize, reopened]
-    paths-ignore: ["docs/**", "**.md", "LICENSE", ".gitignore"]
+    paths-ignore: ["docs/**", "LICENSE", ".gitignore"]
   workflow_dispatch:
 
 concurrency:
