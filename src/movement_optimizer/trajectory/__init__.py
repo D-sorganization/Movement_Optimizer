@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from .cache import SolutionCache as SolutionCache
 from .optimizer import TrajectoryOptimizer as TrajectoryOptimizer
+from .optimizer_diagnostics import run_minimize as run_minimize
+from .optimizer_diagnostics import run_single_start as run_single_start
+from .optimizer_guess import build_bounds as build_bounds
+from .optimizer_guess import build_initial_guess as build_initial_guess
+from .optimizer_guess import build_perturbed_guess as build_perturbed_guess
+from .optimizer_progress import ProgressTracker as ProgressTracker
+from .optimizer_progress import detect_stall as detect_stall
 from .result import CancelledError as CancelledError
 from .result import OptimizationResult as OptimizationResult
 from .result import ProgressReport as ProgressReport
@@ -12,6 +19,13 @@ __all__ = [
     "CancelledError",
     "OptimizationResult",
     "ProgressReport",
+    "ProgressTracker",
     "SolutionCache",
     "TrajectoryOptimizer",
+    "build_bounds",
+    "build_initial_guess",
+    "build_perturbed_guess",
+    "detect_stall",
+    "run_minimize",
+    "run_single_start",
 ]

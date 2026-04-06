@@ -12,7 +12,6 @@ from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 import numpy as np
 from numpy.typing import NDArray
 from scipy.interpolate import CubicSpline
-from scipy.optimize import minimize
 
 from ..backend import PhysicsBackend
 from ..constants import (
@@ -21,6 +20,9 @@ from ..constants import (
     TV_RATE_WEIGHT_RATIO,
 )
 from ..models import BodyModel
+from .optimizer_diagnostics import run_minimize, run_single_start
+from .optimizer_guess import build_bounds, build_initial_guess, build_perturbed_guess
+from .optimizer_progress import ProgressTracker
 from .result import CancelledError, OptimizationResult, ProgressReport
 from .tuning import (
     BALANCE_BARRIER_WEIGHT,
@@ -30,9 +32,6 @@ from .tuning import (
     DEFAULT_N_STARTS,
     DEFAULT_TORQUE_RATE_WEIGHT,
     MAX_ITER_PER_START,
-    PERTURBATION_SCALE,
-    STALL_THRESHOLD,
-    STALL_WINDOW,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,12 +116,11 @@ class TrajectoryOptimizer:
         self._n_damp = max(2, n_eval // 8)
         self._damp_weights = 1.0 - np.arange(self._n_damp) / self._n_damp
 
-        # Mutable diagnostics (only used by the primary start)
-        self._iter = 0
-        self._cost_history: list[float] = []
-        self._best_cost = float("inf")
-        self._start_time = 0.0
-        self._progress_lock = threading.Lock()
+        # Progress tracker (owns iteration counter and cost history)
+        self._progress = ProgressTracker(progress_cb=progress_cb)
+
+        # Kept for backward-compat (some callers read these directly)
+        self._progress_lock = self._progress._progress_lock
 
     def _setup_time_grids(self) -> None:
         n_ctrl = self.n_waypoints + 2
@@ -284,110 +282,44 @@ class TrajectoryOptimizer:
     def cost(self, x: NDArray) -> float:
         """Total cost with progress tracking (single-thread path)."""
         total = self._compute_cost(x)
-
-        self._iter += 1
-        self._cost_history.append(total)
-        self._best_cost = min(self._best_cost, total)
-
-        if self.progress_cb and self._iter % 20 == 0:
-            self._emit_progress(total)
-
+        self._progress.record(total)
         return total
 
     def _emit_progress(self, current_cost: float) -> None:
-        elapsed = time.monotonic() - self._start_time
-        if len(self._cost_history) >= 40:
-            prev = self._cost_history[-40]
-            improvement = (prev - current_cost) / abs(prev) * 100 if prev != 0 else 0.0
-        else:
-            improvement = 0.0
-
-        is_stalled, stall_reason = self._detect_stall()
-        recent_history = self._cost_history[-200:]
-
-        report = ProgressReport(
-            iteration=self._iter,
-            cost=current_cost,
-            best_cost=self._best_cost,
-            improvement_pct=improvement,
-            elapsed_s=elapsed,
-            cost_history=recent_history,
-            is_stalled=is_stalled,
-            stall_reason=stall_reason,
-        )
-        if self.progress_cb:
-            self.progress_cb(report)
+        self._progress.emit(current_cost)
 
     def _detect_stall(self) -> tuple[bool, str]:
-        history = self._cost_history
-        if len(history) < STALL_WINDOW:
-            return False, ""
-        recent = history[-STALL_WINDOW:]
-        old_cost = recent[0]
-        new_cost = recent[-1]
-        if old_cost == 0:
-            return False, ""
-        rel_improvement = abs(old_cost - new_cost) / abs(old_cost)
-        if rel_improvement < STALL_THRESHOLD:
-            return True, (
-                f"Cost changed < {STALL_THRESHOLD * 100:.2f}% "
-                f"over last {STALL_WINDOW} evals "
-                f"({old_cost:.1f} -> {new_cost:.1f})"
-            )
-        return False, ""
+        from .optimizer_progress import detect_stall
+
+        return detect_stall(self._progress._cost_history)
 
     # ==========================================================
-    # Initial guess generation
+    # Initial guess generation (delegates to optimizer_guess)
     # ==========================================================
 
     def _initial_guess(self) -> NDArray:
         """Linear interpolation between start/end (or start/via/end)."""
-        wp = np.zeros((self.n_waypoints, self.n_dof))
-        if self.q_via is not None:
-            n_half = self.n_waypoints // 2
-            for j in range(self.n_dof):
-                wp[:n_half, j] = np.linspace(self.q_start[j], self.q_via[j], n_half + 2)[1:-1]
-                wp[n_half:, j] = np.linspace(
-                    self.q_via[j],
-                    self.q_end[j],
-                    self.n_waypoints - n_half + 2,
-                )[1:-1]
-        else:
-            for j in range(self.n_dof):
-                wp[:, j] = np.linspace(self.q_start[j], self.q_end[j], self.n_waypoints + 2)[1:-1]
-        return wp
+        return build_initial_guess(
+            self.q_start, self.q_end, self.n_waypoints, self.n_dof, self.q_via
+        )
 
     def _perturbed_guess(self, seed: int) -> NDArray:
-        """Generate a perturbed initial guess for multi-start.
-
-        Seed 0 returns the unperturbed baseline.  Other seeds add
-        smooth random perturbations scaled to PERTURBATION_SCALE of
-        the joint range.
-        """
-        wp = self._initial_guess()
-        if seed == 0:
-            return wp
-
-        rng = np.random.default_rng(seed * 42 + 7)
-        joint_range = self.q_bounds[:, 1] - self.q_bounds[:, 0]
-        noise = rng.normal(0, PERTURBATION_SCALE, wp.shape) * joint_range
-        wp_perturbed = wp + noise
-
-        # Clip to joint bounds
-        for j in range(self.n_dof):
-            wp_perturbed[:, j] = np.clip(
-                wp_perturbed[:, j], self.q_bounds[j, 0], self.q_bounds[j, 1]
-            )
-        return wp_perturbed
+        """Generate a perturbed initial guess for multi-start."""
+        return build_perturbed_guess(
+            self.q_start,
+            self.q_end,
+            self.q_bounds,
+            self.n_waypoints,
+            self.n_dof,
+            seed,
+            self.q_via,
+        )
 
     def _build_bounds(self) -> list[tuple[float, float]]:
-        bounds: list[tuple[float, float]] = []
-        for _ in range(self.n_waypoints):
-            bounds.extend([(self.q_bounds[j, 0], self.q_bounds[j, 1]) for j in range(self.n_dof)])
-        return bounds
+        return build_bounds(self.q_bounds, self.n_waypoints, self.n_dof)
 
     # ==========================================================
-    # Single-start optimisation
+    # Single-start optimisation (delegates to optimizer_diagnostics)
     # ==========================================================
 
     def _cancel_callback(self, _xk: NDArray) -> None:
@@ -437,26 +369,14 @@ class TrajectoryOptimizer:
         cost_fn: Callable[[NDArray], float],
         max_iter: int = MAX_ITER_PER_START,
     ) -> object:
-        """Run one SLSQP solve — shared setup for both start paths.
-
-        Parameters:
-            x0: Flattened initial waypoint guess.
-            cost_fn: Objective function (may include eval counting).
-            max_iter: Maximum iterations for the solver.
-
-        Returns:
-            The scipy OptimizeResult object.
-        """
-        bounds = self._build_bounds()
-        constraints = self._build_constraints()
-        return minimize(
-            cost_fn,
+        """Run one SLSQP solve — shared setup for both start paths."""
+        return run_minimize(
             x0,
-            method="SLSQP",
-            bounds=bounds,
-            constraints=constraints,
-            callback=self._cancel_callback,
-            options={"maxiter": max_iter, "ftol": 1e-6, "disp": False},
+            cost_fn,
+            self._build_bounds(),
+            self._build_constraints(),
+            self.cancel_event,
+            max_iter=max_iter,
         )
 
     def _run_single_start(self, seed: int) -> tuple[object, int] | None:
@@ -464,27 +384,14 @@ class TrajectoryOptimizer:
 
         Returns (scipy result, eval_count) or None if cancelled.
         """
-        if self.cancel_event.is_set():
-            return None
-
-        wp0 = self._perturbed_guess(seed)
-        eval_count = [0]
-
-        def cost_fn(x: NDArray) -> float:
-            if self.cancel_event.is_set():
-                raise CancelledError("cancelled")
-            eval_count[0] += 1
-            return self._compute_cost(x)
-
-        try:
-            res = self._minimize_single(wp0.flatten(), cost_fn)
-        except CancelledError:
-            return None
-
-        if self.cancel_event.is_set():
-            return None
-
-        return res, eval_count[0]
+        return run_single_start(
+            seed,
+            self._perturbed_guess,
+            self._compute_cost,
+            self._build_bounds(),
+            self._build_constraints(),
+            self.cancel_event,
+        )
 
     # ==========================================================
     # Main optimisation driver (parallel multi-start)
@@ -500,10 +407,7 @@ class TrajectoryOptimizer:
 
         Raises CancelledError if cancel_event is set.
         """
-        self._iter = 0
-        self._cost_history = []
-        self._best_cost = float("inf")
-        self._start_time = time.monotonic()
+        self._progress.reset()
 
         n_workers = min(self.n_starts, os.cpu_count() or 4)
 
@@ -521,7 +425,7 @@ class TrajectoryOptimizer:
             out = self._run_single_start_with_progress()
             if self.cancel_event.is_set():
                 raise CancelledError("Optimization cancelled by user")
-            elapsed = time.monotonic() - self._start_time
+            elapsed = time.monotonic() - self._progress._start_time
             return self._package_results(out, elapsed)
         else:
             with ThreadPoolExecutor(max_workers=n_workers) as pool:
@@ -544,20 +448,14 @@ class TrajectoryOptimizer:
                             results.append(result)
                             res, n_evals = result
                             total_evals[0] += n_evals
-
-                            with self._progress_lock:
-                                self._iter = total_evals[0]
-                                cost_val = float(res.fun)
-                                self._cost_history.append(cost_val)
-                                self._best_cost = min(self._best_cost, cost_val)
-                                if self.progress_cb:
-                                    self._emit_progress(cost_val)
+                            cost_val = float(res.fun)
+                            self._progress.record_parallel(cost_val, total_evals[0])
 
         if not results:
             raise CancelledError("All optimization starts were cancelled")
 
         best_res, _ = min(results, key=lambda r: float(r[0].fun))  # type: ignore[attr-defined]
-        elapsed = time.monotonic() - self._start_time
+        elapsed = time.monotonic() - self._progress._start_time
         total_evals_sum = sum(n for _, n in results)
 
         logger.info(
@@ -572,9 +470,7 @@ class TrajectoryOptimizer:
 
     def _run_single_start_with_progress(self) -> object:
         """Single-start path with progress tracking."""
-        self._iter = 0
-        self._cost_history = []
-        self._best_cost = float("inf")
+        self._progress.reset()
 
         wp0 = self._initial_guess()
         return self._minimize_single(wp0.flatten(), self.cost, max_iter=MAX_ITER_PER_START * 2)
@@ -654,6 +550,6 @@ class TrajectoryOptimizer:
             cost=cost_val,
             com_horizontal_range_cm=com_h_range,
             elapsed_s=elapsed,
-            n_evals=n_evals or self._iter,
+            n_evals=n_evals or self._progress._iter,
             n_joint_limit_violations=n_joint_limit_violations,
         )
