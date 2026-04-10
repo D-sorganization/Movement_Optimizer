@@ -1,0 +1,28 @@
+manifest_version: "1.0.0"
+pack_id: "movement-optimizer-utilities"
+pack_name: "Movement Optimizer Utilities"
+provider: "movement_optimizer"
+models:
+  - id: "movement_optimizer"
+    name: "Movement Optimizer"
+    description: "Trajectory optimization utility for barbell and movement exercises with GUI and CLI entry points."
+    type: "special_app"
+    path: "src/movement_optimizer/__main__.py"
+    source_root: "."
+    working_dir: "."
+    python_paths:
+      - "src"
+    capabilities:
+      - "optimization"
+      - "biomechanics"
+      - "trajectory"
+      - "cli"
+    tags:
+      - "barbell"
+      - "exercise"
+      - "lagrangian"
+    launcher:
+      category: "tool"
+      logo: "assets/movement_optimizer_icon.svg"
+      status: "provider_ready"
+      web_route: "/tools/movement-optimizer"
