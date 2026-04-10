@@ -1,0 +1,39 @@
+manifest_version: "1.0.0"
+pack_id: "movement-optimizer"
+pack_name: "Movement Optimizer"
+provider: "movement_optimizer"
+description: >
+  Biomechanics trajectory optimizer for barbell exercises using Lagrangian
+  inverse dynamics in the sagittal plane. Models the body as a 3-link planar
+  chain and exposes a PyQt6 GUI with multi-start parallel SLSQP optimization.
+source_repo: "https://github.com/D-sorganization/Movement-Optimizer"
+models:
+  - id: "movement_optimizer"
+    name: "Movement Optimizer"
+    description: >
+      Optimal barbell exercise trajectory optimizer. Computes joint kinematics
+      and torques for squat, deadlift, bench press, clean, snatch, jerk, gait,
+      and sit-to-stand via Lagrangian inverse dynamics with a PyQt6 GUI.
+    type: "tool"
+    path: "src/movement_optimizer/__main__.py"
+    source_root: "."
+    working_dir: "."
+    python_paths:
+      - "src"
+    capabilities:
+      - "trajectory-optimization"
+      - "inverse-dynamics"
+      - "biomechanics"
+      - "visualization"
+    tags:
+      - "barbell"
+      - "squat"
+      - "deadlift"
+      - "biomechanics"
+      - "lagrangian"
+      - "pyqt6"
+    launcher:
+      category: "tool"
+      status: "provider_ready"
+      web_route: "/tools/movement-optimizer"
+    order: 10
