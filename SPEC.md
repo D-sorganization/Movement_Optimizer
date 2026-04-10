@@ -11,8 +11,8 @@
 | License | MIT |
 | Package Name | `movement-optimizer` |
 | Current Version | `1.0.0` |
-| Spec Version | `1.0.1` |
-| Last Spec Update | 2026-04-09 |
+| Spec Version | `1.0.2` |
+| Last Spec Update | 2026-04-10 |
 
 ## 2. Purpose
 
@@ -130,5 +130,6 @@ mypy --ignore-missing-imports src/movement_optimizer/
 
 | Date | Version | Changes |
 | --- | --- | --- |
+| 2026-04-10 | 1.0.2 | Replaced the last `print()` call in `src/` with direct stdout JSON emission in the CLI summary path and updated the CLI regression test to preserve the headless output contract without violating the no-print rule. |
 | 2026-04-09 | 1.0.1 | Added a shared provider-pack manifest, validator, regression tests, and launcher icon asset so Movement-Optimizer can publish a launcher-compatible utility pack without embedding UpstreamDrift-specific path logic. |
 | 2026-04-06 | 1.0.0 | Initial repository specification aligned to the current package layout, entrypoints, and test contract. |

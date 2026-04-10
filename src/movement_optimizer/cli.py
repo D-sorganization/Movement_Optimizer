@@ -145,10 +145,11 @@ def _result_to_full_dict(result: OptimizationResult, exercise: str) -> dict:
 def _emit_cli_summary(summary: dict) -> None:
     """Write the human-facing CLI summary to stdout.
 
-    This is the single intentional stdout path in `src/`, kept for the
-    command-line interface while operational events continue to use logging.
+    The CLI contract is a plain JSON payload on stdout, so this uses
+    ``sys.stdout.write`` instead of logging to avoid log prefixes that would
+    break downstream parsing.
     """
-    print(json.dumps(summary, indent=2))
+    sys.stdout.write(f"{json.dumps(summary, indent=2)}\n")
 
 
 def main(argv: list[str] | None = None) -> int:
