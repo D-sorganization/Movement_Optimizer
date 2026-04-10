@@ -11,8 +11,8 @@
 | License | MIT |
 | Package Name | `movement-optimizer` |
 | Current Version | `1.0.0` |
-| Spec Version | `1.0.0` |
-| Last Spec Update | 2026-04-06 |
+| Spec Version | `1.0.1` |
+| Last Spec Update | 2026-04-09 |
 
 ## 2. Purpose
 
@@ -130,4 +130,5 @@ mypy --ignore-missing-imports src/movement_optimizer/
 
 | Date | Version | Changes |
 | --- | --- | --- |
+| 2026-04-09 | 1.0.1 | Added a shared provider-pack manifest, validator, regression tests, and launcher icon asset so Movement-Optimizer can publish a launcher-compatible utility pack without embedding UpstreamDrift-specific path logic. |
 | 2026-04-06 | 1.0.0 | Initial repository specification aligned to the current package layout, entrypoints, and test contract. |
