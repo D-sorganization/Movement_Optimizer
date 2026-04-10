@@ -24,6 +24,7 @@ dev = [
     "pytest-cov>=5.0",
     "hypothesis>=6.0",
     "tomli>=2.0; python_version < '3.11'",
+    "PyYAML>=6.0",
 ]
 rust = [
     "maturin>=1.5",
