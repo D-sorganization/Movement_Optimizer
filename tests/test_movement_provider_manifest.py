@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import tomllib
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]  # Python 3.10 fallback
 
 from scripts.movement_provider_manifest import (
     MOVEMENT_PROVIDER_MANIFEST,
