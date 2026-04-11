@@ -32,9 +32,7 @@ _REQUIRED_MODEL_FIELDS = (
 _REQUIRED_LAUNCHER_FIELDS = ("category", "logo", "status")
 
 
-def load_movement_provider_manifest(
-    path: Path = MOVEMENT_PROVIDER_MANIFEST,
-) -> dict[str, Any]:
+def load_movement_provider_manifest(path: Path = MOVEMENT_PROVIDER_MANIFEST) -> dict[str, Any]:
     """Load the movement-optimizer provider manifest from disk."""
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -53,9 +51,7 @@ def _require_fields(
         raise ValueError(f"{label} missing required fields: {missing}")
 
 
-def _resolve_repo_relative_path(
-    repo_root: Path, relative_path: str, *, label: str
-) -> Path:
+def _resolve_repo_relative_path(repo_root: Path, relative_path: str, *, label: str) -> Path:
     path = (repo_root / relative_path).resolve(strict=False)
     if not path.exists():
         raise ValueError(f"{label} does not exist: {path}")
@@ -78,9 +74,7 @@ def validate_movement_provider_manifest(
     for model in models:
         if not isinstance(model, dict):
             raise ValueError("model entries must be mappings")
-        _require_fields(
-            model, _REQUIRED_MODEL_FIELDS, label=f"model[{model.get('id', '?')}]"
-        )
+        _require_fields(model, _REQUIRED_MODEL_FIELDS, label=f"model[{model.get('id', '?')}]")
 
         model_id = model["id"]
         if not isinstance(model_id, str) or not model_id.strip():
@@ -121,9 +115,7 @@ def validate_movement_provider_manifest(
         launcher = model["launcher"]
         if not isinstance(launcher, dict):
             raise ValueError(f"{model_id}.launcher must be a mapping")
-        _require_fields(
-            launcher, _REQUIRED_LAUNCHER_FIELDS, label=f"{model_id}.launcher"
-        )
+        _require_fields(launcher, _REQUIRED_LAUNCHER_FIELDS, label=f"{model_id}.launcher")
         if launcher["category"] != "tool":
             raise ValueError(f"{model_id}.launcher.category must be 'tool'")
 

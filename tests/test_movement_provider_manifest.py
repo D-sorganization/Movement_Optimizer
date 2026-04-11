@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import tomllib
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]  # Python 3.10 fallback
 
 from scripts.movement_provider_manifest import (
     MOVEMENT_PROVIDER_MANIFEST,
@@ -45,9 +48,7 @@ def test_movement_provider_manifest_points_at_console_entry_module() -> None:
     """The provider path should track the installed console entry module."""
     manifest = validate_movement_provider_manifest()
     entry = manifest["models"][0]
-    pyproject = tomllib.loads(
-        (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    )
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert pyproject["project"]["scripts"]["movement-optimizer"] == (
         "movement_optimizer.__main__:main"

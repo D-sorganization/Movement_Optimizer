@@ -81,9 +81,9 @@ class TestResultSummary:
         assert full["arrays"]["t"] == result.t.tolist()
         assert full["arrays"]["bar"] == result.bar.tolist()
 
-    def test_emit_cli_summary_prints_json(self, monkeypatch: pytest.MonkeyPatch):
+    def test_emit_cli_summary_writes_json(self, monkeypatch: pytest.MonkeyPatch):
         lines: list[str] = []
-        monkeypatch.setattr("builtins.print", lambda text: lines.append(text))
+        monkeypatch.setattr(cli.sys.stdout, "write", lambda text: lines.append(text))
         _emit_cli_summary({"exercise": "squat", "success": True})
         assert len(lines) == 1
         assert json.loads(lines[0]) == {"exercise": "squat", "success": True}
