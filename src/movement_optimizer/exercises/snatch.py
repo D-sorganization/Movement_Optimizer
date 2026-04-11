@@ -13,7 +13,12 @@ from __future__ import annotations
 from numpy.typing import NDArray
 
 from ..models import BodyModel, LagrangianDynamics
-from ._common import balance_config_pose, default_bounds_deg, pose_deg, pull_start_angles
+from ._common import (
+    balance_config_pose,
+    default_bounds_deg,
+    pose_deg,
+    pull_start_angles,
+)
 
 
 def _snatch_via_angles() -> NDArray:
@@ -58,7 +63,9 @@ def make_snatch_config(
     dyn = LagrangianDynamics(body, body.m_deadlift.copy(), body.I_deadlift.copy(), load)
 
     q_start_raw = pull_start_angles(body, q2_deg=48)
-    q_start = balance_config_pose(dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0)
+    q_start = balance_config_pose(
+        dyn, q_start_raw, "deadlift", bar_mass, adjust_joint=0
+    )
 
     # End: standing with bar overhead -- use squat-style COM for balance check
     # but keep the same dynamics object

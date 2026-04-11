@@ -119,7 +119,9 @@ class ExerciseTab(QWidget):
         )
         self.canvas.draw()
 
-    def _plot_angles(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
+    def _plot_angles(
+        self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS
+    ) -> None:
         ax = self.axes["angles"]
         n_dof = min(r.q.shape[1], len(labels))
         for j in range(n_dof):
@@ -140,7 +142,9 @@ class ExerciseTab(QWidget):
             labelcolor=Palette.FG,
         )
 
-    def _plot_torques(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
+    def _plot_torques(
+        self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS
+    ) -> None:
         ax = self.axes["torques"]
         n_dof = min(r.torques.shape[1], len(labels))
         for j in range(n_dof):
@@ -162,7 +166,9 @@ class ExerciseTab(QWidget):
             labelcolor=Palette.FG,
         )
 
-    def _plot_power(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
+    def _plot_power(
+        self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS
+    ) -> None:
         ax = self.axes["power"]
         n_dof = min(r.power.shape[1], len(labels))
         for j in range(n_dof):
@@ -197,7 +203,11 @@ class ExerciseTab(QWidget):
         ax = self.axes["com_path"]
         import matplotlib as mpl
 
-        cmap = mpl.colormaps["viridis"] if hasattr(mpl, "colormaps") else cm.get_cmap("viridis")
+        cmap = (
+            mpl.colormaps["viridis"]
+            if hasattr(mpl, "colormaps")
+            else cm.get_cmap("viridis")
+        )
         colors_t = cmap(np.linspace(0.2, 0.95, len(r.t)))
         for i in range(len(r.t) - 1):
             ax.plot(
@@ -224,10 +234,26 @@ class ExerciseTab(QWidget):
             alpha=0.5,
             label="COM straight",
         )
-        ax.plot(r.com[0, 0] * 100, r.com[0, 1] * 100, "o", color=Palette.RED, ms=8, label="Start")
-        ax.plot(r.com[-1, 0] * 100, r.com[-1, 1] * 100, "s", color=Palette.GREEN, ms=8, label="End")
+        ax.plot(
+            r.com[0, 0] * 100,
+            r.com[0, 1] * 100,
+            "o",
+            color=Palette.RED,
+            ms=8,
+            label="Start",
+        )
+        ax.plot(
+            r.com[-1, 0] * 100,
+            r.com[-1, 1] * 100,
+            "s",
+            color=Palette.GREEN,
+            ms=8,
+            label="End",
+        )
         # Show inner BOS bounds (middle 60%)
-        ax.axvline(body.inner_heel * 100, color=Palette.GREEN, ls="-", lw=1.2, alpha=0.7)
+        ax.axvline(
+            body.inner_heel * 100, color=Palette.GREEN, ls="-", lw=1.2, alpha=0.7
+        )
         ax.axvline(body.inner_toe * 100, color=Palette.GREEN, ls="-", lw=1.2, alpha=0.7)
         # Show outer BOS bounds
         ax.axvline(body.heel_x * 100, color=Palette.ORANGE, ls=":", lw=1, alpha=0.4)
@@ -246,7 +272,9 @@ class ExerciseTab(QWidget):
         ax = self.axes["com_time"]
         ax.plot(r.t, r.com[:, 0] * 100, color=Palette.ACCENT, lw=2, label="COM x")
         # Inner BOS bounds (middle 60%) -- the hard constraint zone
-        ax.axhline(body.inner_heel * 100, color=Palette.GREEN, ls="-", lw=1.5, alpha=0.8)
+        ax.axhline(
+            body.inner_heel * 100, color=Palette.GREEN, ls="-", lw=1.5, alpha=0.8
+        )
         ax.axhline(body.inner_toe * 100, color=Palette.GREEN, ls="-", lw=1.5, alpha=0.8)
         ax.fill_between(
             r.t,
@@ -267,7 +295,9 @@ class ExerciseTab(QWidget):
             color=Palette.ORANGE,
             label="Full BOS",
         )
-        ax.axhline(body.inner_center * 100, color=Palette.GREEN, ls="--", lw=0.8, alpha=0.5)
+        ax.axhline(
+            body.inner_center * 100, color=Palette.GREEN, ls="--", lw=0.8, alpha=0.5
+        )
         ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
         ax.set_ylabel("COM x (cm)", color=Palette.FG_DIM, fontsize=8)
         ax.set_title("COM Balance", color=Palette.FG, fontsize=10)
@@ -278,7 +308,9 @@ class ExerciseTab(QWidget):
             labelcolor=Palette.FG,
         )
 
-    def _plot_spine_loads(self, r: OptimizationResult, body: BodyModel, bar_mass: float) -> None:
+    def _plot_spine_loads(
+        self, r: OptimizationResult, body: BodyModel, bar_mass: float
+    ) -> None:
         """Plot spinal compression and shear over time."""
         exercise_type = self.name.lower().replace(" ", "_")
         if exercise_type == "bottoms_up_squat":
@@ -352,7 +384,9 @@ class ExerciseTab(QWidget):
         if exercise_type == "bench_press":
             self._draw_bench_press_frame(ax, q, t_now, fi, result, fk)
         else:
-            self._draw_standing_frame(ax, q, t_now, fi, result, dynamics, body, fk, exercise_type)
+            self._draw_standing_frame(
+                ax, q, t_now, fi, result, dynamics, body, fk, exercise_type
+            )
 
         self.canvas.draw()
 
@@ -379,7 +413,9 @@ class ExerciseTab(QWidget):
 
         self._draw_bench_and_body(ax)
         hand_pos, arm_base, fk_origin = self._draw_bench_arm_chain(ax, fk)
-        self._draw_bench_barbell_and_trace(ax, fi, result, hand_pos, arm_base, fk_origin)
+        self._draw_bench_barbell_and_trace(
+            ax, fi, result, hand_pos, arm_base, fk_origin
+        )
         self._draw_bench_title(ax, q, t_now)
 
     def _draw_bench_and_body(self, ax: Any) -> None:
@@ -446,7 +482,9 @@ class ExerciseTab(QWidget):
         # Ground line
         ax.plot([-0.6, 0.8], [0, 0], color=Palette.FG_DIM, lw=2, alpha=0.3)
 
-    def _draw_bench_arm_chain(self, ax: Any, fk: dict[str, Any]) -> tuple[Any, Any, Any]:
+    def _draw_bench_arm_chain(
+        self, ax: Any, fk: dict[str, Any]
+    ) -> tuple[Any, Any, Any]:
         """Draw the arm kinematic chain.
 
         Returns (hand_position, arm_base, fk_origin) for barbell placement.
@@ -538,7 +576,9 @@ class ExerciseTab(QWidget):
         shoulder = fk["shoulder"]
         if is_dl:
             BodyRenderer.draw_arms(ax, shoulder, body.L_arm)
-            ax.axhline(PLATE_RADIUS_STD_M, color=Palette.FG_DIM, ls=":", lw=0.8, alpha=0.3)
+            ax.axhline(
+                PLATE_RADIUS_STD_M, color=Palette.FG_DIM, ls=":", lw=0.8, alpha=0.3
+            )
 
         bp = dynamics.bar_position(q, exercise_type)
         bar_pos = (bp[0], bp[1])

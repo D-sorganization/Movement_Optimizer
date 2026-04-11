@@ -45,7 +45,9 @@ def test_movement_provider_manifest_points_at_console_entry_module() -> None:
     """The provider path should track the installed console entry module."""
     manifest = validate_movement_provider_manifest()
     entry = manifest["models"][0]
-    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    pyproject = tomllib.loads(
+        (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
 
     assert pyproject["project"]["scripts"]["movement-optimizer"] == (
         "movement_optimizer.__main__:main"

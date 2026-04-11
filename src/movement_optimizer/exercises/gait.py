@@ -31,13 +31,28 @@ def _gait_via_points() -> list[tuple[float, float, float, float]]:
     return [
         # fraction  ankle              knee                hip
         (0.00, math.radians(0), math.radians(-5), math.radians(30)),  # heel strike
-        (0.10, math.radians(-5), math.radians(-15), math.radians(25)),  # loading response
+        (
+            0.10,
+            math.radians(-5),
+            math.radians(-15),
+            math.radians(25),
+        ),  # loading response
         (0.30, math.radians(5), math.radians(-5), math.radians(0)),  # midstance
-        (0.50, math.radians(-15), math.radians(0), math.radians(-10)),  # terminal stance + push-off
+        (
+            0.50,
+            math.radians(-15),
+            math.radians(0),
+            math.radians(-10),
+        ),  # terminal stance + push-off
         (0.60, math.radians(5), math.radians(-40), math.radians(-5)),  # pre-swing
         (0.70, math.radians(0), math.radians(-60), math.radians(15)),  # initial swing
         (0.85, math.radians(0), math.radians(-30), math.radians(25)),  # mid swing
-        (1.00, math.radians(0), math.radians(-5), math.radians(30)),  # terminal swing = heel strike
+        (
+            1.00,
+            math.radians(0),
+            math.radians(-5),
+            math.radians(30),
+        ),  # terminal swing = heel strike
     ]
 
 
@@ -45,7 +60,13 @@ def make_gait_config(
     body: BodyModel,
     stride_length: float = 0.7,
     cycle_duration: float = 1.0,
-) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray, list[tuple[float, float, float, float]]]:
+) -> tuple[
+    LagrangianDynamics,
+    NDArray,
+    NDArray,
+    NDArray,
+    list[tuple[float, float, float, float]],
+]:
     """Create gait cycle configuration.
 
     Returns:
@@ -125,7 +146,9 @@ class GaitAnalyzer:
             "cycle_duration_s": duration,
         }
 
-    def compute_symmetry_index(self, left_angles: NDArray, right_angles: NDArray) -> float:
+    def compute_symmetry_index(
+        self, left_angles: NDArray, right_angles: NDArray
+    ) -> float:
         """Robinson symmetry index: SI = |L-R| / max(L,R) * 100.
 
         Preconditions:

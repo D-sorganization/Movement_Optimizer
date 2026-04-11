@@ -64,8 +64,12 @@ class TestInverseDynamicsBenchmark:
         for _ in range(10):
             dyn.inverse_dynamics(q, qd, qdd)
 
-        per_call_ms = _measure_ms(lambda: dyn.inverse_dynamics(q, qd, qdd), iterations=1000)
-        assert per_call_ms < 2.0, f"Single ID call took {per_call_ms:.3f}ms median (limit: 2ms)"
+        per_call_ms = _measure_ms(
+            lambda: dyn.inverse_dynamics(q, qd, qdd), iterations=1000
+        )
+        assert (
+            per_call_ms < 2.0
+        ), f"Single ID call took {per_call_ms:.3f}ms median (limit: 2ms)"
 
     def test_batch_inverse_dynamics_speed(self, default_body: BodyModel):
         """Batch inverse dynamics (100 timesteps) should complete in < 50ms (median).
@@ -85,8 +89,12 @@ class TestInverseDynamicsBenchmark:
         for _ in range(5):
             dyn.inverse_dynamics_batch(q, qd, qdd)
 
-        per_call_ms = _measure_ms(lambda: dyn.inverse_dynamics_batch(q, qd, qdd), iterations=100)
-        assert per_call_ms < 50.0, f"Batch ID (N=100) took {per_call_ms:.3f}ms median (limit: 50ms)"
+        per_call_ms = _measure_ms(
+            lambda: dyn.inverse_dynamics_batch(q, qd, qdd), iterations=100
+        )
+        assert (
+            per_call_ms < 50.0
+        ), f"Batch ID (N=100) took {per_call_ms:.3f}ms median (limit: 50ms)"
 
 
 class TestMassMatrixBenchmark:
@@ -100,7 +108,9 @@ class TestMassMatrixBenchmark:
             dyn.mass_matrix(q)
 
         per_call_ms = _measure_ms(lambda: dyn.mass_matrix(q), iterations=1000)
-        assert per_call_ms < 1.0, f"Mass matrix took {per_call_ms:.3f}ms median (limit: 1ms)"
+        assert (
+            per_call_ms < 1.0
+        ), f"Mass matrix took {per_call_ms:.3f}ms median (limit: 1ms)"
 
 
 class TestForwardKinematicsBenchmark:
@@ -125,4 +135,6 @@ class TestBodyModelBenchmark:
             BodyModel(75.0, 1.75)
 
         per_call_ms = _measure_ms(lambda: BodyModel(75.0, 1.75), iterations=1000)
-        assert per_call_ms < 2.0, f"BodyModel init took {per_call_ms:.3f}ms median (limit: 2ms)"
+        assert (
+            per_call_ms < 2.0
+        ), f"BodyModel init took {per_call_ms:.3f}ms median (limit: 2ms)"

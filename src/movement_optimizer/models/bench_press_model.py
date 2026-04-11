@@ -115,9 +115,18 @@ def make_bench_press_config(
 
     q_bounds = np.array(
         [
-            [BENCH_PRESS_JOINT_LIMITS["shoulder"][0], BENCH_PRESS_JOINT_LIMITS["shoulder"][1]],
-            [BENCH_PRESS_JOINT_LIMITS["elbow"][0], BENCH_PRESS_JOINT_LIMITS["elbow"][1]],
-            [BENCH_PRESS_JOINT_LIMITS["wrist"][0], BENCH_PRESS_JOINT_LIMITS["wrist"][1]],
+            [
+                BENCH_PRESS_JOINT_LIMITS["shoulder"][0],
+                BENCH_PRESS_JOINT_LIMITS["shoulder"][1],
+            ],
+            [
+                BENCH_PRESS_JOINT_LIMITS["elbow"][0],
+                BENCH_PRESS_JOINT_LIMITS["elbow"][1],
+            ],
+            [
+                BENCH_PRESS_JOINT_LIMITS["wrist"][0],
+                BENCH_PRESS_JOINT_LIMITS["wrist"][1],
+            ],
         ]
     )
 

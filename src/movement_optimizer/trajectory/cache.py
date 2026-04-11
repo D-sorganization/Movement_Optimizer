@@ -60,7 +60,15 @@ class SolutionCache:
         bar_height: float = 0.0,
     ) -> OptimizationResult | None:
         key = self._config_key(
-            exercise_type, body_mass, height, seg_mults, bar_mass, duration, smoothness, bar_depth, bar_height
+            exercise_type,
+            body_mass,
+            height,
+            seg_mults,
+            bar_mass,
+            duration,
+            smoothness,
+            bar_depth,
+            bar_height,
         )
         with self._lock:
             return self._store.get(key)
@@ -79,7 +87,15 @@ class SolutionCache:
         bar_height: float = 0.0,
     ) -> None:
         key = self._config_key(
-            exercise_type, body_mass, height, seg_mults, bar_mass, duration, smoothness, bar_depth, bar_height
+            exercise_type,
+            body_mass,
+            height,
+            seg_mults,
+            bar_mass,
+            duration,
+            smoothness,
+            bar_depth,
+            bar_height,
         )
         with self._lock:
             self._store[key] = result

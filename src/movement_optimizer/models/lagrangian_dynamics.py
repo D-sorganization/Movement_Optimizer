@@ -206,7 +206,11 @@ class LagrangianDynamics(PhysicsBackend):
         return G
 
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-        return self.mass_matrix(q) @ qdd + self._coriolis_vector(q, qd) + self._gravity_vector(q)
+        return (
+            self.mass_matrix(q) @ qdd
+            + self._coriolis_vector(q, qd)
+            + self._gravity_vector(q)
+        )
 
     def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
         """Vectorised batch torques for all timesteps.
@@ -252,13 +256,19 @@ class LagrangianDynamics(PhysicsBackend):
 
         tau = np.empty((n, 3))
         tau[:, 0] = (
-            self._M00 * qdd[:, 0] + self._a01 * c01 * qdd[:, 1] + self._a02 * c02 * qdd[:, 2]
+            self._M00 * qdd[:, 0]
+            + self._a01 * c01 * qdd[:, 1]
+            + self._a02 * c02 * qdd[:, 2]
         )
         tau[:, 1] = (
-            self._a01 * c01 * qdd[:, 0] + self._M11 * qdd[:, 1] + self._a12 * c12 * qdd[:, 2]
+            self._a01 * c01 * qdd[:, 0]
+            + self._M11 * qdd[:, 1]
+            + self._a12 * c12 * qdd[:, 2]
         )
         tau[:, 2] = (
-            self._a02 * c02 * qdd[:, 0] + self._a12 * c12 * qdd[:, 1] + self._M22 * qdd[:, 2]
+            self._a02 * c02 * qdd[:, 0]
+            + self._a12 * c12 * qdd[:, 1]
+            + self._M22 * qdd[:, 2]
         )
 
         s01 = np.sin(d01)
@@ -302,11 +312,22 @@ class LagrangianDynamics(PhysicsBackend):
         c3x = hip_x + d[2] * sq[:, 2]
 
         total_mass = b.body_mass + bar_mass
-        numerator = b.m_feet * b.foot_com_x + self.m[0] * c1x + self.m[1] * c2x + self.m[2] * c3x
+        numerator = (
+            b.m_feet * b.foot_com_x
+            + self.m[0] * c1x
+            + self.m[1] * c2x
+            + self.m[2] * c3x
+        )
 
         if exercise_type in ("squat", "full_squat"):
-            if hasattr(b, "squat_bar_depth") and (b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0):
-                bar_x = shoulder_x - b.squat_bar_height * sq[:, 2] - b.squat_bar_depth * np.cos(q[:, 2])
+            if hasattr(b, "squat_bar_depth") and (
+                b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0
+            ):
+                bar_x = (
+                    shoulder_x
+                    - b.squat_bar_height * sq[:, 2]
+                    - b.squat_bar_depth * np.cos(q[:, 2])
+                )
             else:
                 bar_x = shoulder_x
             numerator += bar_mass * bar_x
@@ -329,7 +350,9 @@ class LagrangianDynamics(PhysicsBackend):
         s = fk["shoulder"]
         if exercise_type in ("squat", "full_squat"):
             b = self.body
-            if hasattr(b, "squat_bar_depth") and (b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0):
+            if hasattr(b, "squat_bar_depth") and (
+                b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0
+            ):
                 u_down = np.array([-np.sin(q[2]), -np.cos(q[2])])
                 u_back = np.array([-np.cos(q[2]), np.sin(q[2])])
                 return s + b.squat_bar_height * u_down + b.squat_bar_depth * u_back
@@ -367,7 +390,9 @@ class LagrangianDynamics(PhysicsBackend):
         foot_com = np.array([b.foot_com_x, b.foot_com_y])
         total_mass = b.body_mass + bar_mass
 
-        numerator = b.m_feet * foot_com + self.m[0] * c1 + self.m[1] * c2 + self.m[2] * c3
+        numerator = (
+            b.m_feet * foot_com + self.m[0] * c1 + self.m[1] * c2 + self.m[2] * c3
+        )
 
         if exercise_type in ("squat", "full_squat"):
             numerator += bar_mass * self.bar_position(q, exercise_type)
@@ -443,7 +468,9 @@ def balance_pose(
     return q
 
 
-def _standing_balanced(dyn: LagrangianDynamics, bar_mass: float, exercise_type: str) -> NDArray:
+def _standing_balanced(
+    dyn: LagrangianDynamics, bar_mass: float, exercise_type: str
+) -> NDArray:
     """Find a near-standing pose with COM at inner BOS center.
 
     Adjusts shin angle (joint 0) to shift COM forward over mid-foot.

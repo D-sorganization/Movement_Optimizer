@@ -206,7 +206,9 @@ QScrollArea {{
 # ==============================================================
 
 
-class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QMainWindow):
+class MainWindow(
+    FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QMainWindow
+):
     """Top-level application window.
 
     File I/O, animation playback, and comparison actions are provided
@@ -217,7 +219,9 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
     # Signals for thread-safe GUI updates from the optimizer worker.
     # Using signals instead of QTimer.singleShot is the Qt-correct way
     # to communicate from a background thread to the main thread.
-    _sig_done = pyqtSignal(int, object, object, float, object)  # idx, result, body, bar, then_chain
+    _sig_done = pyqtSignal(
+        int, object, object, float, object
+    )  # idx, result, body, bar, then_chain
     _sig_cancelled = pyqtSignal()
     _sig_error = pyqtSignal(str)
     _sig_progress = pyqtSignal(object)  # ProgressReport
@@ -237,7 +241,9 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
         self.setWindowTitle("Movement Optimizer")
         self.setMinimumSize(1280, 830)
 
-        self.results: list[OptimizationResult | None] = [None] * len(self.EXERCISE_CONFIGS)
+        self.results: list[OptimizationResult | None] = [None] * len(
+            self.EXERCISE_CONFIGS
+        )
         self.dynamics_list: list[Any] = [None] * len(self.EXERCISE_CONFIGS)
         self.bodies_list: list[BodyModel | None] = [None] * len(self.EXERCISE_CONFIGS)
         self.anim_frames = [0] * len(self.EXERCISE_CONFIGS)
@@ -407,7 +413,9 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
     # Private helpers for _opt_worker (DRY: each step is one function)
     # ------------------------------------------------------------------
 
-    def _resolve_exercise_params(self, idx: int) -> tuple[Any, Any, str, float, float, float]:
+    def _resolve_exercise_params(
+        self, idx: int
+    ) -> tuple[Any, Any, str, float, float, float]:
         """Read sidebar values and resolve exercise config for slot *idx*.
 
         Returns:
@@ -508,7 +516,15 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
             b_depth = getattr(body, "squat_bar_depth", 0.0)
             b_height = getattr(body, "squat_bar_height", 0.0)
             cached = self._cache.get(
-                etype, body.body_mass, body.height, seg_mults, bar, dur, smoothness, b_depth, b_height
+                etype,
+                body.body_mass,
+                body.height,
+                seg_mults,
+                bar,
+                dur,
+                smoothness,
+                b_depth,
+                b_height,
             )
             if cached is not None:
                 logger.info("Cache hit for %s", etype)
@@ -578,7 +594,9 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
 
             elapsed = result.elapsed_s
             t_str = (
-                f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
+                f"{elapsed:.1f}s"
+                if elapsed < 60
+                else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
             )
             self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")
             self.sidebar.export_btn.setEnabled(True)
@@ -645,7 +663,9 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
                 f"  Balance: {balance_ok}"
             )
 
-        self.sidebar.result_label.setText(f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J")
+        self.sidebar.result_label.setText(
+            f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J"
+        )
 
     def _on_err(self, msg: str) -> None:
         self._opt_running = False

@@ -49,7 +49,9 @@ class TestBodyModelProperties:
         to=st.floats(min_value=0.5, max_value=2.0),
     )
     @settings(max_examples=100)
-    def test_segment_multipliers_preserve_proportionality(self, ll: float, ul: float, to: float):
+    def test_segment_multipliers_preserve_proportionality(
+        self, ll: float, ul: float, to: float
+    ):
         """Segment lengths should scale linearly with multipliers."""
         base = BodyModel(75.0, 1.75)
         scaled = BodyModel(

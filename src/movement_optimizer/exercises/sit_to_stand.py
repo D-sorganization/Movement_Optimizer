@@ -22,12 +22,19 @@ from ..models import BodyModel, LagrangianDynamics
 logger = logging.getLogger(__name__)
 
 
-def _sts_via_points(q_start: NDArray, q_end: NDArray) -> list[tuple[float, float, float, float]]:
+def _sts_via_points(
+    q_start: NDArray, q_end: NDArray
+) -> list[tuple[float, float, float, float]]:
     """Via-points for sit-to-stand motion."""
     return [
         (0.00, float(q_start[0]), float(q_start[1]), float(q_start[2])),  # seated
         (0.20, math.radians(15), math.radians(-90), math.radians(100)),  # forward lean
-        (0.35, math.radians(20), math.radians(-85), math.radians(90)),  # max lean + seat off
+        (
+            0.35,
+            math.radians(20),
+            math.radians(-85),
+            math.radians(90),
+        ),  # max lean + seat off
         (0.50, math.radians(15), math.radians(-60), math.radians(60)),  # rising phase 1
         (0.75, math.radians(5), math.radians(-30), math.radians(30)),  # rising phase 2
         (1.00, float(q_end[0]), float(q_end[1]), float(q_end[2])),  # standing
@@ -37,7 +44,13 @@ def _sts_via_points(q_start: NDArray, q_end: NDArray) -> list[tuple[float, float
 def make_sit_to_stand_config(
     body: BodyModel,
     seat_height: float = 0.45,
-) -> tuple[LagrangianDynamics, NDArray, NDArray, NDArray, list[tuple[float, float, float, float]]]:
+) -> tuple[
+    LagrangianDynamics,
+    NDArray,
+    NDArray,
+    NDArray,
+    list[tuple[float, float, float, float]],
+]:
     """Create sit-to-stand configuration.
 
     Returns:

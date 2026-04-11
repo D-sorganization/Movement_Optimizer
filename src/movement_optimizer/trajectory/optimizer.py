@@ -137,11 +137,16 @@ class TrajectoryOptimizer:
 
         if self.q_via is not None:
             n_half = self.n_waypoints // 2
-            q_all = np.vstack([self.q_start, wp[:n_half], self.q_via, wp[n_half:], self.q_end])
+            q_all = np.vstack(
+                [self.q_start, wp[:n_half], self.q_via, wp[n_half:], self.q_end]
+            )
         else:
             q_all = np.vstack([self.q_start, wp, self.q_end])
 
-        return [CubicSpline(self.t_ctrl, q_all[:, j], bc_type="clamped") for j in range(self.n_dof)]
+        return [
+            CubicSpline(self.t_ctrl, q_all[:, j], bc_type="clamped")
+            for j in range(self.n_dof)
+        ]
 
     def eval_trajectory(
         self, splines: list[CubicSpline]
@@ -199,7 +204,9 @@ class TrajectoryOptimizer:
     def _balance_cost(self, com_x: NDArray) -> float:
         """Soft centering preference (hard bounds enforced via SLSQP constraints)."""
         center = self.inner_center
-        return self.balance_center_weight * float(np.sum((com_x - center) ** 2)) * self.dt
+        return (
+            self.balance_center_weight * float(np.sum((com_x - center) ** 2)) * self.dt
+        )
 
     def _com_constraint_values(self, x: NDArray) -> NDArray:
         """Return COM constraint violation for SLSQP.
@@ -267,7 +274,9 @@ class TrajectoryOptimizer:
             # In bench FK, origin=shoulder, segments are upper_arm→forearm→hand.
             # hand_x = sum of L[i]*sin(q[i]) — should stay near zero (bar above shoulder).
             L = self.dynamics.L  # type: ignore[attr-defined]
-            hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
+            hand_x = (
+                L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
+            )
             total += BENCH_BAR_PATH_WEIGHT * float(np.sum(hand_x**2)) * self.dt
         else:
             com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
@@ -438,7 +447,8 @@ class TrajectoryOptimizer:
         else:
             with ThreadPoolExecutor(max_workers=n_workers) as pool:
                 pending: set[Future] = {
-                    pool.submit(self._run_single_start, seed) for seed in range(self.n_starts)
+                    pool.submit(self._run_single_start, seed)
+                    for seed in range(self.n_starts)
                 }
                 total_evals = [0]
 
@@ -448,7 +458,9 @@ class TrajectoryOptimizer:
                             f.cancel()
                         raise CancelledError("Optimization cancelled by user")
 
-                    done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
+                    done, pending = wait(
+                        pending, timeout=0.5, return_when=FIRST_COMPLETED
+                    )
 
                     for future in done:
                         result = future.result()
@@ -481,7 +493,9 @@ class TrajectoryOptimizer:
         self._progress.reset()
 
         wp0 = self._initial_guess()
-        return self._minimize_single(wp0.flatten(), self.cost, max_iter=MAX_ITER_PER_START * 2)
+        return self._minimize_single(
+            wp0.flatten(), self.cost, max_iter=MAX_ITER_PER_START * 2
+        )
 
     # ==========================================================
     # Result packaging
@@ -502,7 +516,9 @@ class TrajectoryOptimizer:
         com_traj = np.empty((n_pts, 2))
         bar_traj = np.empty((n_pts, 2))
         for n in range(n_pts):
-            com_full = self.dynamics.com_position(q[n], self.exercise_type, self.bar_mass)
+            com_full = self.dynamics.com_position(
+                q[n], self.exercise_type, self.bar_mass
+            )
             com_traj[n, 0] = com_x[n]
             com_traj[n, 1] = com_full[1]
             bar_traj[n] = self.dynamics.bar_position(q[n], self.exercise_type)
@@ -518,7 +534,8 @@ class TrajectoryOptimizer:
             com_in_bounds = True
         else:
             com_in_bounds = bool(
-                np.all(com_x >= self.inner_heel - 0.005) and np.all(com_x <= self.inner_toe + 0.005)
+                np.all(com_x >= self.inner_heel - 0.005)
+                and np.all(com_x <= self.inner_toe + 0.005)
             )
             if cost_finite and not com_in_bounds:
                 logger.warning(

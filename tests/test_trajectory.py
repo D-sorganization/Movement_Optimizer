@@ -141,7 +141,9 @@ class TestSplines:
         splines = opt.build_splines(wp.flatten())
         q, _, _, _ = opt.eval_trajectory(splines)
         mid = len(q) // 2
-        assert q[mid, 1] < np.radians(-60), "Thigh should flex significantly at midpoint"
+        assert q[mid, 1] < np.radians(
+            -60
+        ), "Thigh should flex significantly at midpoint"
 
 
 # ==============================================================
@@ -333,12 +335,12 @@ class TestOptimization:
         )
         result = opt.optimize()
         com_x = result.com[:, 0]
-        assert np.all(com_x >= body.inner_heel - 0.01), (
-            f"COM below inner_heel: min={com_x.min():.4f}, bound={body.inner_heel:.4f}"
-        )
-        assert np.all(com_x <= body.inner_toe + 0.01), (
-            f"COM above inner_toe: max={com_x.max():.4f}, bound={body.inner_toe:.4f}"
-        )
+        assert np.all(
+            com_x >= body.inner_heel - 0.01
+        ), f"COM below inner_heel: min={com_x.min():.4f}, bound={body.inner_heel:.4f}"
+        assert np.all(
+            com_x <= body.inner_toe + 0.01
+        ), f"COM above inner_toe: max={com_x.max():.4f}, bound={body.inner_toe:.4f}"
         assert result.success, "Optimization should report success with COM in bounds"
 
 
