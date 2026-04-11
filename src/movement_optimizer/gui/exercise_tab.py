@@ -538,10 +538,10 @@ class ExerciseTab(QWidget):
         shoulder = fk["shoulder"]
         if is_dl:
             BodyRenderer.draw_arms(ax, shoulder, body.L_arm)
-            bar_pos = (shoulder[0], shoulder[1] - body.L_arm)
             ax.axhline(PLATE_RADIUS_STD_M, color=Palette.FG_DIM, ls=":", lw=0.8, alpha=0.3)
-        else:
-            bar_pos = (shoulder[0], shoulder[1])
+
+        bp = dynamics.bar_position(q, exercise_type)
+        bar_pos = (bp[0], bp[1])
 
         BarbellRenderer.draw(ax, bar_pos)
         BodyRenderer.draw_com_marker(ax, result.com[fi])

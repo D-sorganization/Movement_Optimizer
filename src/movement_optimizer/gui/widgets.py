@@ -168,9 +168,9 @@ class ParameterSidebar(QScrollArea):
         self.bar_slider = LabelledSlider("Total Bar + Plates", 0, 300, 60, "kg", 0)
         lay.addWidget(self.bar_slider)
         
-        self.bar_depth_slider = LabelledSlider("Bar Depth (Squats)", 0.0, 0.4, 0.0, "m", 2)
+        self.bar_depth_slider = LabelledSlider("Bar Back Offset", 0.0, 0.4, 0.0, "m", 2)
         lay.addWidget(self.bar_depth_slider)
-        self.bar_height_slider = LabelledSlider("Bar Drop (Squats)", 0.0, 0.4, 0.0, "m", 2)
+        self.bar_height_slider = LabelledSlider("Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2)
         lay.addWidget(self.bar_height_slider)
         
         self.main_layout.addWidget(grp)
