@@ -240,7 +240,11 @@ def compute_max_load(
         if feasible:
             lo = mid
             last_feasible_load = mid
-            best_time_index, best_joint, best_utilization = time_index, joint_name, utilization
+            best_time_index, best_joint, best_utilization = (
+                time_index,
+                joint_name,
+                utilization,
+            )
         else:
             hi = mid
 

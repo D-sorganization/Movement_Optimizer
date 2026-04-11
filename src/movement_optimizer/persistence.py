@@ -27,7 +27,13 @@ logger = logging.getLogger(__name__)
 _ARRAY_FIELDS = ("t", "q", "qd", "qdd", "torques", "power", "com", "bar")
 
 # Scalar metadata fields in OptimizationResult
-_METADATA_FIELDS = ("success", "cost", "com_horizontal_range_cm", "elapsed_s", "n_evals")
+_METADATA_FIELDS = (
+    "success",
+    "cost",
+    "com_horizontal_range_cm",
+    "elapsed_s",
+    "n_evals",
+)
 
 
 def _result_to_dict(result: OptimizationResult) -> dict[str, Any]:

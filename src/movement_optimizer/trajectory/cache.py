@@ -28,6 +28,8 @@ class SolutionCache:
         bar_mass: float,
         duration: float,
         smoothness: float,
+        bar_depth: float = 0.0,
+        bar_height: float = 0.0,
     ) -> str:
         blob = json.dumps(
             {
@@ -38,6 +40,8 @@ class SolutionCache:
                 "bar": round(bar_mass, 1),
                 "dur": round(duration, 2),
                 "smooth": round(smoothness, 2),
+                "b_dep": round(bar_depth, 3),
+                "b_ht": round(bar_height, 3),
             },
             sort_keys=True,
         )
@@ -52,9 +56,19 @@ class SolutionCache:
         bar_mass: float,
         duration: float,
         smoothness: float,
+        bar_depth: float = 0.0,
+        bar_height: float = 0.0,
     ) -> OptimizationResult | None:
         key = self._config_key(
-            exercise_type, body_mass, height, seg_mults, bar_mass, duration, smoothness
+            exercise_type,
+            body_mass,
+            height,
+            seg_mults,
+            bar_mass,
+            duration,
+            smoothness,
+            bar_depth,
+            bar_height,
         )
         with self._lock:
             return self._store.get(key)
@@ -69,9 +83,19 @@ class SolutionCache:
         duration: float,
         smoothness: float,
         result: OptimizationResult,
+        bar_depth: float = 0.0,
+        bar_height: float = 0.0,
     ) -> None:
         key = self._config_key(
-            exercise_type, body_mass, height, seg_mults, bar_mass, duration, smoothness
+            exercise_type,
+            body_mass,
+            height,
+            seg_mults,
+            bar_mass,
+            duration,
+            smoothness,
+            bar_depth,
+            bar_height,
         )
         with self._lock:
             self._store[key] = result

@@ -10,7 +10,11 @@ from movement_optimizer.exercises import (
     make_jerk_config,
     make_snatch_config,
 )
-from movement_optimizer.models import BodyModel, LagrangianDynamics, make_bench_press_config
+from movement_optimizer.models import (
+    BodyModel,
+    LagrangianDynamics,
+    make_bench_press_config,
+)
 
 # ------------------------------------------------------------------
 # Clean

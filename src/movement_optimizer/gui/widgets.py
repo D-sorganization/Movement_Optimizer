@@ -167,6 +167,12 @@ class ParameterSidebar(QScrollArea):
         lay.addWidget(hint)
         self.bar_slider = LabelledSlider("Total Bar + Plates", 0, 300, 60, "kg", 0)
         lay.addWidget(self.bar_slider)
+
+        self.bar_depth_slider = LabelledSlider("Bar Back Offset", 0.0, 0.4, 0.0, "m", 2)
+        lay.addWidget(self.bar_depth_slider)
+        self.bar_height_slider = LabelledSlider("Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2)
+        lay.addWidget(self.bar_height_slider)
+
         self.main_layout.addWidget(grp)
 
     def _build_optimization(self) -> None:
@@ -413,6 +419,8 @@ class ParameterSidebar(QScrollArea):
                 "upper_leg": self.ul_slider.value(),
                 "torso": self.to_slider.value(),
             },
+            squat_bar_depth=self.bar_depth_slider.value(),
+            squat_bar_height=self.bar_height_slider.value(),
         )
 
     def reset_defaults(self) -> None:
@@ -422,6 +430,8 @@ class ParameterSidebar(QScrollArea):
         self.ul_slider.set_value(1.00)
         self.to_slider.set_value(1.00)
         self.bar_slider.set_value(60.0)
+        self.bar_depth_slider.set_value(0.0)
+        self.bar_height_slider.set_value(0.0)
         self.dur_slider.set_value(2.0)
         self.smooth_slider.set_value(1.0)
 

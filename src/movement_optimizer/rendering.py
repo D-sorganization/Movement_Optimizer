@@ -139,7 +139,11 @@ class BodyRenderer:
 
     @classmethod
     def draw_ghost(
-        cls, ax: Axes, joints: dict[str, NDArray], alpha: float = 0.10, body_height: float = 1.75
+        cls,
+        ax: Axes,
+        joints: dict[str, NDArray],
+        alpha: float = 0.10,
+        body_height: float = 1.75,
     ) -> None:
         pts = [joints["ankle"], joints["knee"], joints["hip"], joints["shoulder"]]
         for k in range(3):

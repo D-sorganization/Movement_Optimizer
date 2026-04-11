@@ -224,8 +224,22 @@ class ExerciseTab(QWidget):
             alpha=0.5,
             label="COM straight",
         )
-        ax.plot(r.com[0, 0] * 100, r.com[0, 1] * 100, "o", color=Palette.RED, ms=8, label="Start")
-        ax.plot(r.com[-1, 0] * 100, r.com[-1, 1] * 100, "s", color=Palette.GREEN, ms=8, label="End")
+        ax.plot(
+            r.com[0, 0] * 100,
+            r.com[0, 1] * 100,
+            "o",
+            color=Palette.RED,
+            ms=8,
+            label="Start",
+        )
+        ax.plot(
+            r.com[-1, 0] * 100,
+            r.com[-1, 1] * 100,
+            "s",
+            color=Palette.GREEN,
+            ms=8,
+            label="End",
+        )
         # Show inner BOS bounds (middle 60%)
         ax.axvline(body.inner_heel * 100, color=Palette.GREEN, ls="-", lw=1.2, alpha=0.7)
         ax.axvline(body.inner_toe * 100, color=Palette.GREEN, ls="-", lw=1.2, alpha=0.7)
@@ -538,10 +552,10 @@ class ExerciseTab(QWidget):
         shoulder = fk["shoulder"]
         if is_dl:
             BodyRenderer.draw_arms(ax, shoulder, body.L_arm)
-            bar_pos = (shoulder[0], shoulder[1] - body.L_arm)
             ax.axhline(PLATE_RADIUS_STD_M, color=Palette.FG_DIM, ls=":", lw=0.8, alpha=0.3)
-        else:
-            bar_pos = (shoulder[0], shoulder[1])
+
+        bp = dynamics.bar_position(q, exercise_type)
+        bar_pos = (bp[0], bp[1])
 
         BarbellRenderer.draw(ax, bar_pos)
         BodyRenderer.draw_com_marker(ax, result.com[fi])

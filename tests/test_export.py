@@ -8,7 +8,11 @@ from matplotlib.figure import Figure
 
 matplotlib.use("Agg")
 
-from movement_optimizer.export import export_animation_gif, export_plots_pdf, export_plots_png
+from movement_optimizer.export import (
+    export_animation_gif,
+    export_plots_pdf,
+    export_plots_png,
+)
 
 
 def _make_figure() -> Figure:

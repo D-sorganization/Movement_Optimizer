@@ -221,7 +221,12 @@ class TestShearInertialComponent:
 
         static_shear = spinal_shear(q, np.zeros(3), np.zeros(3), default_body, bar_mass, "squat")
         dynamic_shear = spinal_shear(
-            q, np.array([0.0, 0.0, 3.0]), np.array([0.0, 0.0, 5.0]), default_body, bar_mass, "squat"
+            q,
+            np.array([0.0, 0.0, 3.0]),
+            np.array([0.0, 0.0, 5.0]),
+            default_body,
+            bar_mass,
+            "squat",
         )
         assert abs(dynamic_shear) > abs(static_shear)
 

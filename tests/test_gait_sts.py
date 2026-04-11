@@ -7,7 +7,11 @@ import math
 import numpy as np
 import pytest
 
-from movement_optimizer.exercises import GaitAnalyzer, make_gait_config, make_sit_to_stand_config
+from movement_optimizer.exercises import (
+    GaitAnalyzer,
+    make_gait_config,
+    make_sit_to_stand_config,
+)
 from movement_optimizer.models import BodyModel, LagrangianDynamics
 
 # ------------------------------------------------------------------
@@ -195,7 +199,15 @@ class TestSitToStandOptimizationSmoke:
 
         dyn, qs, qe, qb, _via = make_sit_to_stand_config(default_body)
         opt = TrajectoryOptimizer(
-            default_body, dyn, "sit_to_stand", 0.0, qs, qe, qb, duration=2.0, n_waypoints=8
+            default_body,
+            dyn,
+            "sit_to_stand",
+            0.0,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=8,
         )
         assert opt.n_dof == 3
         assert opt.duration == 2.0
@@ -205,7 +217,15 @@ class TestSitToStandOptimizationSmoke:
 
         dyn, qs, qe, qb, _via = make_sit_to_stand_config(default_body)
         opt = TrajectoryOptimizer(
-            default_body, dyn, "sit_to_stand", 0.0, qs, qe, qb, duration=2.0, n_waypoints=8
+            default_body,
+            dyn,
+            "sit_to_stand",
+            0.0,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=8,
         )
         guess = opt._initial_guess()
         assert guess.shape == (8, 3)
@@ -215,7 +235,15 @@ class TestSitToStandOptimizationSmoke:
 
         dyn, qs, qe, qb, _via = make_sit_to_stand_config(default_body)
         opt = TrajectoryOptimizer(
-            default_body, dyn, "sit_to_stand", 0.0, qs, qe, qb, duration=2.0, n_waypoints=8
+            default_body,
+            dyn,
+            "sit_to_stand",
+            0.0,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=8,
         )
         cost = opt._compute_cost(opt._initial_guess().flatten())
         assert np.isfinite(cost)

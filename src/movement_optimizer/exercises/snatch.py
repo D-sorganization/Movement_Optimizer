@@ -13,7 +13,12 @@ from __future__ import annotations
 from numpy.typing import NDArray
 
 from ..models import BodyModel, LagrangianDynamics
-from ._common import balance_config_pose, default_bounds_deg, pose_deg, pull_start_angles
+from ._common import (
+    balance_config_pose,
+    default_bounds_deg,
+    pose_deg,
+    pull_start_angles,
+)
 
 
 def _snatch_via_angles() -> NDArray:

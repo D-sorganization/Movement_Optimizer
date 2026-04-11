@@ -32,7 +32,9 @@ _REQUIRED_MODEL_FIELDS = (
 _REQUIRED_LAUNCHER_FIELDS = ("category", "logo", "status")
 
 
-def load_movement_provider_manifest(path: Path = MOVEMENT_PROVIDER_MANIFEST) -> dict[str, Any]:
+def load_movement_provider_manifest(
+    path: Path = MOVEMENT_PROVIDER_MANIFEST,
+) -> dict[str, Any]:
     """Load the movement-optimizer provider manifest from disk."""
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
