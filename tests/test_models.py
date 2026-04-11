@@ -16,6 +16,15 @@ class TestBodyModel:
         assert len(default_body.L) == 3
         assert all(default_body.L > 0)
 
+    def test_bar_offsets_default_to_zero(self, default_body: BodyModel) -> None:
+        assert default_body.squat_bar_depth == 0.0
+        assert default_body.squat_bar_height == 0.0
+
+    def test_custom_bar_offsets(self) -> None:
+        body = BodyModel(75.0, 1.75, squat_bar_depth=0.15, squat_bar_height=0.25)
+        assert body.squat_bar_depth == 0.15
+        assert body.squat_bar_height == 0.25
+
     def test_custom_multipliers(self, custom_body: BodyModel) -> None:
         default = BodyModel(80.0, 1.80)
         assert custom_body.L[0] > default.L[0]
@@ -33,6 +42,14 @@ class TestBodyModel:
     def test_multiplier_out_of_range_raises(self) -> None:
         with pytest.raises(ValueError, match="out of range"):
             BodyModel(75, 1.75, seg_multipliers={"lower_leg": 3.0})
+
+    def test_negative_bar_depth_raises(self) -> None:
+        with pytest.raises(ValueError, match="squat_bar_depth must be non-negative"):
+            BodyModel(75, 1.75, squat_bar_depth=-0.1)
+
+    def test_negative_bar_height_raises(self) -> None:
+        with pytest.raises(ValueError, match="squat_bar_height must be non-negative"):
+            BodyModel(75, 1.75, squat_bar_height=-0.1)
 
     def test_mass_fractions_sum_to_one(self) -> None:
         """MASS_FRAC values must sum to exactly 1.0 (issue #125)."""
@@ -152,6 +169,38 @@ class TestBarAndCOM:
         fk = dyn.forward_kinematics(q)
         bp = dyn.bar_position(q, "squat")
         np.testing.assert_allclose(bp, fk["shoulder"])
+
+    def test_squat_bar_with_depth_offset(self) -> None:
+        b = BodyModel(75.0, 1.75, squat_bar_depth=0.1)
+        dyn = LagrangianDynamics(b, b.m_squat.copy(), b.I_squat.copy(), 60.0)
+        q = np.array([0.0, 0.0, 0.0]) # Torso is vertical
+        fk = dyn.forward_kinematics(q)
+        bp = dyn.bar_position(q, "squat")
+        # u_back should be [-1, 0] when vertical (q[2]=0)
+        expected = fk["shoulder"] + np.array([-0.1, 0.0])
+        np.testing.assert_allclose(bp, expected, atol=1e-10)
+
+    def test_squat_bar_with_height_offset(self) -> None:
+        b = BodyModel(75.0, 1.75, squat_bar_height=0.2)
+        dyn = LagrangianDynamics(b, b.m_squat.copy(), b.I_squat.copy(), 60.0)
+        q = np.array([0.0, 0.0, 0.0]) # Torso is vertical
+        fk = dyn.forward_kinematics(q)
+        bp = dyn.bar_position(q, "squat")
+        # u_down should be [0, -1] when vertical (q[2]=0)
+        expected = fk["shoulder"] + np.array([0.0, -0.2])
+        np.testing.assert_allclose(bp, expected, atol=1e-10)
+
+    def test_com_shifts_with_bar_offset(self) -> None:
+        b1 = BodyModel(75.0, 1.75, squat_bar_depth=0.0)
+        dyn1 = LagrangianDynamics(b1, b1.m_squat.copy(), b1.I_squat.copy(), 60.0)
+        b2 = BodyModel(75.0, 1.75, squat_bar_depth=0.2) # shifted back
+        dyn2 = LagrangianDynamics(b2, b2.m_squat.copy(), b2.I_squat.copy(), 60.0)
+
+        q = np.zeros(3)
+        com1 = dyn1.com_position(q, "squat", 60.0)
+        com2 = dyn2.com_position(q, "squat", 60.0)
+        # Shifted back means -x 
+        assert com2[0] < com1[0]
 
     def test_deadlift_bar_below_shoulder(self, deadlift_dynamics) -> None:
         dyn, qs, _, _ = deadlift_dynamics

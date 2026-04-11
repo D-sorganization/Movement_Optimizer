@@ -94,6 +94,10 @@ class BodyModel:
             raise ValueError("body_mass must be positive")
         if height <= 0:
             raise ValueError("height must be positive")
+        if squat_bar_depth < 0:
+            raise ValueError("squat_bar_depth must be non-negative")
+        if squat_bar_height < 0:
+            raise ValueError("squat_bar_height must be non-negative")
 
         self.body_mass = body_mass
         self.height = height
