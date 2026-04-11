@@ -34,9 +34,7 @@ try:
         FG = theme.text_color
         FG_DIM = theme.tick_color
         ACCENT = theme.primary_colors[0] if theme.primary_colors else "#7c6ff7"
-        ACCENT2 = (
-            theme.primary_colors[1] if len(theme.primary_colors) > 1 else "#9d93f9"
-        )
+        ACCENT2 = theme.primary_colors[1] if len(theme.primary_colors) > 1 else "#9d93f9"
         GREEN = theme.accent_color
         RED = theme.secondary_color
         BLUE = theme.primary_color
@@ -185,9 +183,7 @@ class BodyRenderer:
     HEAD_RADIUS = 0.10  # metres
 
     @classmethod
-    def draw_segments(
-        cls, ax: Axes, joints: dict[str, NDArray], body_height: float = 1.75
-    ) -> None:
+    def draw_segments(cls, ax: Axes, joints: dict[str, NDArray], body_height: float = 1.75) -> None:
         pts = [joints["ankle"], joints["knee"], joints["hip"], joints["shoulder"]]
         for k in range(3):
             ax.plot(

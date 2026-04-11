@@ -27,9 +27,7 @@ def squat_dyn(default_body: BodyModel):
 class TestStandingCompression:
     """At standing (q=0, qd=0, qdd=0) compression should equal gravity on mass above L5."""
 
-    def test_standing_compression_equals_gravity(
-        self, default_body: BodyModel, squat_dyn
-    ) -> None:
+    def test_standing_compression_equals_gravity(self, default_body: BodyModel, squat_dyn) -> None:
         q = np.zeros(3)
         qd = np.zeros(3)
         qdd = np.zeros(3)
@@ -42,9 +40,7 @@ class TestStandingCompression:
         expected = (m_above + bar_mass) * default_body.g
         np.testing.assert_allclose(comp, expected, rtol=1e-6)
 
-    def test_standing_compression_no_bar(
-        self, default_body: BodyModel, squat_dyn
-    ) -> None:
+    def test_standing_compression_no_bar(self, default_body: BodyModel, squat_dyn) -> None:
         q = np.zeros(3)
         qd = np.zeros(3)
         qdd = np.zeros(3)
@@ -71,9 +67,7 @@ class TestStandingShear:
 class TestForwardLean:
     """With torso lean, shear increases and compression decreases."""
 
-    def test_shear_increases_with_lean(
-        self, default_body: BodyModel, squat_dyn
-    ) -> None:
+    def test_shear_increases_with_lean(self, default_body: BodyModel, squat_dyn) -> None:
         qd = np.zeros(3)
         qdd = np.zeros(3)
         bar_mass = 60.0
@@ -81,16 +75,12 @@ class TestForwardLean:
         q_upright = np.array([0.0, 0.0, 0.0])
         q_leaned = np.array([0.0, 0.0, np.radians(30)])
 
-        shear_upright = spinal_shear(
-            q_upright, qd, qdd, default_body, bar_mass, "squat"
-        )
+        shear_upright = spinal_shear(q_upright, qd, qdd, default_body, bar_mass, "squat")
         shear_leaned = spinal_shear(q_leaned, qd, qdd, default_body, bar_mass, "squat")
 
         assert abs(shear_leaned) > abs(shear_upright)
 
-    def test_shear_proportional_to_sin(
-        self, default_body: BodyModel, squat_dyn
-    ) -> None:
+    def test_shear_proportional_to_sin(self, default_body: BodyModel, squat_dyn) -> None:
         qd = np.zeros(3)
         qdd = np.zeros(3)
         bar_mass = 60.0
@@ -103,9 +93,7 @@ class TestForwardLean:
         expected = (m_above + bar_mass) * default_body.g * np.sin(angle)
         np.testing.assert_allclose(shear, expected, rtol=1e-6)
 
-    def test_compression_decreases_with_lean(
-        self, default_body: BodyModel, squat_dyn
-    ) -> None:
+    def test_compression_decreases_with_lean(self, default_body: BodyModel, squat_dyn) -> None:
         qd = np.zeros(3)
         qdd = np.zeros(3)
         bar_mass = 60.0
@@ -113,18 +101,12 @@ class TestForwardLean:
         q_upright = np.array([0.0, 0.0, 0.0])
         q_leaned = np.array([0.0, 0.0, np.radians(30)])
 
-        comp_upright = spinal_compression(
-            q_upright, qd, qdd, default_body, bar_mass, "squat"
-        )
-        comp_leaned = spinal_compression(
-            q_leaned, qd, qdd, default_body, bar_mass, "squat"
-        )
+        comp_upright = spinal_compression(q_upright, qd, qdd, default_body, bar_mass, "squat")
+        comp_leaned = spinal_compression(q_leaned, qd, qdd, default_body, bar_mass, "squat")
 
         assert comp_leaned < comp_upright
 
-    def test_compression_cos_component(
-        self, default_body: BodyModel, squat_dyn
-    ) -> None:
+    def test_compression_cos_component(self, default_body: BodyModel, squat_dyn) -> None:
         qd = np.zeros(3)
         qdd = np.zeros(3)
         bar_mass = 60.0
@@ -172,10 +154,7 @@ class TestBatchSpineLoads:
 
         batch_comp = spinal_compression(q, qd, qdd, default_body, 60.0, "squat")
         loop_comp = np.array(
-            [
-                spinal_compression(q[i], qd[i], qdd[i], default_body, 60.0, "squat")
-                for i in range(n)
-            ]
+            [spinal_compression(q[i], qd[i], qdd[i], default_body, 60.0, "squat") for i in range(n)]
         )
         np.testing.assert_allclose(batch_comp, loop_comp, rtol=1e-10)
 
@@ -240,9 +219,7 @@ class TestShearInertialComponent:
         q = np.array([0.0, 0.0, angle])
         bar_mass = 60.0
 
-        static_shear = spinal_shear(
-            q, np.zeros(3), np.zeros(3), default_body, bar_mass, "squat"
-        )
+        static_shear = spinal_shear(q, np.zeros(3), np.zeros(3), default_body, bar_mass, "squat")
         dynamic_shear = spinal_shear(
             q,
             np.array([0.0, 0.0, 3.0]),

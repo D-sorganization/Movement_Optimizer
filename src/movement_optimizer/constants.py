@@ -27,9 +27,9 @@ MASS_FRAC: dict[str, float] = {
     "trunk_head": 0.578,
     "arms": 0.100,
 }
-assert (
-    abs(sum(MASS_FRAC.values()) - 1.0) < 1e-9
-), f"MASS_FRAC values must sum to 1.0, got {sum(MASS_FRAC.values())}"
+assert abs(sum(MASS_FRAC.values()) - 1.0) < 1e-9, (
+    f"MASS_FRAC values must sum to 1.0, got {sum(MASS_FRAC.values())}"
+)
 
 # ------------------------------------------------------------------
 # Segment length fractions  (fraction of body height)
@@ -187,9 +187,7 @@ HILL_MAX_ECCENTRIC_RATIO: float = 1.4
 # ~7 mm for a 1.75 m person — effectively a grip-only link.
 WRIST_SEGMENT_FRAC: float = 0.01
 
-BENCH_UPPER_ARM_FRAC: float = (
-    0.56  # shoulder to elbow (anatomical ~48% + shoulder width)
-)
+BENCH_UPPER_ARM_FRAC: float = 0.56  # shoulder to elbow (anatomical ~48% + shoulder width)
 BENCH_FOREARM_FRAC: float = 0.44  # elbow to wrist (Winter 2009: ~44% of arm length)
 
 BENCH_PRESS_JOINT_LIMITS: dict[str, tuple[float, float]] = {

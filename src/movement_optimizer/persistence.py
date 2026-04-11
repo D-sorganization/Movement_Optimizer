@@ -121,9 +121,7 @@ def save_app_state(
         slider_values maps slider_name -> float value.
     """
     state_path = (
-        load_app_paths().state_file
-        if state_dir is None
-        else Path(state_dir) / "last_state.json"
+        load_app_paths().state_file if state_dir is None else Path(state_dir) / "last_state.json"
     )
     state_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -146,9 +144,7 @@ def load_app_state(*, state_dir: str | Path | None = None) -> dict[str, Any] | N
     Returns None if no state file exists or if it is corrupt.
     """
     state_path = (
-        load_app_paths().state_file
-        if state_dir is None
-        else Path(state_dir) / "last_state.json"
+        load_app_paths().state_file if state_dir is None else Path(state_dir) / "last_state.json"
     )
 
     if not state_path.exists():

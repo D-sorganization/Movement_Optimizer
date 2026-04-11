@@ -59,9 +59,7 @@ class LabelledSlider(QWidget):
         row = QHBoxLayout()
         self.name_label = QLabel(label)
         self.val_label = QLabel(self._fmt(default))
-        self.val_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        self.val_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         row.addWidget(self.name_label)
         row.addStretch()
         row.addWidget(self.val_label)
@@ -172,9 +170,7 @@ class ParameterSidebar(QScrollArea):
 
         self.bar_depth_slider = LabelledSlider("Bar Back Offset", 0.0, 0.4, 0.0, "m", 2)
         lay.addWidget(self.bar_depth_slider)
-        self.bar_height_slider = LabelledSlider(
-            "Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2
-        )
+        self.bar_height_slider = LabelledSlider("Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2)
         lay.addWidget(self.bar_height_slider)
 
         self.main_layout.addWidget(grp)
@@ -371,9 +367,7 @@ class ParameterSidebar(QScrollArea):
         phase = "Converging" if n_evals > 200 else "Exploring"
         self.prog_label.setText(f"{phase}...")
         self.iter_label.setText(f"Evaluations: {report.iteration}")
-        self.cost_label.setText(
-            f"Cost: {report.cost:.1f}  (best: {report.best_cost:.1f})"
-        )
+        self.cost_label.setText(f"Cost: {report.cost:.1f}  (best: {report.best_cost:.1f})")
         self.improve_label.setText(f"Improvement: {report.improvement_pct:+.3f}%")
         elapsed = report.elapsed_s
         if elapsed < 60:
@@ -480,9 +474,7 @@ class PlaybackControls(QWidget):
         self.speed_slider.setRange(1, 30)
         self.speed_slider.setValue(10)
         self.speed_slider.setFixedWidth(100)
-        self.speed_slider.valueChanged.connect(
-            lambda v: self.speed_changed.emit(v / 10.0)
-        )
+        self.speed_slider.valueChanged.connect(lambda v: self.speed_changed.emit(v / 10.0))
         layout.addWidget(self.speed_slider)
 
         self.speed_label = QLabel("1.0x")
