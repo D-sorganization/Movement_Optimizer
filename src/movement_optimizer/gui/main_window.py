@@ -505,8 +505,10 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
             body, _dyn, etype, bar, dur, smoothness = self._resolve_exercise_params(idx)
             seg_mults = self._seg_mults()
 
+            b_depth = getattr(body, "squat_bar_depth", 0.0)
+            b_height = getattr(body, "squat_bar_height", 0.0)
             cached = self._cache.get(
-                etype, body.body_mass, body.height, seg_mults, bar, dur, smoothness
+                etype, body.body_mass, body.height, seg_mults, bar, dur, smoothness, b_depth, b_height
             )
             if cached is not None:
                 logger.info("Cache hit for %s", etype)
@@ -529,6 +531,8 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
                 dur,
                 smoothness,
                 result,
+                b_depth,
+                b_height,
             )
             self._sig_done.emit(idx, result, body, bar, then_chain)
         except CancelledError:

@@ -305,7 +305,11 @@ class LagrangianDynamics(PhysicsBackend):
         numerator = b.m_feet * b.foot_com_x + self.m[0] * c1x + self.m[1] * c2x + self.m[2] * c3x
 
         if exercise_type in ("squat", "full_squat"):
-            numerator += bar_mass * shoulder_x
+            if hasattr(b, "squat_bar_depth") and (b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0):
+                bar_x = shoulder_x - b.squat_bar_height * sq[:, 2] - b.squat_bar_depth * np.cos(q[:, 2])
+            else:
+                bar_x = shoulder_x
+            numerator += bar_mass * bar_x
         else:
             numerator += b.m_arms * shoulder_x + bar_mass * shoulder_x
 
@@ -323,6 +327,13 @@ class LagrangianDynamics(PhysicsBackend):
     def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
         fk = self.forward_kinematics(q)
         s = fk["shoulder"]
+        if exercise_type in ("squat", "full_squat"):
+            b = self.body
+            if hasattr(b, "squat_bar_depth") and (b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0):
+                u_down = np.array([-np.sin(q[2]), -np.cos(q[2])])
+                u_back = np.array([-np.cos(q[2]), np.sin(q[2])])
+                return s + b.squat_bar_height * u_down + b.squat_bar_depth * u_back
+            return s.copy()
         if exercise_type == "deadlift":
             # Bar hangs from hands: arm-length below shoulder
             return np.array([s[0], s[1] - self.body.L_arm])
@@ -359,7 +370,7 @@ class LagrangianDynamics(PhysicsBackend):
         numerator = b.m_feet * foot_com + self.m[0] * c1 + self.m[1] * c2 + self.m[2] * c3
 
         if exercise_type in ("squat", "full_squat"):
-            numerator += bar_mass * shoulder
+            numerator += bar_mass * self.bar_position(q, exercise_type)
         else:
             bar_pos = self.bar_position(q, exercise_type)
             # Arm vector from shoulder to bar

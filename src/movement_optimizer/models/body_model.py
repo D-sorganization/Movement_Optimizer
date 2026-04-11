@@ -70,6 +70,8 @@ class BodyModel:
         seg_multipliers: dict[str, float] | None = None,
         abduction_angle: float = 0.0,
         arm_angle: float = 0.0,
+        squat_bar_depth: float = 0.0,
+        squat_bar_height: float = 0.0,
     ) -> None:
         """Initialize body model with anthropometric parameters.
 
@@ -98,6 +100,8 @@ class BodyModel:
         self.g = 9.81
         self.abduction_angle = abduction_angle
         self.arm_angle = arm_angle
+        self.squat_bar_depth = squat_bar_depth
+        self.squat_bar_height = squat_bar_height
 
         mults = self._validated_multipliers(seg_multipliers)
         self._compute_lengths(height, mults)
