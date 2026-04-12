@@ -15,7 +15,7 @@ from movement_optimizer.models import (
     make_full_squat_config,
     make_squat_config,
 )
-from movement_optimizer.trajectory import OptimizationResult
+from movement_optimizer.trajectory import OptimizationResult, TrajectoryOptimizer
 
 
 def make_test_result(seed: int = 42, cost: float = 42.5) -> OptimizationResult:
@@ -92,3 +92,44 @@ def default_torque_set() -> JointTorqueSet:
 @pytest.fixture()
 def bench_torque_set() -> JointTorqueSet:
     return make_bench_press_torque_set()
+
+
+@pytest.fixture()
+def squat_optimizer():
+    body = BodyModel(75.0, 1.75)
+    dyn, qs, qe, qb = make_squat_config(body, 60.0)
+    opt = TrajectoryOptimizer(
+        body,
+        dyn,
+        "squat",
+        60.0,
+        qs,
+        qe,
+        qb,
+        duration=2.0,
+        n_waypoints=6,
+        n_eval=20,
+        n_starts=1,
+    )
+    return opt, body, dyn, qs, qe
+
+
+@pytest.fixture()
+def full_squat_optimizer():
+    body = BodyModel(75.0, 1.75)
+    dyn, qs, qe, qb, q_via = make_full_squat_config(body, 60.0)
+    opt = TrajectoryOptimizer(
+        body,
+        dyn,
+        "full_squat",
+        60.0,
+        qs,
+        qe,
+        qb,
+        q_via=q_via,
+        duration=4.0,
+        n_waypoints=8,
+        n_eval=20,
+        n_starts=1,
+    )
+    return opt, body, dyn
