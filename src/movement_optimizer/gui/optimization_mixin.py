@@ -1,0 +1,175 @@
+"""Mixin for optimization controller logic in the Movement Optimizer GUI."""
+
+from __future__ import annotations
+
+import logging
+import threading
+import traceback
+from collections.abc import Callable
+from typing import Any
+
+import numpy as np
+
+from ..cli import EXERCISE_FACTORIES
+from ..models import BodyModel
+from ..trajectory import (
+    CancelledError,
+    OptimizationResult,
+    ProgressReport,
+    SolutionCache,
+    TrajectoryOptimizer,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class OptimizationMixin:
+    """Contains logic for preparing and running optimization backgrounds tasks."""
+
+    # These attributes are expected to be present on the MainWindow instance
+    _opt_lock: threading.Lock
+    _opt_running: bool
+    _cache: SolutionCache
+    _cancel_event: threading.Event
+    results: list[OptimizationResult | None]
+    dynamics_list: list[Any]
+    bodies_list: list[BodyModel | None]
+    anim_frames: list[int]
+    EXERCISE_CONFIGS: tuple[tuple[str, str], ...]
+    _last_config: tuple[Any, ...]
+
+    def __init__(self) -> None:
+        """Init."""
+        pass
+
+    def _resolve_exercise_params(self, idx: int) -> tuple[Any, Any, str, float, float, float]:
+        body = self.sidebar.get_body_model()  # type: ignore[attr-defined]
+        bar = self.sidebar.bar_slider.value()  # type: ignore[attr-defined]
+        dur = self.sidebar.dur_slider.value()  # type: ignore[attr-defined]
+        smoothness = self.sidebar.smooth_slider.value()  # type: ignore[attr-defined]
+        _, etype = self.EXERCISE_CONFIGS[idx]
+
+        factory = EXERCISE_FACTORIES[etype]
+        config = factory(body, bar)
+        if len(config) == 5:
+            dyn, qs, qe, qb, q_via = config  # type: ignore[misc]
+        else:
+            dyn, qs, qe, qb = config  # type: ignore[misc]
+            q_via = None
+
+        _min_durations = {
+            "full_squat": 3.0,
+            "bench_press": 3.0,
+            "clean": 2.5,
+            "jerk": 2.0,
+            "snatch": 3.0,
+        }
+        if etype in _min_durations:
+            dur = max(dur, _min_durations[etype])
+
+        self.dynamics_list[idx] = dyn
+        self.bodies_list[idx] = body
+        self._last_config = (dyn, qs, qe, qb, q_via, etype)
+        return body, dyn, etype, bar, dur, smoothness
+
+    def _seg_mults(self) -> dict[str, float]:
+        return {
+            "lower_leg": self.sidebar.ll_slider.value(),  # type: ignore[attr-defined]
+            "upper_leg": self.sidebar.ul_slider.value(),  # type: ignore[attr-defined]
+            "torso": self.sidebar.to_slider.value(),  # type: ignore[attr-defined]
+        }
+
+    def _run_optimizer(
+        self,
+        body: Any,
+        bar: float,
+        dur: float,
+        smoothness: float,
+    ) -> OptimizationResult:
+        dyn, qs, qe, qb, q_via, etype = self._last_config
+        logger.info(
+            "Starting %s optimisation: mass=%.0f, height=%.2f, bar=%.0f",
+            etype,
+            body.body_mass,
+            body.height,
+            bar,
+        )
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,  # type: ignore[arg-type]
+            etype,
+            bar,
+            qs,  # type: ignore[arg-type]
+            qe,  # type: ignore[arg-type]
+            qb,  # type: ignore[arg-type]
+            q_via=q_via,  # type: ignore[arg-type]
+            duration=dur,
+            n_waypoints=12,
+            smoothness=smoothness,
+            progress_cb=self._make_progress_cb(),
+            cancel_event=self._cancel_event,
+        )
+        return opt.optimize()
+
+    def _opt_worker(self, idx: int, then_chain: list[int] | None) -> None:
+        try:
+            body, _dyn, etype, bar, dur, smoothness = self._resolve_exercise_params(idx)
+            seg_mults = self._seg_mults()
+
+            b_depth = getattr(body, "squat_bar_depth", 0.0)
+            b_height = getattr(body, "squat_bar_height", 0.0)
+            cached = self._cache.get(
+                etype,
+                body.body_mass,
+                body.height,
+                seg_mults,
+                bar,
+                dur,
+                smoothness,
+                b_depth,
+                b_height,
+            )
+            if cached is not None:
+                logger.info("Cache hit for %s", etype)
+                self.results[idx] = cached
+                self.anim_frames[idx] = 0
+                self._sig_done.emit(idx, cached, body, bar, then_chain)  # type: ignore[attr-defined]
+                return
+
+            result = self._run_optimizer(body, bar, dur, smoothness)
+            with self._opt_lock:
+                self.results[idx] = result
+                self.anim_frames[idx] = 0
+
+            self._cache.put(
+                etype,
+                body.body_mass,
+                body.height,
+                seg_mults,
+                bar,
+                dur,
+                smoothness,
+                result,
+                b_depth,
+                b_height,
+            )
+            self._sig_done.emit(idx, result, body, bar, then_chain)  # type: ignore[attr-defined]
+        except CancelledError:
+            self._sig_cancelled.emit()  # type: ignore[attr-defined]
+        except NotImplementedError as exc:
+            tb = traceback.format_exc()
+            logger.error("Optimisation failed (feature not implemented):\\n%s", tb)
+            self._sig_error.emit(f"Feature not yet implemented: {exc}")  # type: ignore[attr-defined]
+        except (ValueError, RuntimeError, OSError, np.linalg.LinAlgError) as exc:
+            tb = traceback.format_exc()
+            logger.error("Optimisation failed:\\n%s", tb)
+            self._sig_error.emit(str(exc))  # type: ignore[attr-defined]
+
+    def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
+        def cb(report: ProgressReport) -> None:
+            self._sig_progress.emit(report)  # type: ignore[attr-defined]
+
+        return cb
+
+    def _update_progress(self, report: ProgressReport) -> None:
+        self.sidebar.update_progress(report)  # type: ignore[attr-defined]
