@@ -1,14 +1,15 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock
 
 from movement_optimizer.gui.plot_renderer import (
     plot_angles,
-    plot_torques,
-    plot_power,
-    plot_com_path,
     plot_com_balance,
+    plot_com_path,
+    plot_power,
     plot_spine_loads,
+    plot_torques,
 )
 from movement_optimizer.models import BodyModel
 from movement_optimizer.trajectory import OptimizationResult
@@ -56,7 +57,9 @@ class TestPlotRenderer:
     def test_plot_angles(self, mock_ax, dummy_result):
         plot_angles(mock_ax, dummy_result)
         assert mock_ax.plot.call_count == 3
-        mock_ax.set_title.assert_called_once_with("Joint Angles", color=mock_ax.set_title.call_args[1].get('color'), fontsize=10)
+        mock_ax.set_title.assert_called_once_with(
+            "Joint Angles", color=mock_ax.set_title.call_args[1].get("color"), fontsize=10
+        )
 
     def test_plot_torques(self, mock_ax, dummy_result):
         plot_torques(mock_ax, dummy_result)
@@ -89,12 +92,12 @@ class TestPlotRenderer:
         ax_comp = MagicMock()
         ax_shear = MagicMock()
         plot_spine_loads(ax_comp, ax_shear, dummy_result, body, bar_mass=20.0, name="squat")
-        
+
         ax_comp.plot.assert_called_once()
         ax_comp.axhline.assert_called_once()
         ax_comp.fill_between.assert_called_once()
         ax_comp.set_title.assert_called_once()
-        
+
         ax_shear.plot.assert_called_once()
         ax_shear.axhline.assert_called_once()
         ax_shear.set_title.assert_called_once()

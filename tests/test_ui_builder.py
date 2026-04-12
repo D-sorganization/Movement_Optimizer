@@ -1,5 +1,5 @@
 import pytest
-from PyQt6.QtWidgets import QApplication, QWidget, QTabWidget, QLabel
+from PyQt6.QtWidgets import QApplication, QLabel, QTabWidget, QWidget
 
 from movement_optimizer.gui.ui_builder import build_central_widget
 from movement_optimizer.gui.widgets import ParameterSidebar, PlaybackControls
@@ -35,7 +35,7 @@ class TestUIBuilder:
         assert len(exercise_tabs) == 2
         assert isinstance(controls, PlaybackControls)
         assert isinstance(status_label, QLabel)
-        
+
         assert tabs.count() == 2
         assert tabs.tabText(0) == "  Squat  "
         assert tabs.tabText(1) == "  Deadlift  "

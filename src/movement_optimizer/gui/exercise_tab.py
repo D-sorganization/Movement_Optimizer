@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import matplotlib.cm as cm
-import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import (  # type: ignore[attr-defined]
     NavigationToolbar2QT as NavigationToolbar,
@@ -15,6 +13,7 @@ from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
 
+from ..models import BodyModel
 from ..rendering import Palette, style_axis
 from ..trajectory import OptimizationResult
 from . import anim_renderer, plot_renderer
@@ -107,7 +106,9 @@ class ExerciseTab(QWidget):
         plot_renderer.plot_power(self.axes["power"], result, labels)
         plot_renderer.plot_com_path(self.axes["com_path"], result, body)
         plot_renderer.plot_com_balance(self.axes["com_time"], result, body)
-        plot_renderer.plot_spine_loads(self.axes["spine_comp"], self.axes["spine_shear"], result, body, bar_mass, self.name)
+        plot_renderer.plot_spine_loads(
+            self.axes["spine_comp"], self.axes["spine_shear"], result, body, bar_mass, self.name
+        )
 
         self.fig.suptitle(
             f"{self.name}  |  {body.body_mass:.0f} kg body, {bar_mass:.0f} kg barbell",

@@ -18,46 +18,31 @@ from __future__ import annotations
 import logging
 import threading
 import traceback
-from collections.abc import Callable
 from typing import Any
 
 import matplotlib
 import numpy as np
-from PyQt6.QtCore import QSettings, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QSettings, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QLabel,
     QMainWindow,
     QMessageBox,
-    QSplitter,
-    QTabWidget,
-    QVBoxLayout,
-    QWidget,
 )
 
-from ..cli import EXERCISE_FACTORIES
 from ..comparison import ComparisonStore
 from ..constants import trapezoid
 from ..models import BodyModel
 from ..persistence import load_app_state, save_app_state
-from ..rendering import (
-    Palette,
-)
 from ..trajectory import (
-    CancelledError,
     OptimizationResult,
-    ProgressReport,
     SolutionCache,
-    TrajectoryOptimizer,
 )
 from .animation_control import AnimationControlMixin
 from .comparison_mixin import ComparisonMixin
-from .exercise_tab import ExerciseTab
 from .file_operations import FileOperationsMixin
 from .optimization_mixin import OptimizationMixin
 from .session_state import collect_results, collect_slider_values, restore_slider_values
 from .stylesheet import QSS
 from .ui_builder import build_central_widget
-from .widgets import ParameterSidebar, PlaybackControls
 
 try:
     matplotlib.use("QtAgg")
@@ -65,9 +50,6 @@ except ImportError:
     matplotlib.use("Agg")
 
 logger = logging.getLogger(__name__)
-
-
-
 
 
 # ==============================================================
@@ -252,8 +234,6 @@ class MainWindow(
             args=(idx, then_chain),
             daemon=True,
         ).start()
-
-
 
     def _on_done(
         self,

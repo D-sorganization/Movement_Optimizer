@@ -1,6 +1,7 @@
 """Animation/kinematic frame rendering for the Movement Optimizer."""
 
 from typing import Any
+
 import numpy as np
 from matplotlib.patches import Circle as MplCircle
 
@@ -31,7 +32,9 @@ def draw_anim_frame(
     if exercise_type == "bench_press":
         _draw_bench_press_frame(ax, q, t_now, fi, result, fk, exercise_name)
     else:
-        _draw_standing_frame(ax, q, t_now, fi, result, dynamics, body, fk, exercise_name, exercise_type)
+        _draw_standing_frame(
+            ax, q, t_now, fi, result, dynamics, body, fk, exercise_name, exercise_type
+        )
 
 
 # -- Bench press rendering constants ----------------------------

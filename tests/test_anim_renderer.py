@@ -1,6 +1,7 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
 
 from movement_optimizer.gui.anim_renderer import draw_anim_frame
 from movement_optimizer.models import BodyModel
