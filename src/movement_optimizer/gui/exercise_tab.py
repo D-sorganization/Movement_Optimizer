@@ -15,7 +15,7 @@ from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
 
-from ..rendering import Palette
+from ..rendering import Palette, style_axis
 from ..trajectory import OptimizationResult
 from . import anim_renderer, plot_renderer
 
