@@ -18,43 +18,31 @@ from __future__ import annotations
 import logging
 import threading
 import traceback
-from collections.abc import Callable
 from typing import Any
 
 import matplotlib
 import numpy as np
-from PyQt6.QtCore import QSettings, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QSettings, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QLabel,
     QMainWindow,
     QMessageBox,
-    QSplitter,
-    QTabWidget,
-    QVBoxLayout,
-    QWidget,
 )
 
-from ..cli import EXERCISE_FACTORIES
 from ..comparison import ComparisonStore
 from ..constants import trapezoid
 from ..models import BodyModel
 from ..persistence import load_app_state, save_app_state
-from ..rendering import (
-    Palette,
-)
 from ..trajectory import (
-    CancelledError,
     OptimizationResult,
-    ProgressReport,
     SolutionCache,
-    TrajectoryOptimizer,
 )
 from .animation_control import AnimationControlMixin
 from .comparison_mixin import ComparisonMixin
-from .exercise_tab import ExerciseTab
 from .file_operations import FileOperationsMixin
+from .optimization_mixin import OptimizationMixin
 from .session_state import collect_results, collect_slider_values, restore_slider_values
-from .widgets import ParameterSidebar, PlaybackControls
+from .stylesheet import QSS
+from .ui_builder import build_central_widget
 
 try:
     matplotlib.use("QtAgg")
@@ -62,138 +50,6 @@ except ImportError:
     matplotlib.use("Agg")
 
 logger = logging.getLogger(__name__)
-
-
-# ==============================================================
-# QSS Stylesheet
-# ==============================================================
-
-QSS = f"""
-QMainWindow {{
-    background-color: {Palette.BG};
-}}
-QWidget {{
-    background-color: {Palette.BG};
-    color: {Palette.FG};
-    font-family: 'Segoe UI', 'Ubuntu', sans-serif;
-    font-size: 10pt;
-}}
-QGroupBox {{
-    background-color: {Palette.BG_PANEL};
-    border: 1px solid {Palette.BG_INPUT};
-    border-radius: 6px;
-    margin-top: 8px;
-    padding-top: 16px;
-    font-weight: bold;
-    font-size: 10pt;
-}}
-QGroupBox::title {{
-    subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 4px;
-    color: {Palette.FG};
-}}
-QLabel {{
-    background-color: transparent;
-    color: {Palette.FG};
-}}
-QLabel[class="dim"] {{
-    color: {Palette.FG_DIM};
-    font-size: 8pt;
-}}
-QLabel[class="result"] {{
-    color: {Palette.GREEN};
-    font-family: 'Consolas', 'Ubuntu Mono', monospace;
-    font-size: 9pt;
-}}
-QLabel[class="title"] {{
-    font-size: 14pt;
-    font-weight: bold;
-}}
-QLabel[class="stall-warn"] {{
-    color: {Palette.RED};
-    font-size: 8pt;
-    font-weight: bold;
-}}
-QPushButton {{
-    background-color: {Palette.BG_INPUT};
-    color: {Palette.FG};
-    border: none;
-    border-radius: 4px;
-    padding: 6px 14px;
-    font-size: 9pt;
-}}
-QPushButton:hover {{
-    background-color: {Palette.ACCENT};
-}}
-QPushButton[class="primary"] {{
-    background-color: {Palette.ACCENT};
-    color: white;
-    font-weight: bold;
-    font-size: 10pt;
-    padding: 8px 16px;
-}}
-QPushButton[class="primary"]:hover {{
-    background-color: {Palette.ACCENT2};
-}}
-QPushButton[class="cancel"] {{
-    background-color: {Palette.RED};
-    color: white;
-    font-weight: bold;
-    font-size: 9pt;
-    padding: 6px 14px;
-}}
-QPushButton[class="cancel"]:hover {{
-    background-color: #ff6666;
-}}
-QSlider::groove:horizontal {{
-    background: {Palette.BG_INPUT};
-    height: 6px;
-    border-radius: 3px;
-}}
-QSlider::handle:horizontal {{
-    background: {Palette.ACCENT};
-    width: 14px;
-    height: 14px;
-    margin: -4px 0;
-    border-radius: 7px;
-}}
-QSlider::handle:horizontal:hover {{
-    background: {Palette.ACCENT2};
-}}
-QTabWidget::pane {{
-    border: 1px solid {Palette.BG_INPUT};
-    border-radius: 4px;
-}}
-QTabBar::tab {{
-    background: {Palette.BG_INPUT};
-    color: {Palette.FG};
-    padding: 6px 18px;
-    margin-right: 2px;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-}}
-QTabBar::tab:selected {{
-    background: {Palette.ACCENT};
-    color: white;
-}}
-QProgressBar {{
-    background-color: {Palette.BG_INPUT};
-    border: none;
-    border-radius: 3px;
-    height: 8px;
-    text-align: center;
-    font-size: 7pt;
-    color: transparent;
-}}
-QProgressBar::chunk {{
-    background-color: {Palette.ACCENT};
-    border-radius: 3px;
-}}
-QScrollArea {{
-    border: none;
-}}
-"""
 
 
 # ==============================================================
@@ -206,12 +62,17 @@ QScrollArea {{
 # ==============================================================
 
 
-class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QMainWindow):
+class MainWindow(
+    FileOperationsMixin,
+    AnimationControlMixin,
+    ComparisonMixin,
+    OptimizationMixin,
+    QMainWindow,
+):
     """Top-level application window.
 
-    File I/O, animation playback, and comparison actions are provided
-    by mixin classes in ``file_operations``, ``animation_control``, and
-    ``comparison_mixin`` respectively.
+    File I/O, animation playback, optimization, and comparison actions are provided
+    by mixin classes in their respective submodules.
     """
 
     # Signals for thread-safe GUI updates from the optimizer worker.
@@ -265,44 +126,15 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
         self._restore_layout()
 
     def _build_ui(self) -> None:
-        central = QWidget()
+        (
+            central,
+            self.sidebar,
+            self.tabs,
+            self.exercise_tabs,
+            self.controls,
+            self.status_label,
+        ) = build_central_widget(self, self.EXERCISE_CONFIGS)
         self.setCentralWidget(central)
-        outer = QVBoxLayout(central)
-        outer.setContentsMargins(8, 8, 8, 8)
-
-        title = QLabel("Movement Optimizer")
-        title.setProperty("class", "title")
-        outer.addWidget(title)
-
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        outer.addWidget(splitter, stretch=1)
-
-        self.sidebar = ParameterSidebar()
-        splitter.addWidget(self.sidebar)
-
-        right = QWidget()
-        right_lay = QVBoxLayout(right)
-        right_lay.setContentsMargins(0, 0, 0, 0)
-
-        self.tabs = QTabWidget()
-        self.exercise_tabs: list[ExerciseTab] = []
-        for display_name, _ in self.EXERCISE_CONFIGS:
-            tab = ExerciseTab(display_name)
-            self.tabs.addTab(tab, f"  {display_name}  ")
-            self.exercise_tabs.append(tab)
-        right_lay.addWidget(self.tabs)
-
-        self.controls = PlaybackControls()
-        right_lay.addWidget(self.controls)
-
-        splitter.addWidget(right)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-
-        self.status_label = QLabel("Ready")
-        self.status_label.setProperty("class", "dim")
-        outer.addWidget(self.status_label)
-
         self._connect_signals()
 
     def _connect_signals(self) -> None:
@@ -402,169 +234,6 @@ class MainWindow(FileOperationsMixin, AnimationControlMixin, ComparisonMixin, QM
             args=(idx, then_chain),
             daemon=True,
         ).start()
-
-    # ------------------------------------------------------------------
-    # Private helpers for _opt_worker (DRY: each step is one function)
-    # ------------------------------------------------------------------
-
-    def _resolve_exercise_params(self, idx: int) -> tuple[Any, Any, str, float, float, float]:
-        """Read sidebar values and resolve exercise config for slot *idx*.
-
-        Returns:
-            Tuple of (body, dyn, etype, bar, dur, smoothness) where dur
-            has already been clamped to the exercise minimum.
-        """
-        body = self.sidebar.get_body_model()
-        bar = self.sidebar.bar_slider.value()
-        dur = self.sidebar.dur_slider.value()
-        smoothness = self.sidebar.smooth_slider.value()
-        _, etype = self.EXERCISE_CONFIGS[idx]
-
-        factory = EXERCISE_FACTORIES[etype]
-        config = factory(body, bar)
-        if len(config) == 5:
-            dyn, qs, qe, qb, q_via = config  # type: ignore[misc]
-        else:
-            dyn, qs, qe, qb = config  # type: ignore[misc]
-            q_via = None
-
-        _min_durations = {
-            "full_squat": 3.0,
-            "bench_press": 3.0,
-            "clean": 2.5,
-            "jerk": 2.0,
-            "snatch": 3.0,
-        }
-        if etype in _min_durations:
-            dur = max(dur, _min_durations[etype])
-
-        self.dynamics_list[idx] = dyn
-        self.bodies_list[idx] = body
-        # Store unpacked config items for use by the optimizer builder
-        self._last_config = (dyn, qs, qe, qb, q_via, etype)
-        return body, dyn, etype, bar, dur, smoothness
-
-    def _seg_mults(self) -> dict[str, float]:
-        """Read current segment multiplier values from the sidebar.
-
-        Returns:
-            Dict with keys lower_leg, upper_leg, torso.
-        """
-        return {
-            "lower_leg": self.sidebar.ll_slider.value(),
-            "upper_leg": self.sidebar.ul_slider.value(),
-            "torso": self.sidebar.to_slider.value(),
-        }
-
-    def _run_optimizer(
-        self,
-        body: Any,
-        bar: float,
-        dur: float,
-        smoothness: float,
-    ) -> OptimizationResult:
-        """Build and run the TrajectoryOptimizer using the last resolved config.
-
-        Args:
-            body: BodyModel resolved by _resolve_exercise_params.
-            bar: Barbell mass in kg.
-            dur: Movement duration in seconds.
-            smoothness: Smoothness weight.
-
-        Returns:
-            OptimizationResult from the optimizer.
-        """
-        dyn, qs, qe, qb, q_via, etype = self._last_config
-        logger.info(
-            "Starting %s optimisation: mass=%.0f, height=%.2f, bar=%.0f",
-            etype,
-            body.body_mass,
-            body.height,
-            bar,
-        )
-        opt = TrajectoryOptimizer(
-            body,
-            dyn,  # type: ignore[arg-type]
-            etype,
-            bar,
-            qs,  # type: ignore[arg-type]
-            qe,  # type: ignore[arg-type]
-            qb,  # type: ignore[arg-type]
-            q_via=q_via,  # type: ignore[arg-type]
-            duration=dur,
-            n_waypoints=12,
-            smoothness=smoothness,
-            progress_cb=self._make_progress_cb(),
-            cancel_event=self._cancel_event,
-        )
-        return opt.optimize()
-
-    def _opt_worker(self, idx: int, then_chain: list[int] | None) -> None:
-        """Background thread: resolve config, check cache, optimise, emit result."""
-        try:
-            body, _dyn, etype, bar, dur, smoothness = self._resolve_exercise_params(idx)
-            seg_mults = self._seg_mults()
-
-            b_depth = getattr(body, "squat_bar_depth", 0.0)
-            b_height = getattr(body, "squat_bar_height", 0.0)
-            cached = self._cache.get(
-                etype,
-                body.body_mass,
-                body.height,
-                seg_mults,
-                bar,
-                dur,
-                smoothness,
-                b_depth,
-                b_height,
-            )
-            if cached is not None:
-                logger.info("Cache hit for %s", etype)
-                self.results[idx] = cached
-                self.anim_frames[idx] = 0
-                self._sig_done.emit(idx, cached, body, bar, then_chain)
-                return
-
-            result = self._run_optimizer(body, bar, dur, smoothness)
-            with self._opt_lock:
-                self.results[idx] = result
-                self.anim_frames[idx] = 0
-
-            self._cache.put(
-                etype,
-                body.body_mass,
-                body.height,
-                seg_mults,
-                bar,
-                dur,
-                smoothness,
-                result,
-                b_depth,
-                b_height,
-            )
-            self._sig_done.emit(idx, result, body, bar, then_chain)
-        except CancelledError:
-            self._sig_cancelled.emit()
-        except NotImplementedError as exc:
-            tb = traceback.format_exc()
-            logger.error("Optimisation failed (feature not implemented):\n%s", tb)
-            self._sig_error.emit(f"Feature not yet implemented: {exc}")
-        except (ValueError, RuntimeError, OSError, np.linalg.LinAlgError) as exc:
-            tb = traceback.format_exc()
-            logger.error("Optimisation failed:\n%s", tb)
-            self._sig_error.emit(str(exc))
-
-    # _ensure_idle removed: signals guarantee delivery to the main thread,
-    # so _on_done / _on_cancelled / _on_err always fire reliably.
-
-    def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
-        def cb(report: ProgressReport) -> None:
-            self._sig_progress.emit(report)
-
-        return cb
-
-    def _update_progress(self, report: ProgressReport) -> None:
-        self.sidebar.update_progress(report)
 
     def _on_done(
         self,
