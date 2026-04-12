@@ -143,6 +143,11 @@ class LagrangianDynamics(PhysicsBackend):
         self._g2 = g * (m[2] * d[2] + m_load * L[2])
 
     @property
+    def segment_lengths(self) -> NDArray:
+        """Lengths of the active kinematic chain segments."""
+        return self.L
+
+    @property
     def n_dof(self) -> int:
         """Number of degrees of freedom for this dynamics model (always 3)."""
         return 3

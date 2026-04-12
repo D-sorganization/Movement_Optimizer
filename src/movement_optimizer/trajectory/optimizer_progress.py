@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
 
@@ -38,6 +39,31 @@ class ProgressTracker:
         self._cost_history = []
         self._best_cost = float("inf")
         self._start_time = time.monotonic()
+
+    @property
+    def cost_history(self) -> list[float]:
+        """Get the history of cost evaluations."""
+        return self._cost_history
+
+    @cost_history.setter
+    def cost_history(self, value: list[float]) -> None:
+        """Set the history of cost evaluations (use carefully)."""
+        self._cost_history = value
+
+    @property
+    def iteration_count(self) -> int:
+        """Get the current iteration count."""
+        return self._iter
+
+    def elapsed(self) -> float:
+        """Get elapsed time since the tracker was last reset."""
+        return time.monotonic() - self._start_time
+
+    @contextlib.contextmanager
+    def lock(self):
+        """Context manager for thread-safe operations on progress state."""
+        with self._progress_lock:
+            yield
 
     def record(self, cost: float) -> None:
         """Record a new cost evaluation (single-thread path)."""

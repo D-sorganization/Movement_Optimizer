@@ -119,8 +119,8 @@ class TrajectoryOptimizer:
         # Progress tracker (owns iteration counter and cost history)
         self._progress = ProgressTracker(progress_cb=progress_cb)
 
-        # Kept for backward-compat (some callers read these directly)
-        self._progress_lock = self._progress._progress_lock
+        # Kept for backward-compat
+        self._progress_lock = self._progress.lock
 
     def _setup_time_grids(self) -> None:
         n_ctrl = self.n_waypoints + 2
@@ -266,7 +266,7 @@ class TrajectoryOptimizer:
             # Bar-path verticality: penalise horizontal drift from shoulder joint.
             # In bench FK, origin=shoulder, segments are upper_arm→forearm→hand.
             # hand_x = sum of L[i]*sin(q[i]) — should stay near zero (bar above shoulder).
-            L = self.dynamics.L  # type: ignore[attr-defined]
+            L = self.dynamics.segment_lengths
             hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
             total += BENCH_BAR_PATH_WEIGHT * float(np.sum(hand_x**2)) * self.dt
         else:
@@ -290,16 +290,16 @@ class TrajectoryOptimizer:
 
     @property
     def _cost_history(self) -> list[float]:
-        return self._progress._cost_history
+        return self._progress.cost_history
 
     @_cost_history.setter
     def _cost_history(self, value: list[float]) -> None:
-        self._progress._cost_history = value
+        self._progress.cost_history = value
 
     def _detect_stall(self) -> tuple[bool, str]:
         from .optimizer_progress import detect_stall
 
-        return detect_stall(self._progress._cost_history)
+        return detect_stall(self._progress.cost_history)
 
     # ==========================================================
     # Initial guess generation (delegates to optimizer_guess)
@@ -433,7 +433,7 @@ class TrajectoryOptimizer:
             out = self._run_single_start_with_progress()
             if self.cancel_event.is_set():
                 raise CancelledError("Optimization cancelled by user")
-            elapsed = time.monotonic() - self._progress._start_time
+            elapsed = self._progress.elapsed()
             return self._package_results(out, elapsed)
         else:
             with ThreadPoolExecutor(max_workers=n_workers) as pool:
@@ -463,7 +463,7 @@ class TrajectoryOptimizer:
             raise CancelledError("All optimization starts were cancelled")
 
         best_res, _ = min(results, key=lambda r: float(r[0].fun))  # type: ignore[attr-defined]
-        elapsed = time.monotonic() - self._progress._start_time
+        elapsed = self._progress.elapsed()
         total_evals_sum = sum(n for _, n in results)
 
         logger.info(
@@ -558,6 +558,6 @@ class TrajectoryOptimizer:
             cost=cost_val,
             com_horizontal_range_cm=com_h_range,
             elapsed_s=elapsed,
-            n_evals=n_evals or self._progress._iter,
+            n_evals=n_evals or self._progress.iteration_count,
             n_joint_limit_violations=n_joint_limit_violations,
         )
