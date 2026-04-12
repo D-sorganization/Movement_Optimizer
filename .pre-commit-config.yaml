@@ -74,7 +74,8 @@ repos:
         types: [python]
 
 default_language_version:
-  python: python3.12
+  python: python3
+  node: "20.11.0"
 
 exclude: |
   (?x)^(
