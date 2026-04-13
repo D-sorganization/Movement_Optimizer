@@ -1,6 +1,7 @@
 """Animation/kinematic frame rendering for the Movement Optimizer."""
 
 from typing import Any
+
 import numpy as np
 from matplotlib.patches import Circle as MplCircle
 

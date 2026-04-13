@@ -1,6 +1,7 @@
 """Static plot renderers for the Movement Optimizer."""
 
 from typing import Any
+
 import matplotlib.cm as cm
 import numpy as np
 

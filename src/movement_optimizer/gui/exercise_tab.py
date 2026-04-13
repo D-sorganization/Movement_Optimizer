@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import matplotlib.cm as cm
-import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import (  # type: ignore[attr-defined]
     NavigationToolbar2QT as NavigationToolbar,
@@ -15,7 +13,8 @@ from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
 
-from ..rendering import Palette
+from ..models import BodyModel
+from ..rendering import Palette, style_axis
 from ..trajectory import OptimizationResult
 from . import anim_renderer, plot_renderer
 

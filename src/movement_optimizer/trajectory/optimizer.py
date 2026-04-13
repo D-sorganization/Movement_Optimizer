@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import threading
-import time
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
