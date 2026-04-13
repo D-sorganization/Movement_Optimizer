@@ -61,6 +61,11 @@ class PhysicsBackend(ABC):
 
     @property
     @abstractmethod
+    def segment_lengths(self) -> NDArray:
+        """Lengths of the active kinematic chain segments."""
+
+    @property
+    @abstractmethod
     def n_dof(self) -> int:
         """Number of degrees of freedom."""
 
