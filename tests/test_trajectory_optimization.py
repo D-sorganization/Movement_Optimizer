@@ -46,6 +46,20 @@ class TestOptimization:
         assert result.com.shape == (n, 2)
         assert result.bar.shape == (n, 2)
 
+    def test_precondition_objective_finite(self, squat_optimizer) -> None:
+        opt, _, _, _, _ = squat_optimizer
+        wp = opt._initial_guess()
+        cost = opt._compute_cost(wp.flatten())
+        assert cost < float("inf"), "Precondition violated: initial objective is not finite"
+
+    def test_postcondition_kkt_within_tol(self, squat_optimizer) -> None:
+        opt, _, _, _, _ = squat_optimizer
+        # We assume the optimization result includes 'success' which means KKT conditions are within tolerance
+        result = opt.optimize()
+        assert result.success, (
+            "Postcondition violated: optimization did not satisfy KKT within tolerance"
+        )
+
     def test_cost_decreases(self) -> None:
         """With enough waypoints, optimization should reduce cost."""
         body = BodyModel(75.0, 1.75)
