@@ -1,8 +1,8 @@
-"""Tests for the trajectory optimiser.
+"""Tests for trajectory optimization execution.
 
-Covers: spline construction, cost sub-terms, via-point support,
-optimisation convergence, COM constraint enforcement, parallel
-multi-start, cancellation, stall detection, and solution caching.
+Covers: optimisation convergence, COM constraint enforcement,
+parallel multi-start, cancellation, progress reporting, and
+stall detection.
 """
 
 from __future__ import annotations
@@ -20,12 +20,11 @@ from movement_optimizer.trajectory import (
     CancelledError,
     OptimizationResult,
     ProgressReport,
-    SolutionCache,
     TrajectoryOptimizer,
 )
 
 # ==============================================================
-# Optimization Tests
+# Optimisation
 # ==============================================================
 
 
@@ -273,61 +272,3 @@ class TestProgressReporting:
         opt._cost_history = list(np.linspace(1000, 100, 100))
         is_stalled, _ = opt._detect_stall()
         assert not is_stalled
-
-
-# ==============================================================
-# Solution Cache
-# ==============================================================
-
-
-class TestSolutionCache:
-    def test_cache_miss_returns_none(self) -> None:
-        cache = SolutionCache()
-        result = cache.get("squat", 75.0, 1.75, {"lower_leg": 1.0}, 60.0, 2.0, 1.0)
-        assert result is None
-
-    def test_cache_hit_returns_result(self) -> None:
-        cache = SolutionCache()
-        n = 10
-        dummy = OptimizationResult(
-            t=np.zeros(n),
-            q=np.zeros((n, 3)),
-            qd=np.zeros((n, 3)),
-            qdd=np.zeros((n, 3)),
-            torques=np.zeros((n, 3)),
-            power=np.zeros((n, 3)),
-            com=np.zeros((n, 2)),
-            bar=np.zeros((n, 2)),
-            success=True,
-            cost=42.0,
-            com_horizontal_range_cm=1.5,
-        )
-        mults = {"lower_leg": 1.0, "upper_leg": 1.0, "torso": 1.0}
-        cache.put("squat", 75.0, 1.75, mults, 60.0, 2.0, 1.0, dummy)
-        hit = cache.get("squat", 75.0, 1.75, mults, 60.0, 2.0, 1.0)
-        assert hit is not None
-        assert hit.cost == 42.0
-
-    def test_cache_clear(self) -> None:
-        cache = SolutionCache()
-        n = 10
-        dummy = OptimizationResult(
-            t=np.zeros(n),
-            q=np.zeros((n, 3)),
-            qd=np.zeros((n, 3)),
-            qdd=np.zeros((n, 3)),
-            torques=np.zeros((n, 3)),
-            power=np.zeros((n, 3)),
-            com=np.zeros((n, 2)),
-            bar=np.zeros((n, 2)),
-            success=True,
-            cost=42.0,
-            com_horizontal_range_cm=1.5,
-        )
-        mults = {"lower_leg": 1.0, "upper_leg": 1.0, "torso": 1.0}
-        cache.put("squat", 75.0, 1.75, mults, 60.0, 2.0, 1.0, dummy)
-        cache.clear()
-        assert cache.get("squat", 75.0, 1.75, mults, 60.0, 2.0, 1.0) is None
-
-
-# ==============================================================

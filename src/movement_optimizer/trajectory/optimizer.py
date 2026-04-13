@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import threading
-import time
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
@@ -120,7 +119,7 @@ class TrajectoryOptimizer:
         self._progress = ProgressTracker(progress_cb=progress_cb)
 
         # Kept for backward-compat (some callers read these directly)
-        self._progress_lock = self._progress._progress_lock
+        self._progress_lock = self._progress.lock()
 
     def _setup_time_grids(self) -> None:
         n_ctrl = self.n_waypoints + 2
@@ -290,16 +289,16 @@ class TrajectoryOptimizer:
 
     @property
     def _cost_history(self) -> list[float]:
-        return self._progress._cost_history
+        return self._progress.cost_history
 
     @_cost_history.setter
     def _cost_history(self, value: list[float]) -> None:
-        self._progress._cost_history = value
+        self._progress.cost_history = value
 
     def _detect_stall(self) -> tuple[bool, str]:
         from .optimizer_progress import detect_stall
 
-        return detect_stall(self._progress._cost_history)
+        return detect_stall(self._progress.cost_history)
 
     # ==========================================================
     # Initial guess generation (delegates to optimizer_guess)
@@ -418,7 +417,6 @@ class TrajectoryOptimizer:
         self._progress.reset()
 
         n_workers = min(self.n_starts, os.cpu_count() or 4)
-
         logger.info(
             "Starting optimisation: exercise=%s, n_starts=%d, n_workers=%d, n_wp=%d",
             self.exercise_type,
@@ -427,43 +425,61 @@ class TrajectoryOptimizer:
             self.n_waypoints,
         )
 
-        results: list[tuple[object, int]] = []
-
         if n_workers <= 1 or self.n_starts <= 1:
-            out = self._run_single_start_with_progress()
+            return self._optimize_single_start()
+
+        results = self._optimize_parallel_starts(n_workers)
+        return self._finalize_parallel_results(results)
+
+    def _optimize_single_start(self) -> OptimizationResult:
+        """Run single-start path and package its result."""
+        out = self._run_single_start_with_progress()
+        if self.cancel_event.is_set():
+            raise CancelledError("Optimization cancelled by user")
+        elapsed = self._progress.elapsed()
+        return self._package_results(out, elapsed)
+
+    def _optimize_parallel_starts(self, n_workers: int) -> list[tuple[object, int]]:
+        """Dispatch multi-start SLSQP in parallel and collect completed results."""
+        results: list[tuple[object, int]] = []
+        with ThreadPoolExecutor(max_workers=n_workers) as pool:
+            pending: set[Future] = {
+                pool.submit(self._run_single_start, seed) for seed in range(self.n_starts)
+            }
+            self._collect_future_results(pending, results)
+        return results
+
+    def _collect_future_results(
+        self,
+        pending: set[Future],
+        results: list[tuple[object, int]],
+    ) -> None:
+        """Drain pending futures, record progress, and honour cancellation."""
+        total_evals = 0
+        while pending:
             if self.cancel_event.is_set():
+                for f in pending:
+                    f.cancel()
                 raise CancelledError("Optimization cancelled by user")
-            elapsed = time.monotonic() - self._progress._start_time
-            return self._package_results(out, elapsed)
-        else:
-            with ThreadPoolExecutor(max_workers=n_workers) as pool:
-                pending: set[Future] = {
-                    pool.submit(self._run_single_start, seed) for seed in range(self.n_starts)
-                }
-                total_evals = [0]
 
-                while pending:
-                    if self.cancel_event.is_set():
-                        for f in pending:
-                            f.cancel()
-                        raise CancelledError("Optimization cancelled by user")
+            done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
 
-                    done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
+            for future in done:
+                result = future.result()
+                if result is not None:
+                    results.append(result)
+                    res, n_evals = result
+                    total_evals += n_evals
+                    cost_val = float(res.fun)
+                    self._progress.record_parallel(cost_val, total_evals)
 
-                    for future in done:
-                        result = future.result()
-                        if result is not None:
-                            results.append(result)
-                            res, n_evals = result
-                            total_evals[0] += n_evals
-                            cost_val = float(res.fun)
-                            self._progress.record_parallel(cost_val, total_evals[0])
-
+    def _finalize_parallel_results(self, results: list[tuple[object, int]]) -> OptimizationResult:
+        """Select the best result, log summary, and package output."""
         if not results:
             raise CancelledError("All optimization starts were cancelled")
 
         best_res, _ = min(results, key=lambda r: float(r[0].fun))  # type: ignore[attr-defined]
-        elapsed = time.monotonic() - self._progress._start_time
+        elapsed = self._progress.elapsed()
         total_evals_sum = sum(n for _, n in results)
 
         logger.info(
@@ -490,6 +506,38 @@ class TrajectoryOptimizer:
     def _package_results(
         self, res: object, elapsed: float = 0.0, n_evals: int = 0
     ) -> OptimizationResult:
+        """Thin orchestrator: evaluate, validate, then build the final result."""
+        q, qd, qdd, torques, power, com_traj, bar_traj, com_x = self._evaluate_solution(res)
+        success, n_joint_limit_violations = self._validate_solution(res, q, com_x)
+        return self._build_result_object(
+            res=res,
+            q=q,
+            qd=qd,
+            qdd=qdd,
+            torques=torques,
+            power=power,
+            com_traj=com_traj,
+            bar_traj=bar_traj,
+            com_x=com_x,
+            success=success,
+            n_joint_limit_violations=n_joint_limit_violations,
+            elapsed=elapsed,
+            n_evals=n_evals,
+        )
+
+    def _evaluate_solution(
+        self, res: object
+    ) -> tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ]:
+        """Expand solver output into trajectories, torques, and COM / bar paths."""
         splines = self.build_splines(res.x)  # type: ignore[attr-defined]
         q, qd, qdd, _ = self.eval_trajectory(splines)
 
@@ -507,8 +555,15 @@ class TrajectoryOptimizer:
             com_traj[n, 1] = com_full[1]
             bar_traj[n] = self.dynamics.bar_position(q[n], self.exercise_type)
 
-        com_h_range = (np.max(com_x) - np.min(com_x)) * 100.0
+        return q, qd, qdd, torques, power, com_traj, bar_traj, com_x
 
+    def _validate_solution(
+        self,
+        res: object,
+        q: NDArray[np.float64],
+        com_x: NDArray[np.float64],
+    ) -> tuple[bool, int]:
+        """Check cost/COM/joint-limit feasibility and emit warnings."""
         # Success: cost is finite AND COM stays within inner BOS (the hard constraint)
         # Bench press: no COM constraint (lifter is on a bench)
         cost_val = float(res.fun)  # type: ignore[attr-defined]
@@ -545,6 +600,28 @@ class TrajectoryOptimizer:
                     n_joint_limit_violations,
                 )
 
+        return success, n_joint_limit_violations
+
+    def _build_result_object(
+        self,
+        *,
+        res: object,
+        q: NDArray[np.float64],
+        qd: NDArray[np.float64],
+        qdd: NDArray[np.float64],
+        torques: NDArray[np.float64],
+        power: NDArray[np.float64],
+        com_traj: NDArray[np.float64],
+        bar_traj: NDArray[np.float64],
+        com_x: NDArray[np.float64],
+        success: bool,
+        n_joint_limit_violations: int,
+        elapsed: float,
+        n_evals: int,
+    ) -> OptimizationResult:
+        """Assemble the final OptimizationResult dataclass."""
+        cost_val = float(res.fun)  # type: ignore[attr-defined]
+        com_h_range = (np.max(com_x) - np.min(com_x)) * 100.0
         return OptimizationResult(
             t=self.t_eval,
             q=q,
@@ -558,6 +635,6 @@ class TrajectoryOptimizer:
             cost=cost_val,
             com_horizontal_range_cm=com_h_range,
             elapsed_s=elapsed,
-            n_evals=n_evals or self._progress._iter,
+            n_evals=n_evals or self._progress.iteration_count,
             n_joint_limit_violations=n_joint_limit_violations,
         )

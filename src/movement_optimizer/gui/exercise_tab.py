@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import matplotlib.cm as cm
-import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import (  # type: ignore[attr-defined]
     NavigationToolbar2QT as NavigationToolbar,
@@ -15,11 +13,10 @@ from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
 
-from ..constants import PLATE_RADIUS_STD_M
 from ..models import BodyModel
-from ..rendering import BarbellRenderer, BodyRenderer, Palette, style_axis
-from ..spine_loads import NIOSH_COMPRESSION_LIMIT, spinal_compression, spinal_shear
+from ..rendering import Palette, style_axis
 from ..trajectory import OptimizationResult
+from . import anim_renderer, plot_renderer
 
 logger = logging.getLogger(__name__)
 
@@ -104,12 +101,14 @@ class ExerciseTab(QWidget):
         is_bench = exercise_type == "bench_press"
         labels = Palette.BENCH_LABELS if is_bench else Palette.SEG_LABELS
 
-        self._plot_angles(result, labels)
-        self._plot_torques(result, labels)
-        self._plot_power(result, labels)
-        self._plot_com_path(result, body)
-        self._plot_com_balance(result, body)
-        self._plot_spine_loads(result, body, bar_mass)
+        plot_renderer.plot_angles(self.axes["angles"], result, labels)
+        plot_renderer.plot_torques(self.axes["torques"], result, labels)
+        plot_renderer.plot_power(self.axes["power"], result, labels)
+        plot_renderer.plot_com_path(self.axes["com_path"], result, body)
+        plot_renderer.plot_com_balance(self.axes["com_time"], result, body)
+        plot_renderer.plot_spine_loads(
+            self.axes["spine_comp"], self.axes["spine_shear"], result, body, bar_mass, self.name
+        )
 
         self.fig.suptitle(
             f"{self.name}  |  {body.body_mass:.0f} kg body, {bar_mass:.0f} kg barbell",
@@ -119,232 +118,6 @@ class ExerciseTab(QWidget):
         )
         self.canvas.draw()
 
-    def _plot_angles(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
-        ax = self.axes["angles"]
-        n_dof = min(r.q.shape[1], len(labels))
-        for j in range(n_dof):
-            ax.plot(
-                r.t,
-                np.degrees(r.q[:, j]),
-                color=Palette.SEG_COLORS[j % len(Palette.SEG_COLORS)],
-                lw=2,
-                label=labels[j],
-            )
-        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_ylabel("Angle (deg)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_title("Joint Angles", color=Palette.FG, fontsize=10)
-        ax.legend(
-            fontsize=7,
-            facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM,
-            labelcolor=Palette.FG,
-        )
-
-    def _plot_torques(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
-        ax = self.axes["torques"]
-        n_dof = min(r.torques.shape[1], len(labels))
-        for j in range(n_dof):
-            ax.plot(
-                r.t,
-                r.torques[:, j],
-                color=Palette.SEG_COLORS[j % len(Palette.SEG_COLORS)],
-                lw=2,
-                label=labels[j],
-            )
-        ax.axhline(0, color=Palette.FG_DIM, lw=0.5, alpha=0.3)
-        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_ylabel("Torque (N\u00b7m)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_title("Joint Torques", color=Palette.FG, fontsize=10)
-        ax.legend(
-            fontsize=7,
-            facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM,
-            labelcolor=Palette.FG,
-        )
-
-    def _plot_power(self, r: OptimizationResult, labels: tuple = Palette.SEG_LABELS) -> None:
-        ax = self.axes["power"]
-        n_dof = min(r.power.shape[1], len(labels))
-        for j in range(n_dof):
-            ax.plot(
-                r.t,
-                r.power[:, j],
-                color=Palette.SEG_COLORS[j % len(Palette.SEG_COLORS)],
-                lw=2,
-                label=labels[j],
-            )
-        ax.plot(
-            r.t,
-            np.sum(r.power, axis=1),
-            "--",
-            color=Palette.FG,
-            lw=2,
-            label="Total",
-            alpha=0.7,
-        )
-        ax.axhline(0, color=Palette.FG_DIM, lw=0.5, alpha=0.3)
-        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_ylabel("Power (W)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_title("Joint Power", color=Palette.FG, fontsize=10)
-        ax.legend(
-            fontsize=7,
-            facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM,
-            labelcolor=Palette.FG,
-        )
-
-    def _plot_com_path(self, r: OptimizationResult, body: BodyModel) -> None:
-        ax = self.axes["com_path"]
-        import matplotlib as mpl
-
-        cmap = mpl.colormaps["viridis"] if hasattr(mpl, "colormaps") else cm.get_cmap("viridis")
-        colors_t = cmap(np.linspace(0.2, 0.95, len(r.t)))
-        for i in range(len(r.t) - 1):
-            ax.plot(
-                r.com[i : i + 2, 0] * 100,
-                r.com[i : i + 2, 1] * 100,
-                color=colors_t[i],
-                lw=2.5,
-            )
-        ax.plot(
-            r.bar[:, 0] * 100,
-            r.bar[:, 1] * 100,
-            "-",
-            color=Palette.ORANGE,
-            lw=1.5,
-            alpha=0.7,
-            label="Bar path",
-        )
-        ax.plot(
-            [r.com[0, 0] * 100, r.com[-1, 0] * 100],
-            [r.com[0, 1] * 100, r.com[-1, 1] * 100],
-            "--",
-            color=Palette.YELLOW,
-            lw=1.2,
-            alpha=0.5,
-            label="COM straight",
-        )
-        ax.plot(
-            r.com[0, 0] * 100,
-            r.com[0, 1] * 100,
-            "o",
-            color=Palette.RED,
-            ms=8,
-            label="Start",
-        )
-        ax.plot(
-            r.com[-1, 0] * 100,
-            r.com[-1, 1] * 100,
-            "s",
-            color=Palette.GREEN,
-            ms=8,
-            label="End",
-        )
-        # Show inner BOS bounds (middle 60%)
-        ax.axvline(body.inner_heel * 100, color=Palette.GREEN, ls="-", lw=1.2, alpha=0.7)
-        ax.axvline(body.inner_toe * 100, color=Palette.GREEN, ls="-", lw=1.2, alpha=0.7)
-        # Show outer BOS bounds
-        ax.axvline(body.heel_x * 100, color=Palette.ORANGE, ls=":", lw=1, alpha=0.4)
-        ax.axvline(body.toe_x * 100, color=Palette.ORANGE, ls=":", lw=1, alpha=0.4)
-        ax.set_xlabel("Horizontal (cm)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_ylabel("Height (cm)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_title("COM & Bar Path", color=Palette.FG, fontsize=10)
-        ax.legend(
-            fontsize=6,
-            facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM,
-            labelcolor=Palette.FG,
-        )
-
-    def _plot_com_balance(self, r: OptimizationResult, body: BodyModel) -> None:
-        ax = self.axes["com_time"]
-        ax.plot(r.t, r.com[:, 0] * 100, color=Palette.ACCENT, lw=2, label="COM x")
-        # Inner BOS bounds (middle 60%) -- the hard constraint zone
-        ax.axhline(body.inner_heel * 100, color=Palette.GREEN, ls="-", lw=1.5, alpha=0.8)
-        ax.axhline(body.inner_toe * 100, color=Palette.GREEN, ls="-", lw=1.5, alpha=0.8)
-        ax.fill_between(
-            r.t,
-            body.inner_heel * 100,
-            body.inner_toe * 100,
-            alpha=0.12,
-            color=Palette.GREEN,
-            label="Inner BOS (60%)",
-        )
-        # Outer BOS bounds
-        ax.axhline(body.heel_x * 100, color=Palette.ORANGE, ls=":", lw=1, alpha=0.5)
-        ax.axhline(body.toe_x * 100, color=Palette.ORANGE, ls=":", lw=1, alpha=0.5)
-        ax.fill_between(
-            r.t,
-            body.heel_x * 100,
-            body.toe_x * 100,
-            alpha=0.04,
-            color=Palette.ORANGE,
-            label="Full BOS",
-        )
-        ax.axhline(body.inner_center * 100, color=Palette.GREEN, ls="--", lw=0.8, alpha=0.5)
-        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_ylabel("COM x (cm)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_title("COM Balance", color=Palette.FG, fontsize=10)
-        ax.legend(
-            fontsize=6,
-            facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM,
-            labelcolor=Palette.FG,
-        )
-
-    def _plot_spine_loads(self, r: OptimizationResult, body: BodyModel, bar_mass: float) -> None:
-        """Plot spinal compression and shear over time."""
-        exercise_type = self.name.lower().replace(" ", "_")
-        if exercise_type == "bottoms_up_squat":
-            exercise_type = "squat"
-
-        comp = spinal_compression(r.q, r.qd, r.qdd, body, bar_mass, exercise_type)
-        shear = spinal_shear(r.q, r.qd, r.qdd, body, bar_mass, exercise_type)
-
-        # Compression plot
-        ax = self.axes["spine_comp"]
-        ax.plot(r.t, comp, color=Palette.RED, lw=2, label="L5/S1 compression")
-        ax.axhline(
-            NIOSH_COMPRESSION_LIMIT,
-            color=Palette.YELLOW,
-            ls="--",
-            lw=1.5,
-            alpha=0.8,
-            label=f"NIOSH limit ({NIOSH_COMPRESSION_LIMIT:.0f} N)",
-        )
-        ax.fill_between(
-            r.t,
-            NIOSH_COMPRESSION_LIMIT,
-            comp,
-            where=comp > NIOSH_COMPRESSION_LIMIT,  # type: ignore[arg-type]
-            alpha=0.3,
-            color=Palette.RED,
-            label="Exceeds limit",
-        )
-        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_ylabel("Force (N)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_title("Spinal Compression (L5/S1)", color=Palette.FG, fontsize=10)
-        ax.legend(
-            fontsize=6,
-            facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM,
-            labelcolor=Palette.FG,
-        )
-
-        # Shear plot
-        ax = self.axes["spine_shear"]
-        ax.plot(r.t, shear, color=Palette.ORANGE, lw=2, label="L5/S1 shear")
-        ax.axhline(0, color=Palette.FG_DIM, lw=0.5, alpha=0.3)
-        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_ylabel("Force (N)", color=Palette.FG_DIM, fontsize=8)
-        ax.set_title("Spinal Shear (L5/S1)", color=Palette.FG, fontsize=10)
-        ax.legend(
-            fontsize=6,
-            facecolor=Palette.BG_PANEL,
-            edgecolor=Palette.FG_DIM,
-            labelcolor=Palette.FG,
-        )
-
     def draw_anim_frame(
         self,
         fi: int,
@@ -353,223 +126,10 @@ class ExerciseTab(QWidget):
         body: BodyModel,
         exercise_type: str,
     ) -> None:
-        n = len(result.t)
-        fi = fi % n
-        ax = self.axes["anim"]
-        ax.clear()
-        style_axis(ax)
-
-        q = result.q[fi]
-        t_now = result.t[fi]
-        fk = dynamics.forward_kinematics(q)
-
-        if exercise_type == "bench_press":
-            self._draw_bench_press_frame(ax, q, t_now, fi, result, fk)
-        else:
-            self._draw_standing_frame(ax, q, t_now, fi, result, dynamics, body, fk, exercise_type)
-
+        anim_renderer.draw_anim_frame(
+            self.axes["anim"], fi, result, dynamics, body, self.name, exercise_type
+        )
         self.canvas.draw()
-
-    # -- Bench press rendering constants ----------------------------
-    _BENCH_HEIGHT = 0.45
-    _BENCH_HEAD_X = -0.40
-    _BENCH_NECK_X = -0.30
-    _BENCH_SHOULDER_X = -0.18
-    _BENCH_HIP_X = 0.30
-
-    def _draw_bench_press_frame(
-        self,
-        ax: Any,
-        q: Any,
-        t_now: float,
-        fi: int,
-        result: OptimizationResult,
-        fk: dict[str, Any],
-    ) -> None:
-        """Render bench press: supine body on bench with arm chain."""
-        ax.set_xlim(-0.6, 0.8)
-        ax.set_ylim(-0.15, 1.4)
-        ax.set_aspect("equal", adjustable="datalim")
-
-        self._draw_bench_and_body(ax)
-        hand_pos, arm_base, fk_origin = self._draw_bench_arm_chain(ax, fk)
-        self._draw_bench_barbell_and_trace(ax, fi, result, hand_pos, arm_base, fk_origin)
-        self._draw_bench_title(ax, q, t_now)
-
-    def _draw_bench_and_body(self, ax: Any) -> None:
-        """Draw the bench surface, supine body (decorative), and ground line."""
-        from matplotlib.patches import Circle as MplCircle
-
-        bh = self._BENCH_HEIGHT
-        head_x = self._BENCH_HEAD_X
-        neck_x = self._BENCH_NECK_X
-        shoulder_x = self._BENCH_SHOULDER_X
-        hip_x = self._BENCH_HIP_X
-
-        # Bench surface
-        ax.fill_between([-0.8, 0.5], bh - 0.05, bh, color="#8B4513", alpha=0.6)
-
-        # Neck
-        ax.plot(
-            [head_x + 0.08, neck_x],
-            [bh + 0.05, bh + 0.02],
-            "-",
-            color="#d4a574",
-            lw=5,
-            solid_capstyle="round",
-        )
-        # Head
-        ax.add_patch(
-            MplCircle(
-                (head_x, bh + 0.05),
-                0.08,
-                facecolor="#d4a574",
-                edgecolor="#333",
-                lw=1.2,
-                alpha=0.85,
-                zorder=6,
-            )
-        )
-        # Torso (horizontal on bench)
-        for x0, x1 in [(neck_x, shoulder_x), (shoulder_x, hip_x)]:
-            ax.plot(
-                [x0, x1],
-                [bh + 0.02, bh + 0.02],
-                "-",
-                color=Palette.SEG_COLORS[2],
-                lw=12,
-                solid_capstyle="round",
-            )
-        # Legs hanging off bench to floor
-        ax.plot(
-            [hip_x, hip_x + 0.15],
-            [bh, 0],
-            "-",
-            color=Palette.SEG_COLORS[1],
-            lw=9,
-            solid_capstyle="round",
-        )
-        ax.plot(
-            [hip_x + 0.15, hip_x + 0.2],
-            [0, 0],
-            "-",
-            color=Palette.SEG_COLORS[0],
-            lw=6,
-            solid_capstyle="round",
-        )
-        # Ground line
-        ax.plot([-0.6, 0.8], [0, 0], color=Palette.FG_DIM, lw=2, alpha=0.3)
-
-    def _draw_bench_arm_chain(self, ax: Any, fk: dict[str, Any]) -> tuple[Any, Any, Any]:
-        """Draw the arm kinematic chain.
-
-        Returns (hand_position, arm_base, fk_origin) for barbell placement.
-        """
-        bh = self._BENCH_HEIGHT
-        shoulder_x = self._BENCH_SHOULDER_X
-
-        arm_base = np.array([shoulder_x, bh + 0.02])
-        fk_points = [fk["ankle"], fk["knee"], fk["hip"], fk["shoulder"]]
-        arm_joints = [arm_base + (pt - fk_points[0]) for pt in fk_points]
-
-        # Arm segments: upper arm, forearm, hand/wrist
-        colors = [Palette.SEG_COLORS[0], Palette.SEG_COLORS[1], "#b0b0b0"]
-        lws = [8, 6, 4]
-        for k in range(3):
-            ax.plot(
-                [arm_joints[k][0], arm_joints[k + 1][0]],
-                [arm_joints[k][1], arm_joints[k + 1][1]],
-                "-",
-                color=colors[k],
-                lw=lws[k],
-                solid_capstyle="round",
-            )
-        # Joint markers
-        for pt in arm_joints:
-            ax.plot(
-                pt[0],
-                pt[1],
-                "o",
-                color=Palette.FG,
-                ms=6,
-                markeredgecolor="#333",
-                markeredgewidth=1,
-            )
-        return arm_joints[-1], arm_base, fk_points[0]
-
-    def _draw_bench_barbell_and_trace(
-        self,
-        ax: Any,
-        fi: int,
-        result: OptimizationResult,
-        hand_pos: Any,
-        arm_base: Any,
-        fk_origin: Any,
-    ) -> None:
-        """Draw the barbell at hand position and the bar path trace."""
-        BarbellRenderer.draw(ax, (hand_pos[0], hand_pos[1]))
-
-        bar_trace_offset = arm_base - fk_origin
-        bench_bar_traj = result.bar + bar_trace_offset
-        BodyRenderer.draw_bar_trace(ax, bench_bar_traj, fi)
-
-    def _draw_bench_title(self, ax: Any, q: Any, t_now: float) -> None:
-        """Set the bench press animation title with joint angles."""
-        ax.set_title(
-            f"{self.name}  t={t_now:.2f}s  |  "
-            f"Shoulder {np.degrees(q[0]):.0f}\u00b0  "
-            f"Elbow {np.degrees(q[1]):.0f}\u00b0  "
-            f"Wrist {np.degrees(q[2]):.0f}\u00b0",
-            color=Palette.FG,
-            fontsize=10,
-            fontweight="bold",
-        )
-
-    def _draw_standing_frame(
-        self,
-        ax: Any,
-        q: Any,
-        t_now: float,
-        fi: int,
-        result: OptimizationResult,
-        dynamics: Any,
-        body: BodyModel,
-        fk: dict[str, Any],
-        exercise_type: str,
-    ) -> None:
-        """Render standing exercises (squat, deadlift, etc.)."""
-        ax.set_xlim(-0.9, 0.9)
-        ax.set_ylim(-0.15, 1.8)
-        ax.set_aspect("equal", adjustable="datalim")
-
-        is_dl = exercise_type == "deadlift"
-
-        BodyRenderer.draw_ground(ax, body.heel_x, body.toe_x)
-        BodyRenderer.draw_ghost(ax, dynamics.forward_kinematics(result.q[0]))
-        BodyRenderer.draw_ghost(ax, dynamics.forward_kinematics(result.q[-1]))
-        BodyRenderer.draw_segments(ax, fk)
-
-        shoulder = fk["shoulder"]
-        if is_dl:
-            BodyRenderer.draw_arms(ax, shoulder, body.L_arm)
-            ax.axhline(PLATE_RADIUS_STD_M, color=Palette.FG_DIM, ls=":", lw=0.8, alpha=0.3)
-
-        bp = dynamics.bar_position(q, exercise_type)
-        bar_pos = (bp[0], bp[1])
-
-        BarbellRenderer.draw(ax, bar_pos)
-        BodyRenderer.draw_com_marker(ax, result.com[fi])
-        BodyRenderer.draw_bar_trace(ax, result.bar, fi)
-
-        ax.set_title(
-            f"{self.name}  t={t_now:.2f}s  |  "
-            f"Shin {np.degrees(q[0]):.0f}\u00b0  "
-            f"Thigh {np.degrees(q[1]):.0f}\u00b0  "
-            f"Torso {np.degrees(q[2]):.0f}\u00b0",
-            color=Palette.FG,
-            fontsize=10,
-            fontweight="bold",
-        )
 
 
 # ==============================================================

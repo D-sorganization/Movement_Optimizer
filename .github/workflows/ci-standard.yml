@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   pick-runner:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 2
     outputs:
       runner: ${{ steps.check.outputs.runner }}
@@ -26,7 +26,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
         run: "ONLINE=$(gh api /orgs/${{ github.repository_owner }}/actions/runners \\\n  --jq '[.runners[] | select(.status == \"online\") | select(.labels[].name == \"d-sorg-fleet\")] | length' \\\n  2>/dev/null || echo \"0\")\nif [[ \"$ONLINE\" -gt 0 ]]; then\n  echo \"runner=d-sorg-fleet\" >> $GITHUB_OUTPUT\n  echo \"Self-hosted runner online — routing locally\"\nelse\n  echo \"runner=ubuntu-latest\" >> $GITHUB_OUTPUT\n  echo \"No self-hosted runner — using GitHub-hosted\"\nfi"
   quality-gate:
-    runs-on: ${{ needs.pick-runner.outputs.runner }}
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
@@ -63,7 +63,7 @@ jobs:
     needs:
       - pick-runner
       - quality-gate
-    runs-on: ${{ needs.pick-runner.outputs.runner }}
+    runs-on: self-hosted
     timeout-minutes: 15
     strategy:
       matrix:
@@ -89,7 +89,7 @@ jobs:
           path: coverage.xml
 
   rust-quality-gate:
-    runs-on: ${{ needs.pick-runner.outputs.runner }}
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6

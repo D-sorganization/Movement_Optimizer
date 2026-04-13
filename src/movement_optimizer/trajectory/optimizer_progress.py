@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+from contextlib import AbstractContextManager
 
 from .result import ProgressReport
 from .tuning import STALL_THRESHOLD, STALL_WINDOW
@@ -31,6 +32,37 @@ class ProgressTracker:
         self._best_cost: float = float("inf")
         self._start_time: float = 0.0
         self._progress_lock = threading.Lock()
+
+    # ------------------------------------------------------------------
+    # Public API (stable) — prefer these over touching private attributes.
+    # ------------------------------------------------------------------
+
+    @property
+    def cost_history(self) -> list[float]:
+        """Full cost history recorded so far (list, most recent last)."""
+        return self._cost_history
+
+    @cost_history.setter
+    def cost_history(self, value: list[float]) -> None:
+        """Replace the cost history (used by tests and diagnostics)."""
+        self._cost_history = value
+
+    @property
+    def iteration_count(self) -> int:
+        """Number of cost evaluations recorded."""
+        return self._iter
+
+    def elapsed(self) -> float:
+        """Seconds since the last :meth:`reset` call."""
+        return time.monotonic() - self._start_time
+
+    def lock(self) -> AbstractContextManager[bool]:
+        """Return the internal progress lock as a context manager.
+
+        Use this to synchronise external reads/writes with
+        :meth:`record_parallel`.
+        """
+        return self._progress_lock
 
     def reset(self) -> None:
         """Reset all mutable counters before a new optimisation run."""
