@@ -106,7 +106,9 @@ class ExerciseTab(QWidget):
         plot_renderer.plot_power(self.axes["power"], result, labels)
         plot_renderer.plot_com_path(self.axes["com_path"], result, body)
         plot_renderer.plot_com_balance(self.axes["com_time"], result, body)
-        plot_renderer.plot_spine_loads(self.axes["spine_comp"], self.axes["spine_shear"], result, body, bar_mass, self.name)
+        plot_renderer.plot_spine_loads(
+            self.axes["spine_comp"], self.axes["spine_shear"], result, body, bar_mass, self.name
+        )
 
         self.fig.suptitle(
             f"{self.name}  |  {body.body_mass:.0f} kg body, {bar_mass:.0f} kg barbell",

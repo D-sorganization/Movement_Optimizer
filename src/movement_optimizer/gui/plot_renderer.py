@@ -180,7 +180,9 @@ def plot_com_balance(ax: Any, r: OptimizationResult, body: BodyModel) -> None:
     )
 
 
-def plot_spine_loads(ax_comp: Any, ax_shear: Any, r: OptimizationResult, body: BodyModel, bar_mass: float, name: str) -> None:
+def plot_spine_loads(
+    ax_comp: Any, ax_shear: Any, r: OptimizationResult, body: BodyModel, bar_mass: float, name: str
+) -> None:
     exercise_type = name.lower().replace(" ", "_")
     if exercise_type == "bottoms_up_squat":
         exercise_type = "squat"

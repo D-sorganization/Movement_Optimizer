@@ -23,13 +23,19 @@ from typing import Any
 import matplotlib
 import numpy as np
 from PyQt6.QtCore import QSettings, QTimer, pyqtSignal
-from PyQt6.QtWidgets import QMainWindow, QMessageBox
+from PyQt6.QtWidgets import (
+    QMainWindow,
+    QMessageBox,
+)
 
 from ..comparison import ComparisonStore
 from ..constants import trapezoid
 from ..models import BodyModel
 from ..persistence import load_app_state, save_app_state
-from ..trajectory import OptimizationResult, SolutionCache
+from ..trajectory import (
+    OptimizationResult,
+    SolutionCache,
+)
 from .animation_control import AnimationControlMixin
 from .comparison_mixin import ComparisonMixin
 from .file_operations import FileOperationsMixin
@@ -44,6 +50,7 @@ except ImportError:
     matplotlib.use("Agg")
 
 logger = logging.getLogger(__name__)
+
 
 # ==============================================================
 # Labelled Slider Widget
@@ -227,8 +234,6 @@ class MainWindow(
             args=(idx, then_chain),
             daemon=True,
         ).start()
-
-
 
     def _on_done(
         self,
