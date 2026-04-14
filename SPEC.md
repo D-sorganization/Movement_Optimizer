@@ -11,8 +11,8 @@
 | License | MIT |
 | Package Name | `movement-optimizer` |
 | Current Version | `1.0.0` |
-| Spec Version | `1.0.2` |
-| Last Spec Update | 2026-04-10 |
+| Spec Version | `1.0.8` |
+| Last Spec Update | 2026-04-14 |
 
 ## 2. Purpose
 
@@ -130,6 +130,7 @@ mypy --ignore-missing-imports src/movement_optimizer/
 
 | Date | Version | Changes |
 | --- | --- | --- |
+| 2026-04-14 | 1.0.8 | Added 41 unit tests for `main_window.py` / `optimization_mixin.py` and `exercise_tab.py` business logic in `test_main_window.py` and `test_exercise_tab.py`. Tests cover result summary formatting, cancellation state management, post-run button enabling, exercise chaining, parameter resolution, tab construction, axes layout, and plot/animation dispatch — all using fake objects and `unittest.mock` to avoid requiring a running optimizer (#215). |
 | 2026-04-11 | 1.0.5 | Split `tests/test_trajectory.py` (678 LOC) into three focused modules — `test_trajectory_generation.py`, `test_trajectory_optimization.py`, and `test_trajectory_validation.py` — and promoted the `squat_optimizer` / `full_squat_optimizer` fixtures to `conftest.py` for shared reuse (#211). |
 | 2026-04-11 | 1.0.4 | Decomposed `TrajectoryOptimizer.optimize()` and `_package_results()` into thin orchestrators backed by focused helpers (`_optimize_single_start`, `_optimize_parallel_starts`, `_collect_future_results`, `_finalize_parallel_results`, `_evaluate_solution`, `_validate_solution`, `_build_result_object`) to satisfy the Function Size target (#214). |
 | 2026-04-11 | 1.0.3 | Added a stable public API to `ProgressTracker` (`cost_history`, `iteration_count`, `elapsed()`, `lock()`) and refactored `TrajectoryOptimizer` to stop reaching into its private attributes, eliminating a cluster of Law-of-Demeter violations in the optimiser engine. |
