@@ -8,6 +8,6 @@ name = "movement_optimizer_core"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.22", features = ["extension-module"] }
-numpy = "0.22"
+pyo3 = { version = "0.21", features = ["extension-module"] }
+numpy = "0.21"
 rayon = "1.10"
