@@ -11,7 +11,7 @@
 | License | MIT |
 | Package Name | `movement-optimizer` |
 | Current Version | `1.0.0` |
-| Spec Version | `1.0.3` |
+| Spec Version | `1.0.6` |
 | Last Spec Update | 2026-04-14 |
 
 ## 2. Purpose
@@ -130,7 +130,7 @@ mypy --ignore-missing-imports src/movement_optimizer/
 
 | Date | Version | Changes |
 | --- | --- | --- |
-| 2026-04-14 | 1.0.6 | Fixed headless Qt CI failure by adding `QT_QPA_PLATFORM=offscreen` and `MPLBACKEND=Agg` env vars to the "Run Tests" step in `ci-standard.yml`, and setting `QT_QPA_PLATFORM` via `os.environ.setdefault` at the top of `tests/test_ui_builder.py` so the `qapp` fixture can create a `QApplication` without a display (#217). |
+| 2026-04-14 | 1.0.6 | Added NaN/infinite input validation to `HillTorqueModel` constructor and key methods (`torque_angle_factor`, `torque_velocity_factor`, `available_torque`). All seven numeric constructor parameters are now checked with `math.isfinite`; NaN or infinite values raise `ValueError` immediately rather than propagating silently (#236). |
 | 2026-04-11 | 1.0.5 | Split `tests/test_trajectory.py` (678 LOC) into three focused modules — `test_trajectory_generation.py`, `test_trajectory_optimization.py`, and `test_trajectory_validation.py` — and promoted the `squat_optimizer` / `full_squat_optimizer` fixtures to `conftest.py` for shared reuse (#211). |
 | 2026-04-11 | 1.0.4 | Decomposed `TrajectoryOptimizer.optimize()` and `_package_results()` into thin orchestrators backed by focused helpers (`_optimize_single_start`, `_optimize_parallel_starts`, `_collect_future_results`, `_finalize_parallel_results`, `_evaluate_solution`, `_validate_solution`, `_build_result_object`) to satisfy the Function Size target (#214). |
 | 2026-04-11 | 1.0.3 | Added a stable public API to `ProgressTracker` (`cost_history`, `iteration_count`, `elapsed()`, `lock()`) and refactored `TrajectoryOptimizer` to stop reaching into its private attributes, eliminating a cluster of Law-of-Demeter violations in the optimiser engine. |

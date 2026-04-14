@@ -1,0 +1,103 @@
+"""Pure cost-term functions for the trajectory optimiser.
+
+Each function computes one additive term of the total optimisation cost.
+They are free functions (no class dependency) so they are trivially testable
+in isolation.  The :class:`TrajectoryOptimizer` calls these with its own
+weights and time-step.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+from numpy.typing import NDArray
+
+from ..constants import TV_RATE_WEIGHT_RATIO
+
+__all__ = [
+    "compute_balance_cost",
+    "compute_endpoint_damping_cost",
+    "compute_jerk_cost",
+    "compute_torque_cost",
+    "compute_torque_rate_cost",
+]
+
+
+def compute_torque_cost(torques: NDArray, dt: float) -> float:
+    """Integral of squared joint torques over the trajectory.
+
+    Preconditions:
+        torques.ndim == 2
+        dt > 0
+    """
+    return float(np.sum(torques**2) * dt)
+
+
+def compute_jerk_cost(qddd: NDArray, dt: float, weight: float) -> float:
+    """Smoothness: integral of squared jerk (third derivative of angle).
+
+    Preconditions:
+        qddd.ndim == 2
+        dt > 0
+        weight >= 0
+    """
+    return weight * float(np.sum(qddd**2)) * dt
+
+
+def compute_torque_rate_cost(torques: NDArray, dt: float, weight: float) -> float:
+    """Penalise rapid torque changes using L2 + total-variation regularization.
+
+    Preconditions:
+        torques.ndim == 2 and torques.shape[0] >= 2
+        dt > 0
+        weight >= 0
+    """
+    dtau = np.diff(torques, axis=0) / dt
+    l2_cost = float(np.sum(dtau**2)) * dt
+    tv_cost = float(np.sum(np.abs(dtau))) * dt * TV_RATE_WEIGHT_RATIO
+    return weight * (l2_cost + tv_cost)
+
+
+def compute_endpoint_damping_cost(
+    qd: NDArray,
+    qdd: NDArray,
+    dt: float,
+    weight: float,
+    n_damp: int,
+    damp_weights: NDArray,
+) -> float:
+    """Extra penalty on motion near trajectory endpoints.
+
+    Preconditions:
+        qd.ndim == qdd.ndim == 2
+        n_damp >= 1 and n_damp <= qd.shape[0]
+        len(damp_weights) == n_damp
+        dt > 0
+        weight >= 0
+    """
+    nd = n_damp
+    w = damp_weights
+    w_end = w[::-1]
+
+    vel_start = np.sum(qd[:nd] ** 2, axis=1)
+    vel_end = np.sum(qd[-nd:] ** 2, axis=1)
+    acc_start = np.sum(qdd[:nd] ** 2, axis=1)
+    acc_end = np.sum(qdd[-nd:] ** 2, axis=1)
+
+    cost = (
+        np.dot(w, vel_start)
+        + np.dot(w_end, vel_end)
+        + 0.1 * np.dot(w, acc_start)
+        + 0.1 * np.dot(w_end, acc_end)
+    )
+    return weight * float(cost) * dt
+
+
+def compute_balance_cost(com_x: NDArray, center: float, dt: float, weight: float) -> float:
+    """Soft centering preference — penalise COM deviation from the inner BOS center.
+
+    Preconditions:
+        com_x.ndim == 1
+        dt > 0
+        weight >= 0
+    """
+    return weight * float(np.sum((com_x - center) ** 2)) * dt

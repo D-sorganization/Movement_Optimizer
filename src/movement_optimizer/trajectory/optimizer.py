@@ -6,25 +6,34 @@ import logging
 import os
 import threading
 from collections.abc import Callable
-from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.interpolate import CubicSpline
 
 from ..backend import PhysicsBackend
-from ..constants import (
-    BAR_KNEE_CLEARANCE_M,
-    BENCH_BAR_PATH_WEIGHT,
-    TV_RATE_WEIGHT_RATIO,
-)
+from ..constants import BENCH_BAR_PATH_WEIGHT
 from ..models import BodyModel
+from .optimizer_constraints import build_constraints
+from .optimizer_cost import (
+    compute_balance_cost,
+    compute_endpoint_damping_cost,
+    compute_jerk_cost,
+    compute_torque_cost,
+    compute_torque_rate_cost,
+)
 from .optimizer_diagnostics import run_minimize, run_single_start
 from .optimizer_guess import build_bounds, build_initial_guess, build_perturbed_guess
-from .optimizer_progress import ProgressTracker
+from .optimizer_packaging import (
+    build_result_object,
+    check_com_feasibility,
+    count_joint_limit_violations,
+    evaluate_solution,
+)
+from .optimizer_parallel import run_parallel_starts, select_best_result
+from .optimizer_progress import ProgressTracker, detect_stall
 from .result import CancelledError, OptimizationResult, ProgressReport
 from .tuning import (
-    BALANCE_BARRIER_WEIGHT,
     BALANCE_CENTER_WEIGHT,
     DEFAULT_ENDPOINT_WEIGHT,
     DEFAULT_JERK_WEIGHT,
@@ -37,18 +46,12 @@ logger = logging.getLogger(__name__)
 
 
 class TrajectoryOptimizer:
-    """Parallel multi-start trajectory optimiser.
+    """Parallel multi-start SLSQP trajectory optimiser.
 
-    Preconditions:
-        q_start, q_end are length-3 arrays.
-        q_bounds is (3, 2).
-        n_waypoints >= 4.
-        dynamics implements PhysicsBackend.
+    Enforces COM within the inner 60% of the foot via hard inequality constraints.
+    Multiple starts run concurrently; the best solution is returned.
 
-    The optimizer enforces COM within the middle 60% of the foot
-    (body.inner_heel to body.inner_toe) using a steep barrier penalty.
-    Multiple starts with perturbed initial guesses run in parallel
-    threads.  The best solution is returned.
+    Preconditions: q_start/q_end length-3; q_bounds (3,2); n_waypoints >= 4.
     """
 
     def __init__(
@@ -78,47 +81,27 @@ class TrajectoryOptimizer:
         n_dof = q_bounds.shape[0]
         if q_bounds.shape != (n_dof, 2):
             raise ValueError(f"q_bounds must be ({n_dof},2)")
-
         self.n_dof = n_dof
-        self.body = body
-        self.dynamics = dynamics
-        self.exercise_type = exercise_type
-        self.bar_mass = bar_mass
-        self.q_start = q_start
-        self.q_end = q_end
-        self.q_bounds = q_bounds
-        self.q_via = q_via
-        self.duration = duration
-        self.n_waypoints = n_waypoints
-        self.n_eval = n_eval
-        self.progress_cb = progress_cb
+        self.body, self.dynamics = body, dynamics
+        self.exercise_type, self.bar_mass = exercise_type, bar_mass
+        self.q_start, self.q_end, self.q_bounds, self.q_via = q_start, q_end, q_bounds, q_via
+        self.duration, self.n_waypoints, self.n_eval = duration, n_waypoints, n_eval
+        self.progress_cb, self.n_starts = progress_cb, n_starts
         self.cancel_event = cancel_event or threading.Event()
-        self.n_starts = n_starts
-
-        # Smoothing weights (scaled by user knob)
         self.jerk_weight = jerk_weight * smoothness
         self.torque_rate_weight = torque_rate_weight * smoothness
         self.endpoint_weight = endpoint_weight * smoothness
-
-        # Balance barrier (tighter inner BOS)
-        self.inner_heel = body.inner_heel
-        self.inner_toe = body.inner_toe
-        self.inner_center = body.inner_center
-        self.balance_barrier_weight = BALANCE_BARRIER_WEIGHT
+        self.inner_heel, self.inner_toe, self.inner_center = (
+            body.inner_heel,
+            body.inner_toe,
+            body.inner_center,
+        )
         self.balance_center_weight = BALANCE_CENTER_WEIGHT
-
-        # Time grids
         self._setup_time_grids()
         self.dt = duration / (n_eval - 1)
-
-        # Endpoint damping pre-computation
         self._n_damp = max(2, n_eval // 8)
         self._damp_weights = 1.0 - np.arange(self._n_damp) / self._n_damp
-
-        # Progress tracker (owns iteration counter and cost history)
         self._progress = ProgressTracker(progress_cb=progress_cb)
-
-        # Kept for backward-compat (some callers read these directly)
         self._progress_lock = self._progress.lock()
 
     def _setup_time_grids(self) -> None:
@@ -127,8 +110,6 @@ class TrajectoryOptimizer:
             n_ctrl += 1
         self.t_ctrl = np.linspace(0, self.duration, n_ctrl)
         self.t_eval = np.linspace(0, self.duration, self.n_eval)
-
-    # -- spline construction ------------------------------------
 
     def build_splines(self, x: NDArray) -> list[CubicSpline]:
         """Build cubic splines from the flat optimisation vector *x*."""
@@ -152,101 +133,8 @@ class TrajectoryOptimizer:
         qddd = np.column_stack([s(self.t_eval, 3) for s in splines])
         return q, qd, qdd, qddd
 
-    # ==========================================================
-    # Cost sub-terms (each independently testable)
-    # ==========================================================
-
-    def _torque_cost(self, torques: NDArray) -> float:
-        """Integral of squared joint torques."""
-        return float(np.sum(torques**2) * self.dt)
-
-    def _jerk_cost(self, qddd: NDArray) -> float:
-        """Smoothness: integral of squared jerk."""
-        return self.jerk_weight * float(np.sum(qddd**2)) * self.dt
-
-    def _torque_rate_cost(self, torques: NDArray) -> float:
-        """Penalise rapid torque changes (dtau/dt).
-
-        Uses both L2 (squared differences) and total-variation (L1)
-        regularization for robust smoothing without over-damping.
-        """
-        dtau = np.diff(torques, axis=0) / self.dt
-        l2_cost = float(np.sum(dtau**2)) * self.dt
-        tv_cost = float(np.sum(np.abs(dtau))) * self.dt * TV_RATE_WEIGHT_RATIO
-        return self.torque_rate_weight * (l2_cost + tv_cost)
-
-    def _endpoint_damping_cost(self, qd: NDArray, qdd: NDArray) -> float:
-        """Extra penalty on motion near trajectory endpoints."""
-        nd = self._n_damp
-        w = self._damp_weights
-
-        vel_start = np.sum(qd[:nd] ** 2, axis=1)
-        vel_end = np.sum(qd[-nd:] ** 2, axis=1)
-        acc_start = np.sum(qdd[:nd] ** 2, axis=1)
-        acc_end = np.sum(qdd[-nd:] ** 2, axis=1)
-
-        w_end = w[::-1]
-
-        cost = (
-            np.dot(w, vel_start)
-            + np.dot(w_end, vel_end)
-            + 0.1 * np.dot(w, acc_start)
-            + 0.1 * np.dot(w_end, acc_end)
-        )
-        return self.endpoint_weight * float(cost) * self.dt
-
-    def _balance_cost(self, com_x: NDArray) -> float:
-        """Soft centering preference (hard bounds enforced via SLSQP constraints)."""
-        center = self.inner_center
-        return self.balance_center_weight * float(np.sum((com_x - center) ** 2)) * self.dt
-
-    def _com_constraint_values(self, x: NDArray) -> NDArray:
-        """Return COM constraint violation for SLSQP.
-
-        Returns array of length 2*n_eval:
-            [0..n_eval-1]   = com_x - inner_heel  (must be >= 0)
-            [n_eval..2*n-1] = inner_toe - com_x    (must be >= 0)
-        """
-        splines = self.build_splines(x)
-        q = np.column_stack([s(self.t_eval) for s in splines])
-        com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
-        lower = com_x - self.inner_heel
-        upper = self.inner_toe - com_x
-        return np.concatenate([lower, upper])
-
-    def _bar_knee_clearance(self, x: NDArray) -> NDArray:
-        """Bar must stay in front of the knees during pulling exercises.
-
-        Returns array of length n_eval:
-            bar_x - knee_x + margin  (must be >= 0)
-        Active for deadlift, clean, and snatch exercises.
-        """
-        splines = self.build_splines(x)
-        q = np.column_stack([s(self.t_eval) for s in splines])
-        L = self.body.L
-        knee_x = L[0] * np.sin(q[:, 0])
-        hip_x = knee_x + L[1] * np.sin(q[:, 1])
-        shoulder_x = hip_x + L[2] * np.sin(q[:, 2])
-        # Approximation: bar_x = shoulder_x assumes the bar hangs directly
-        # below the shoulder in the sagittal plane.  In reality the arms
-        # swing slightly forward, so the true bar x-position is offset by
-        # a small amount that depends on arm angle.  This simplification
-        # is acceptable because the offset is small relative to knee-bar
-        # clearance and does not materially affect the constraint.
-        bar_x = shoulder_x
-        return bar_x - knee_x + BAR_KNEE_CLEARANCE_M
-
-    # ==========================================================
-    # Pure cost computation (thread-safe, no side effects)
-    # ==========================================================
-
     def _compute_cost(self, x: NDArray) -> float:
-        """Compute total cost without mutating instance state.
-
-        This is the function called by parallel worker threads.
-        All reads from self are to immutable configuration set
-        during __init__.
-        """
+        """Compute total cost without mutating instance state."""
         if self.cancel_event.is_set():
             return float("inf")
 
@@ -255,37 +143,31 @@ class TrajectoryOptimizer:
         torques = self.dynamics.inverse_dynamics_batch(q, qd, qdd)
 
         total = (
-            self._torque_cost(torques)
-            + self._jerk_cost(qddd)
-            + self._torque_rate_cost(torques)
-            + self._endpoint_damping_cost(qd, qdd)
+            compute_torque_cost(torques, self.dt)
+            + compute_jerk_cost(qddd, self.dt, self.jerk_weight)
+            + compute_torque_rate_cost(torques, self.dt, self.torque_rate_weight)
+            + compute_endpoint_damping_cost(
+                qd, qdd, self.dt, self.endpoint_weight, self._n_damp, self._damp_weights
+            )
         )
 
         if self.exercise_type == "bench_press":
-            # Bar-path verticality: penalise horizontal drift from shoulder joint.
-            # In bench FK, origin=shoulder, segments are upper_arm→forearm→hand.
-            # hand_x = sum of L[i]*sin(q[i]) — should stay near zero (bar above shoulder).
             L = self.dynamics.L  # type: ignore[attr-defined]
             hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
             total += BENCH_BAR_PATH_WEIGHT * float(np.sum(hand_x**2)) * self.dt
         else:
             com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
-            total += self._balance_cost(com_x)
+            total += compute_balance_cost(
+                com_x, self.inner_center, self.dt, self.balance_center_weight
+            )
 
         return total
-
-    # ==========================================================
-    # Legacy cost() for single-thread compat / progress tracking
-    # ==========================================================
 
     def cost(self, x: NDArray) -> float:
         """Total cost with progress tracking (single-thread path)."""
         total = self._compute_cost(x)
         self._progress.record(total)
         return total
-
-    def _emit_progress(self, current_cost: float) -> None:
-        self._progress.emit(current_cost)
 
     @property
     def _cost_history(self) -> list[float]:
@@ -296,22 +178,14 @@ class TrajectoryOptimizer:
         self._progress.cost_history = value
 
     def _detect_stall(self) -> tuple[bool, str]:
-        from .optimizer_progress import detect_stall
-
         return detect_stall(self._progress.cost_history)
 
-    # ==========================================================
-    # Initial guess generation (delegates to optimizer_guess)
-    # ==========================================================
-
     def _initial_guess(self) -> NDArray:
-        """Linear interpolation between start/end (or start/via/end)."""
         return build_initial_guess(
             self.q_start, self.q_end, self.n_waypoints, self.n_dof, self.q_via
         )
 
     def _perturbed_guess(self, seed: int) -> NDArray:
-        """Generate a perturbed initial guess for multi-start."""
         return build_perturbed_guess(
             self.q_start,
             self.q_end,
@@ -325,58 +199,23 @@ class TrajectoryOptimizer:
     def _build_bounds(self) -> list[tuple[float, float]]:
         return build_bounds(self.q_bounds, self.n_waypoints, self.n_dof)
 
-    # ==========================================================
-    # Single-start optimisation (delegates to optimizer_diagnostics)
-    # ==========================================================
-
-    def _cancel_callback(self, _xk: NDArray) -> None:
-        """SLSQP iteration callback — raises to abort immediately."""
-        if self.cancel_event.is_set():
-            raise CancelledError("Optimization cancelled by user")
-
-    def _joint_limit_constraint_values(self, x: NDArray) -> NDArray:
-        """Return joint limit constraint violation for SLSQP.
-
-        Ensures all evaluated trajectory points stay within joint limits,
-        preventing spline overshoot between control points from violating
-        the physical bounds.
-        """
-        splines = self.build_splines(x)
-        q = np.column_stack([s(self.t_eval) for s in splines])
-
-        # lower shape: (n_eval, n_dof)
-        lower = q - self.q_bounds[:, 0]
-        upper = self.q_bounds[:, 1] - q
-
-        return np.concatenate([lower.flatten(), upper.flatten()])
-
     def _build_constraints(self) -> list[dict]:
-        """Build SLSQP inequality constraints.
-
-        Bench press has no COM/balance constraints because the lifter
-        is lying on a bench, not standing.
-        """
-        constraints = [
-            {"type": "ineq", "fun": self._joint_limit_constraint_values},
-        ]
-
-        if self.exercise_type != "bench_press":
-            constraints.append({"type": "ineq", "fun": self._com_constraint_values})
-
-            pulling_exercises = {"deadlift", "clean", "snatch"}
-            if self.exercise_type in pulling_exercises:
-                constraints.append(
-                    {"type": "ineq", "fun": self._bar_knee_clearance},
-                )
-        return constraints
+        """Delegate to optimizer_constraints.build_constraints."""
+        return build_constraints(
+            self.exercise_type,
+            self.build_splines,
+            self.t_eval,
+            self.dynamics,
+            self.bar_mass,
+            self.inner_heel,
+            self.inner_toe,
+            self.q_bounds,
+            self.body,
+        )
 
     def _minimize_single(
-        self,
-        x0: NDArray,
-        cost_fn: Callable[[NDArray], float],
-        max_iter: int = MAX_ITER_PER_START,
+        self, x0: NDArray, cost_fn: Callable, max_iter: int = MAX_ITER_PER_START
     ) -> object:
-        """Run one SLSQP solve — shared setup for both start paths."""
         return run_minimize(
             x0,
             cost_fn,
@@ -387,10 +226,6 @@ class TrajectoryOptimizer:
         )
 
     def _run_single_start(self, seed: int) -> tuple[object, int] | None:
-        """Run one SLSQP solve with a perturbed initial guess.
-
-        Returns (scipy result, eval_count) or None if cancelled.
-        """
         return run_single_start(
             seed,
             self._perturbed_guess,
@@ -400,20 +235,8 @@ class TrajectoryOptimizer:
             self.cancel_event,
         )
 
-    # ==========================================================
-    # Main optimisation driver (parallel multi-start)
-    # ==========================================================
-
     def optimize(self) -> OptimizationResult:
-        """Run parallel multi-start SLSQP and return best result.
-
-        Uses SLSQP with hard COM inequality constraints to guarantee
-        the COM stays within the middle 60% of the foot at all times.
-        Multiple starts run concurrently; cancellation is immediate
-        via callback + exception.
-
-        Raises CancelledError if cancel_event is set.
-        """
+        """Run parallel multi-start SLSQP and return best result."""
         self._progress.reset()
 
         n_workers = min(self.n_starts, os.cpu_count() or 4)
@@ -428,88 +251,61 @@ class TrajectoryOptimizer:
         if n_workers <= 1 or self.n_starts <= 1:
             return self._optimize_single_start()
 
-        results = self._optimize_parallel_starts(n_workers)
+        results = run_parallel_starts(
+            self.n_starts,
+            n_workers,
+            self._run_single_start,
+            self.cancel_event.is_set,
+            self._progress.record_parallel,
+        )
         return self._finalize_parallel_results(results)
 
     def _optimize_single_start(self) -> OptimizationResult:
         """Run single-start path and package its result."""
-        out = self._run_single_start_with_progress()
+        self._progress.reset()
+        wp0 = self._initial_guess()
+        out = self._minimize_single(wp0.flatten(), self.cost, max_iter=MAX_ITER_PER_START * 2)
         if self.cancel_event.is_set():
             raise CancelledError("Optimization cancelled by user")
-        elapsed = self._progress.elapsed()
-        return self._package_results(out, elapsed)
-
-    def _optimize_parallel_starts(self, n_workers: int) -> list[tuple[object, int]]:
-        """Dispatch multi-start SLSQP in parallel and collect completed results."""
-        results: list[tuple[object, int]] = []
-        with ThreadPoolExecutor(max_workers=n_workers) as pool:
-            pending: set[Future] = {
-                pool.submit(self._run_single_start, seed) for seed in range(self.n_starts)
-            }
-            self._collect_future_results(pending, results)
-        return results
-
-    def _collect_future_results(
-        self,
-        pending: set[Future],
-        results: list[tuple[object, int]],
-    ) -> None:
-        """Drain pending futures, record progress, and honour cancellation."""
-        total_evals = 0
-        while pending:
-            if self.cancel_event.is_set():
-                for f in pending:
-                    f.cancel()
-                raise CancelledError("Optimization cancelled by user")
-
-            done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
-
-            for future in done:
-                result = future.result()
-                if result is not None:
-                    results.append(result)
-                    res, n_evals = result
-                    total_evals += n_evals
-                    cost_val = float(res.fun)
-                    self._progress.record_parallel(cost_val, total_evals)
+        return self._package_results(out, self._progress.elapsed())
 
     def _finalize_parallel_results(self, results: list[tuple[object, int]]) -> OptimizationResult:
         """Select the best result, log summary, and package output."""
         if not results:
             raise CancelledError("All optimization starts were cancelled")
 
-        best_res, _ = min(results, key=lambda r: float(r[0].fun))  # type: ignore[attr-defined]
+        best_res, total_evals = select_best_result(results)
         elapsed = self._progress.elapsed()
-        total_evals_sum = sum(n for _, n in results)
 
         logger.info(
             "Optimisation finished: best_cost=%.2f, total_evals=%d, n_starts=%d, time=%.1fs",
             best_res.fun,  # type: ignore[attr-defined]
-            total_evals_sum,
+            total_evals,
             len(results),
             elapsed,
         )
-
-        return self._package_results(best_res, elapsed, total_evals_sum)
-
-    def _run_single_start_with_progress(self) -> object:
-        """Single-start path with progress tracking."""
-        self._progress.reset()
-
-        wp0 = self._initial_guess()
-        return self._minimize_single(wp0.flatten(), self.cost, max_iter=MAX_ITER_PER_START * 2)
-
-    # ==========================================================
-    # Result packaging
-    # ==========================================================
+        return self._package_results(best_res, elapsed, total_evals)
 
     def _package_results(
         self, res: object, elapsed: float = 0.0, n_evals: int = 0
     ) -> OptimizationResult:
         """Thin orchestrator: evaluate, validate, then build the final result."""
-        q, qd, qdd, torques, power, com_traj, bar_traj, com_x = self._evaluate_solution(res)
-        success, n_joint_limit_violations = self._validate_solution(res, q, com_x)
-        return self._build_result_object(
+        q, qd, qdd, torques, power, com_traj, bar_traj, com_x = evaluate_solution(
+            res,
+            self.dynamics,
+            self.exercise_type,
+            self.bar_mass,
+            self.build_splines,
+            self.eval_trajectory,
+        )
+        cost_val = float(res.fun)  # type: ignore[attr-defined]
+        cost_finite = cost_val < float("inf") and not np.isnan(cost_val)
+        com_in_bounds = check_com_feasibility(
+            cost_finite, com_x, self.exercise_type, self.inner_heel, self.inner_toe
+        )
+        n_viol = count_joint_limit_violations(q, self.q_bounds)
+        return build_result_object(
+            t_eval=self.t_eval,
             res=res,
             q=q,
             qd=qd,
@@ -519,8 +315,8 @@ class TrajectoryOptimizer:
             com_traj=com_traj,
             bar_traj=bar_traj,
             com_x=com_x,
-            success=success,
-            n_joint_limit_violations=n_joint_limit_violations,
+            success=cost_finite and com_in_bounds,
+            n_joint_limit_violations=n_viol,
             elapsed=elapsed,
             n_evals=n_evals,
         )

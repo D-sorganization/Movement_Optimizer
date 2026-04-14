@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 
 from ..cli import EXERCISE_FACTORIES
+from ..constants import trapezoid
 from ..models import BodyModel
 from ..trajectory import (
     CancelledError,
@@ -173,3 +174,115 @@ class OptimizationMixin:
 
     def _update_progress(self, report: ProgressReport) -> None:
         self.sidebar.update_progress(report)  # type: ignore[attr-defined]
+
+    def _on_done(
+        self,
+        idx: int,
+        result: OptimizationResult,
+        body: BodyModel,
+        bar: float,
+        then_chain: list[int] | None,
+    ) -> None:
+        """Handle successful optimization completion (called from main thread via signal)."""
+        try:
+            self.sidebar.progress.setValue(100)  # type: ignore[attr-defined]
+            name = self.EXERCISE_CONFIGS[idx][0]  # type: ignore[attr-defined]
+            _, etype = self.EXERCISE_CONFIGS[idx]  # type: ignore[attr-defined]
+            self._update_result_summary(name, result, exercise_type=etype)
+            tab = self.exercise_tabs[idx]  # type: ignore[attr-defined]
+            tab.draw_all_plots(result, body, bar, exercise_type=etype)
+            tab.draw_anim_frame(0, result, self.dynamics_list[idx], body, etype)  # type: ignore[attr-defined]
+            elapsed = result.elapsed_s
+            t_str = (
+                f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
+            )
+            self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")  # type: ignore[attr-defined]
+            self._enable_post_run_buttons()
+            if result.success:
+                self.sidebar.stall_label.setVisible(False)  # type: ignore[attr-defined]
+                status_msg = f"{name} optimization complete in {t_str}!"
+            else:
+                self.sidebar.stall_label.setText(  # type: ignore[attr-defined]
+                    "\u26a0 COM went outside the inner 60% BOS zone. "
+                    "Try increasing smoothness or adjusting body parameters."
+                )
+                self.sidebar.stall_label.setVisible(True)  # type: ignore[attr-defined]
+                status_msg = f"{name} done in {t_str} -- WARNING: COM balance violated"
+            self._finish_or_chain(then_chain, status_msg)
+        except (ValueError, RuntimeError, OSError, AttributeError) as exc:
+            with self._opt_lock:  # type: ignore[attr-defined]
+                self._opt_running = False  # type: ignore[attr-defined]
+            tb = traceback.format_exc()
+            logger.error("Error in _on_done:\n%s", tb)
+            self.sidebar.show_idle()  # type: ignore[attr-defined]
+            self.status_label.setText(f"Render error: {exc}")  # type: ignore[attr-defined]
+
+    def _enable_post_run_buttons(self) -> None:
+        """Enable export/save/compare buttons after a successful optimization run."""
+        self.sidebar.export_btn.setEnabled(True)  # type: ignore[attr-defined]
+        self.sidebar.save_btn.setEnabled(True)  # type: ignore[attr-defined]
+        self.sidebar.export_video_btn.setEnabled(True)  # type: ignore[attr-defined]
+        self.sidebar.export_plots_btn.setEnabled(True)  # type: ignore[attr-defined]
+        self.sidebar.add_compare_btn.setEnabled(True)  # type: ignore[attr-defined]
+
+    def _finish_or_chain(self, then_chain: list[int] | None, status_msg: str) -> None:
+        """Either chain to the next exercise or finalize the run."""
+        if then_chain:
+            next_idx = then_chain[0]
+            remaining = then_chain[1:] if len(then_chain) > 1 else None
+            self._run_exercise(next_idx, remaining)  # type: ignore[attr-defined]
+        else:
+            with self._opt_lock:  # type: ignore[attr-defined]
+                self._opt_running = False  # type: ignore[attr-defined]
+            self.sidebar.show_idle()  # type: ignore[attr-defined]
+            self.status_label.setText(status_msg)  # type: ignore[attr-defined]
+
+    def _on_cancelled(self) -> None:
+        """Handle user-requested cancellation (called from main thread via signal)."""
+        with self._opt_lock:  # type: ignore[attr-defined]
+            self._opt_running = False  # type: ignore[attr-defined]
+        self.sidebar.show_idle()  # type: ignore[attr-defined]
+        self.sidebar.prog_label.setText("Cancelled")  # type: ignore[attr-defined]
+        self.status_label.setText("Optimization cancelled by user.")  # type: ignore[attr-defined]
+        self.sidebar.cancel_btn.setEnabled(True)  # type: ignore[attr-defined]
+
+    def _update_result_summary(
+        self, name: str, r: OptimizationResult, exercise_type: str = "squat"
+    ) -> None:
+        """Build and display the results summary in the sidebar."""
+        pk = np.max(np.abs(r.torques), axis=0)
+        work = trapezoid(np.sum(np.abs(r.power), axis=1), r.t)
+        if exercise_type == "bench_press":
+            joint_lines = (
+                f"  Shoulder: {pk[0]:>6.0f} N\u00b7m\n"
+                f"  Elbow:    {pk[1]:>6.0f} N\u00b7m\n"
+                f"  Wrist:    {pk[2]:>6.0f} N\u00b7m"
+            )
+        else:
+            balance_ok = "BALANCED" if r.success else "OUT OF BOUNDS"
+            joint_lines = (
+                f"  Ankle: {pk[0]:>6.0f} N\u00b7m\n"
+                f"  Knee:  {pk[1]:>6.0f} N\u00b7m\n"
+                f"  Hip:   {pk[2]:>6.0f} N\u00b7m\n"
+                f"  COM sway: {r.com_horizontal_range_cm:.1f} cm\n"
+                f"  Balance: {balance_ok}"
+            )
+        self.sidebar.result_label.setText(  # type: ignore[attr-defined]
+            f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J"
+        )
+
+    def _on_err(self, msg: str) -> None:
+        """Handle optimizer errors (called from main thread via signal)."""
+        from PyQt6.QtWidgets import QMessageBox
+
+        self._opt_running = False  # type: ignore[attr-defined]
+        self.sidebar.show_idle()  # type: ignore[attr-defined]
+        self.status_label.setText(f"Error: {msg}")  # type: ignore[attr-defined]
+        QMessageBox.critical(self, "Error", msg)  # type: ignore[arg-type]
+
+    def _reset(self) -> None:
+        """Reset to defaults and clear the solution cache."""
+        self._stop_anim()  # type: ignore[attr-defined]
+        self.sidebar.reset_defaults()  # type: ignore[attr-defined]
+        self._cache.clear()  # type: ignore[attr-defined]
+        self.status_label.setText("Defaults restored. Cache cleared.")  # type: ignore[attr-defined]

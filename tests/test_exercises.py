@@ -160,6 +160,9 @@ class TestBenchPressConfig:
     def test_bench_no_com_constraint(self, default_body: BodyModel) -> None:
         """Bench press optimizer should skip COM constraints only."""
         from movement_optimizer.trajectory import TrajectoryOptimizer
+        from movement_optimizer.trajectory.optimizer_constraints import (
+            joint_limit_constraint_values,
+        )
 
         dyn, qs, qe, qb, q_via = make_bench_press_config(default_body, 60.0)
         opt = TrajectoryOptimizer(
@@ -176,7 +179,7 @@ class TestBenchPressConfig:
         )
         constraints = opt._build_constraints()
         assert len(constraints) == 1, "Bench press should keep only the joint-limit constraint"
-        assert constraints[0]["fun"] == opt._joint_limit_constraint_values
+        assert constraints[0]["fun"] is joint_limit_constraint_values
 
 
 # ------------------------------------------------------------------
