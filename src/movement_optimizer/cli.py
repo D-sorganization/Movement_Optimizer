@@ -152,6 +152,97 @@ def _emit_cli_summary(summary: dict) -> None:
     sys.stdout.write(f"{json.dumps(summary, indent=2)}\n")
 
 
+def _configure_logging(verbose: bool) -> None:
+    """Configure root logging based on verbosity flag.
+
+    Args:
+        verbose: If True, sets level to DEBUG; otherwise INFO.
+    """
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+
+def _resolve_duration(exercise: str, requested: float) -> float:
+    """Enforce minimum durations for multi-phase exercises.
+
+    Args:
+        exercise: Exercise key from EXERCISE_FACTORIES.
+        requested: User-requested duration in seconds.
+
+    Returns:
+        Effective duration (>= minimum for the exercise type).
+    """
+    if exercise in ("full_squat", "snatch"):
+        return max(requested, 3.0)
+    if exercise in ("clean", "jerk"):
+        return max(requested, 2.0)
+    return requested
+
+
+def _build_optimizer(
+    body: BodyModel,
+    exercise: str,
+    bar_mass: float,
+    duration: float,
+    smoothness: float,
+) -> tuple[TrajectoryOptimizer, object]:
+    """Construct the TrajectoryOptimizer from an exercise factory config.
+
+    Args:
+        body: Anthropometric body model.
+        exercise: Exercise key from EXERCISE_FACTORIES.
+        bar_mass: Barbell mass in kg.
+        duration: Movement duration in seconds.
+        smoothness: Smoothness regularisation weight.
+
+    Returns:
+        Tuple of (optimizer, dynamics_object).
+    """
+    factory = EXERCISE_FACTORIES[exercise]
+    config = factory(body, bar_mass)
+
+    if len(config) == 5:
+        dyn, qs, qe, qb, q_via = config
+    else:
+        dyn, qs, qe, qb = config
+        q_via = None
+
+    opt = TrajectoryOptimizer(
+        body,
+        dyn,  # type: ignore[arg-type]
+        exercise,
+        bar_mass,
+        qs,  # type: ignore[arg-type]
+        qe,  # type: ignore[arg-type]
+        qb,  # type: ignore[arg-type]
+        q_via=q_via,  # type: ignore[arg-type]
+        duration=duration,
+        n_waypoints=12,
+        smoothness=smoothness,
+    )
+    return opt, dyn
+
+
+def _save_or_emit(result: OptimizationResult, exercise: str, output: str | None) -> None:
+    """Write result to file or emit summary to stdout.
+
+    Args:
+        result: Completed optimization result.
+        exercise: Exercise label for the summary dict.
+        output: File path to write JSON, or None to emit summary to stdout.
+    """
+    if output:
+        full_data = _result_to_full_dict(result, exercise)
+        Path(output).write_text(json.dumps(full_data, indent=2), encoding="utf-8")
+        logger.info("Results saved to %s", output)
+    else:
+        _emit_cli_summary(_result_to_summary(result, exercise))
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run CLI optimization.
 
@@ -174,57 +265,22 @@ def main(argv: list[str] | None = None) -> int:
     if args.duration <= 0:
         parser.error(f"--duration must be positive, got {args.duration}")
 
-    level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
+    _configure_logging(args.verbose)
 
     body = BodyModel(body_mass=args.body_mass, height=args.height)
-    bar_mass = args.bar_mass
-    exercise = args.exercise
-    duration = args.duration
-    smoothness = args.smoothness
-
-    factory = EXERCISE_FACTORIES[exercise]
-    config = factory(body, bar_mass)
-
-    if len(config) == 5:
-        dyn, qs, qe, qb, q_via = config
-    else:
-        dyn, qs, qe, qb = config
-        q_via = None
-
-    # Enforce minimum duration for multi-phase exercises
-    if exercise in ("full_squat", "snatch"):
-        duration = max(duration, 3.0)
-    elif exercise in ("clean", "jerk"):
-        duration = max(duration, 2.0)
+    duration = _resolve_duration(args.exercise, args.duration)
 
     logger.info(
         "Optimizing %s: body=%.0fkg, height=%.2fm, bar=%.0fkg, dur=%.1fs",
-        exercise,
+        args.exercise,
         args.body_mass,
         args.height,
-        bar_mass,
+        args.bar_mass,
         duration,
     )
 
     t_start = time.perf_counter()
-    opt = TrajectoryOptimizer(
-        body,
-        dyn,  # type: ignore[arg-type]
-        exercise,
-        bar_mass,
-        qs,  # type: ignore[arg-type]
-        qe,  # type: ignore[arg-type]
-        qb,  # type: ignore[arg-type]
-        q_via=q_via,  # type: ignore[arg-type]
-        duration=duration,
-        n_waypoints=12,
-        smoothness=smoothness,
-    )
+    opt, _dyn = _build_optimizer(body, args.exercise, args.bar_mass, duration, args.smoothness)
     result = opt.optimize()
     elapsed = time.perf_counter() - t_start
 
@@ -235,13 +291,7 @@ def main(argv: list[str] | None = None) -> int:
         result.success,
     )
 
-    if args.output:
-        full_data = _result_to_full_dict(result, exercise)
-        Path(args.output).write_text(json.dumps(full_data, indent=2), encoding="utf-8")
-        logger.info("Results saved to %s", args.output)
-    else:
-        _emit_cli_summary(_result_to_summary(result, exercise))
-
+    _save_or_emit(result, args.exercise, args.output)
     return 0 if result.success else 1
 
 
