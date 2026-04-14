@@ -33,12 +33,22 @@ class HillTorqueModel:
         ecc_factor: float = HILL_ECCENTRIC_FACTOR,
         max_ecc_ratio: float = HILL_MAX_ECCENTRIC_RATIO,
     ) -> None:
-        if tau_max <= 0:
-            raise ValueError("tau_max must be positive")
-        if angle_width <= 0:
-            raise ValueError("angle_width must be positive")
-        if v_max <= 0:
-            raise ValueError("v_max must be positive")
+        import math
+
+        if not math.isfinite(tau_max) or tau_max <= 0:
+            raise ValueError("tau_max must be a finite positive number")
+        if not math.isfinite(q_optimal):
+            raise ValueError("q_optimal must be a finite number")
+        if not math.isfinite(angle_width) or angle_width <= 0:
+            raise ValueError("angle_width must be a finite positive number")
+        if not math.isfinite(v_max) or v_max <= 0:
+            raise ValueError("v_max must be a finite positive number")
+        if not math.isfinite(k_shape):
+            raise ValueError("k_shape must be a finite number")
+        if not math.isfinite(ecc_factor):
+            raise ValueError("ecc_factor must be a finite number")
+        if not math.isfinite(max_ecc_ratio):
+            raise ValueError("max_ecc_ratio must be a finite number")
 
         self.tau_max = tau_max
         self.q_optimal = q_optimal
@@ -50,7 +60,10 @@ class HillTorqueModel:
 
     def torque_angle_factor(self, q: float | NDArray) -> NDArray:
         """Gaussian torque-angle scaling factor in [0, 1]."""
-        return np.exp(-(((np.asarray(q) - self.q_optimal) / self.angle_width) ** 2))
+        q_arr = np.asarray(q, dtype=float)
+        if np.any(np.isnan(q_arr)):
+            raise ValueError("q must not contain NaN values")
+        return np.exp(-(((q_arr - self.q_optimal) / self.angle_width) ** 2))
 
     def torque_velocity_factor(self, qd: float | NDArray, torque_sign: float = -1.0) -> NDArray:
         """Hill-type force-velocity scaling factor.
@@ -69,7 +82,9 @@ class HillTorqueModel:
                 shortening (concentric); otherwise it is lengthening
                 (eccentric).
         """
-        qd = np.asarray(qd)
+        qd = np.asarray(qd, dtype=float)
+        if np.any(np.isnan(qd)):
+            raise ValueError("qd must not contain NaN values")
         speed = np.abs(qd)
         conc = (self.v_max - speed) / (self.v_max + speed / self.k_shape)
         ecc = (1.0 + self.ecc_factor * speed) / (1.0 + speed / self.k_shape)

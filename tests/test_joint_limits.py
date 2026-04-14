@@ -180,6 +180,70 @@ class TestHillTorqueModel:
         with pytest.raises(ValueError, match="angle_width"):
             HillTorqueModel(tau_max=100, q_optimal=0.0, angle_width=0)
 
+    # ------------------------------------------------------------------
+    # NaN / non-finite parameter validation (issue #236)
+    # ------------------------------------------------------------------
+
+    def test_nan_tau_max_raises(self) -> None:
+        """NaN tau_max must be rejected at construction time."""
+        with pytest.raises(ValueError, match="tau_max"):
+            HillTorqueModel(tau_max=float("nan"), q_optimal=1.0)
+
+    def test_inf_tau_max_raises(self) -> None:
+        """Infinite tau_max must be rejected at construction time."""
+        with pytest.raises(ValueError, match="tau_max"):
+            HillTorqueModel(tau_max=float("inf"), q_optimal=1.0)
+
+    def test_nan_q_optimal_raises(self) -> None:
+        """NaN q_optimal must be rejected at construction time."""
+        with pytest.raises(ValueError, match="q_optimal"):
+            HillTorqueModel(tau_max=200.0, q_optimal=float("nan"))
+
+    def test_nan_angle_width_raises(self) -> None:
+        """NaN angle_width must be rejected at construction time."""
+        with pytest.raises(ValueError, match="angle_width"):
+            HillTorqueModel(tau_max=200.0, q_optimal=1.0, angle_width=float("nan"))
+
+    def test_nan_v_max_raises(self) -> None:
+        """NaN v_max must be rejected at construction time."""
+        with pytest.raises(ValueError, match="v_max"):
+            HillTorqueModel(tau_max=200.0, q_optimal=1.0, v_max=float("nan"))
+
+    def test_nan_k_shape_raises(self) -> None:
+        """NaN k_shape must be rejected at construction time."""
+        with pytest.raises(ValueError, match="k_shape"):
+            HillTorqueModel(tau_max=200.0, q_optimal=1.0, k_shape=float("nan"))
+
+    def test_nan_ecc_factor_raises(self) -> None:
+        """NaN ecc_factor must be rejected at construction time."""
+        with pytest.raises(ValueError, match="ecc_factor"):
+            HillTorqueModel(tau_max=200.0, q_optimal=1.0, ecc_factor=float("nan"))
+
+    def test_nan_max_ecc_ratio_raises(self) -> None:
+        """NaN max_ecc_ratio must be rejected at construction time."""
+        with pytest.raises(ValueError, match="max_ecc_ratio"):
+            HillTorqueModel(tau_max=200.0, q_optimal=1.0, max_ecc_ratio=float("nan"))
+
+    def test_nan_q_in_torque_angle_factor_raises(self) -> None:
+        """NaN angle input to torque_angle_factor must raise ValueError."""
+        model = HillTorqueModel(tau_max=200.0, q_optimal=1.0)
+        with pytest.raises(ValueError, match="q"):
+            model.torque_angle_factor(float("nan"))
+
+    def test_nan_qd_in_torque_velocity_factor_raises(self) -> None:
+        """NaN velocity input to torque_velocity_factor must raise ValueError."""
+        model = HillTorqueModel(tau_max=200.0, q_optimal=1.0)
+        with pytest.raises(ValueError, match="qd"):
+            model.torque_velocity_factor(float("nan"))
+
+    def test_nan_in_available_torque_raises(self) -> None:
+        """NaN angle or velocity input to available_torque must raise ValueError."""
+        model = HillTorqueModel(tau_max=200.0, q_optimal=1.0)
+        with pytest.raises(ValueError):
+            model.available_torque(float("nan"), 0.0)
+        with pytest.raises(ValueError):
+            model.available_torque(0.0, float("nan"))
+
     def test_batch_angle_factor(self) -> None:
         """Torque-angle factor should vectorize correctly."""
         model = HillTorqueModel(tau_max=200.0, q_optimal=0.5)
