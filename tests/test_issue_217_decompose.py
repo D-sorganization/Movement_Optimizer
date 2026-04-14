@@ -25,6 +25,16 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+try:
+    from PyQt6.QtWidgets import QApplication
+
+    _QT_AVAILABLE = True
+    _app = QApplication.instance()
+    if _app is None:
+        _app = QApplication([])
+except (ImportError, OSError):
+    _QT_AVAILABLE = False
+
 from movement_optimizer.cli import (
     _add_body_args,
     _add_run_args,
@@ -407,16 +417,15 @@ class TestCheckSolutionFeasibility:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(not _QT_AVAILABLE, reason="Qt not available")
 class TestExerciseTabHelpers:
     """Smoke tests for the three newly extracted ExerciseTab helpers."""
 
     @pytest.fixture()
-    def tab(self, qtbot):  # type: ignore[no-untyped-def]
+    def tab(self):  # type: ignore[no-untyped-def]
         from movement_optimizer.gui.exercise_tab import ExerciseTab
 
-        widget = ExerciseTab("squat")
-        qtbot.addWidget(widget)
-        return widget
+        return ExerciseTab("squat")
 
     def test_build_grid_axes_returns_all_keys(self, tab) -> None:  # type: ignore[no-untyped-def]
         from matplotlib.gridspec import GridSpec
@@ -450,7 +459,7 @@ class TestExerciseTabHelpers:
 
         result = make_test_result()
         body = BodyModel(75.0, 1.75)
-        labels = ["ankle", "knee", "hip"]
+        labels = ("ankle", "knee", "hip")
         with (
             patch.object(exercise_tab.plot_renderer, "plot_angles") as m_ang,
             patch.object(exercise_tab.plot_renderer, "plot_torques") as m_tor,
