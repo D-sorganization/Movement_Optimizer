@@ -1,5 +1,9 @@
+import os
+
 import pytest
 from PyQt6.QtWidgets import QApplication, QLabel, QTabWidget, QWidget
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from movement_optimizer.gui.ui_builder import build_central_widget
 from movement_optimizer.gui.widgets import ParameterSidebar, PlaybackControls
