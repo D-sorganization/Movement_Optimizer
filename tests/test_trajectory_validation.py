@@ -20,6 +20,7 @@ from movement_optimizer.trajectory import (
     SolutionCache,
     TrajectoryOptimizer,
 )
+from movement_optimizer.trajectory.optimizer_constraints import bar_knee_clearance
 
 # ==============================================================
 # Solution Cache
@@ -84,10 +85,7 @@ class TestSolutionCache:
 def _has_bar_knee_constraint(opt: TrajectoryOptimizer) -> bool:
     """Return True if the optimizer's constraints include bar-knee clearance."""
     constraints = opt._build_constraints()
-    return any(
-        getattr(c["fun"], "__func__", None) is TrajectoryOptimizer._bar_knee_clearance
-        for c in constraints
-    )
+    return any(c["fun"] is bar_knee_clearance for c in constraints)
 
 
 class TestBarKneeClearance:

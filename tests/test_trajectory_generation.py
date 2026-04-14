@@ -16,6 +16,13 @@ from movement_optimizer.models import (
 from movement_optimizer.trajectory import (
     TrajectoryOptimizer,
 )
+from movement_optimizer.trajectory.optimizer_cost import (
+    compute_balance_cost,
+    compute_endpoint_damping_cost,
+    compute_jerk_cost,
+    compute_torque_cost,
+    compute_torque_rate_cost,
+)
 
 # ==============================================================
 # Construction & Preconditions
@@ -103,7 +110,7 @@ class TestCostTerms:
         splines = opt.build_splines(wp.flatten())
         q, qd, qdd, _ = opt.eval_trajectory(splines)
         torques = dyn.inverse_dynamics_batch(q, qd, qdd)
-        cost = opt._torque_cost(torques)
+        cost = compute_torque_cost(torques, opt.dt)
         assert cost > 0
 
     def test_jerk_cost_positive(self, squat_optimizer) -> None:
@@ -111,7 +118,7 @@ class TestCostTerms:
         wp = opt._initial_guess()
         splines = opt.build_splines(wp.flatten())
         _, _, _, qddd = opt.eval_trajectory(splines)
-        cost = opt._jerk_cost(qddd)
+        cost = compute_jerk_cost(qddd, opt.dt, opt.jerk_weight)
         assert cost > 0
 
     def test_torque_rate_cost_positive(self, squat_optimizer) -> None:
@@ -120,7 +127,7 @@ class TestCostTerms:
         splines = opt.build_splines(wp.flatten())
         q, qd, qdd, _ = opt.eval_trajectory(splines)
         torques = dyn.inverse_dynamics_batch(q, qd, qdd)
-        cost = opt._torque_rate_cost(torques)
+        cost = compute_torque_rate_cost(torques, opt.dt, opt.torque_rate_weight)
         assert cost > 0
 
     def test_endpoint_damping_zero_at_rest(self) -> None:
@@ -140,7 +147,9 @@ class TestCostTerms:
         )
         qd = np.zeros((20, 3))
         qdd = np.zeros((20, 3))
-        cost = opt._endpoint_damping_cost(qd, qdd)
+        cost = compute_endpoint_damping_cost(
+            qd, qdd, opt.dt, opt.endpoint_weight, opt._n_damp, opt._damp_weights
+        )
         assert cost == 0.0
 
     def test_balance_cost_inside_is_centering_only(self, squat_optimizer) -> None:
@@ -148,7 +157,7 @@ class TestCostTerms:
         opt, body, _, _, _ = squat_optimizer
         center = body.inner_center
         com_x = np.full(20, center)
-        cost = opt._balance_cost(com_x)
+        cost = compute_balance_cost(com_x, opt.inner_center, opt.dt, opt.balance_center_weight)
         # Should be zero since COM == center
         assert cost < 1e-10
 
@@ -157,10 +166,14 @@ class TestCostTerms:
         opt, body, _, _, _ = squat_optimizer
         # Place COM well outside inner bounds
         com_x = np.full(20, body.heel_x - 0.05)
-        cost_outside = opt._balance_cost(com_x)
+        cost_outside = compute_balance_cost(
+            com_x, opt.inner_center, opt.dt, opt.balance_center_weight
+        )
         # Compare to COM at center
         com_x_center = np.full(20, body.inner_center)
-        cost_center = opt._balance_cost(com_x_center)
+        cost_center = compute_balance_cost(
+            com_x_center, opt.inner_center, opt.dt, opt.balance_center_weight
+        )
         assert cost_outside > cost_center * 100
 
     def test_total_cost_is_sum(self, squat_optimizer) -> None:
@@ -174,11 +187,13 @@ class TestCostTerms:
         com_x = dyn.com_x_batch(q, "squat", 60.0)
 
         total = (
-            opt._torque_cost(torques)
-            + opt._jerk_cost(qddd)
-            + opt._torque_rate_cost(torques)
-            + opt._endpoint_damping_cost(qd, qdd)
-            + opt._balance_cost(com_x)
+            compute_torque_cost(torques, opt.dt)
+            + compute_jerk_cost(qddd, opt.dt, opt.jerk_weight)
+            + compute_torque_rate_cost(torques, opt.dt, opt.torque_rate_weight)
+            + compute_endpoint_damping_cost(
+                qd, qdd, opt.dt, opt.endpoint_weight, opt._n_damp, opt._damp_weights
+            )
+            + compute_balance_cost(com_x, opt.inner_center, opt.dt, opt.balance_center_weight)
         )
         computed = opt._compute_cost(x)
         np.testing.assert_allclose(computed, total, rtol=1e-10)

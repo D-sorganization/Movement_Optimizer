@@ -21,7 +21,6 @@ import traceback
 from typing import Any
 
 import matplotlib
-import numpy as np
 from PyQt6.QtCore import QSettings, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QMainWindow,
@@ -29,7 +28,6 @@ from PyQt6.QtWidgets import (
 )
 
 from ..comparison import ComparisonStore
-from ..constants import trapezoid
 from ..models import BodyModel
 from ..persistence import load_app_state, save_app_state
 from ..trajectory import (
@@ -235,108 +233,9 @@ class MainWindow(
             daemon=True,
         ).start()
 
-    def _on_done(
-        self,
-        idx: int,
-        result: OptimizationResult,
-        body: BodyModel,
-        bar: float,
-        then_chain: list[int] | None,
-    ) -> None:
-        try:
-            self.sidebar.progress.setValue(100)
-            name = self.EXERCISE_CONFIGS[idx][0]
-
-            _, etype = self.EXERCISE_CONFIGS[idx]
-            self._update_result_summary(name, result, exercise_type=etype)
-            tab = self.exercise_tabs[idx]
-            tab.draw_all_plots(result, body, bar, exercise_type=etype)
-            tab.draw_anim_frame(0, result, self.dynamics_list[idx], body, etype)
-
-            elapsed = result.elapsed_s
-            t_str = (
-                f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
-            )
-            self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")
-            self.sidebar.export_btn.setEnabled(True)
-            self.sidebar.save_btn.setEnabled(True)
-            self.sidebar.export_video_btn.setEnabled(True)
-            self.sidebar.export_plots_btn.setEnabled(True)
-            self.sidebar.add_compare_btn.setEnabled(True)
-
-            if result.success:
-                self.sidebar.stall_label.setVisible(False)
-                status_msg = f"{name} optimization complete in {t_str}!"
-            else:
-                self.sidebar.stall_label.setText(
-                    "\u26a0 COM went outside the inner 60% BOS zone. "
-                    "Try increasing smoothness or adjusting body parameters."
-                )
-                self.sidebar.stall_label.setVisible(True)
-                status_msg = f"{name} done in {t_str} -- WARNING: COM balance violated"
-
-            if then_chain:
-                next_idx = then_chain[0]
-                remaining = then_chain[1:] if len(then_chain) > 1 else None
-                self._run_exercise(next_idx, remaining)
-            else:
-                with self._opt_lock:
-                    self._opt_running = False
-                self.sidebar.show_idle()
-                self.status_label.setText(status_msg)
-        except (ValueError, RuntimeError, OSError, AttributeError) as exc:
-            with self._opt_lock:
-                self._opt_running = False
-            tb = traceback.format_exc()
-            logger.error("Error in _on_done:\n%s", tb)
-            self.sidebar.show_idle()
-            self.status_label.setText(f"Render error: {exc}")
-
-    def _on_cancelled(self) -> None:
-        with self._opt_lock:
-            self._opt_running = False
-        self.sidebar.show_idle()
-        self.sidebar.prog_label.setText("Cancelled")
-        self.status_label.setText("Optimization cancelled by user.")
-        self.sidebar.cancel_btn.setEnabled(True)
-
-    def _update_result_summary(
-        self, name: str, r: OptimizationResult, exercise_type: str = "squat"
-    ) -> None:
-        pk = np.max(np.abs(r.torques), axis=0)
-        work = trapezoid(np.sum(np.abs(r.power), axis=1), r.t)
-
-        if exercise_type == "bench_press":
-            joint_lines = (
-                f"  Shoulder: {pk[0]:>6.0f} N\u00b7m\n"
-                f"  Elbow:    {pk[1]:>6.0f} N\u00b7m\n"
-                f"  Wrist:    {pk[2]:>6.0f} N\u00b7m"
-            )
-        else:
-            balance_ok = "BALANCED" if r.success else "OUT OF BOUNDS"
-            joint_lines = (
-                f"  Ankle: {pk[0]:>6.0f} N\u00b7m\n"
-                f"  Knee:  {pk[1]:>6.0f} N\u00b7m\n"
-                f"  Hip:   {pk[2]:>6.0f} N\u00b7m\n"
-                f"  COM sway: {r.com_horizontal_range_cm:.1f} cm\n"
-                f"  Balance: {balance_ok}"
-            )
-
-        self.sidebar.result_label.setText(f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J")
-
-    def _on_err(self, msg: str) -> None:
-        self._opt_running = False
-        self.sidebar.show_idle()
-        self.status_label.setText(f"Error: {msg}")
-        QMessageBox.critical(self, "Error", msg)
-
+    # _on_done, _on_cancelled, _update_result_summary, _on_err, and _reset are
+    # provided by OptimizationMixin (optimization_mixin.py).
     # Animation, file I/O, and comparison methods are provided by the
     # mixin classes: AnimationControlMixin, FileOperationsMixin, and
     # ComparisonMixin.  See animation_control.py, file_operations.py,
     # and comparison_mixin.py.
-
-    def _reset(self) -> None:
-        self._stop_anim()
-        self.sidebar.reset_defaults()
-        self._cache.clear()
-        self.status_label.setText("Defaults restored. Cache cleared.")
