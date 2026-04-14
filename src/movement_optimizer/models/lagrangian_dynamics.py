@@ -303,14 +303,9 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         )
 
     def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-        """Vectorised batch torques for all timesteps.
+        """Vectorised batch torques (N, 3) for q/qd/qdd each (N, 3).
 
-        Attempts the Rust accelerator first; falls back to NumPy.
-
-        Parameters:
-            q, qd, qdd: shape (N, 3)
-        Returns:
-            torques: shape (N, 3)
+        Tries the Rust accelerator; falls back to _numpy_inverse_dynamics_batch.
         """
         try:
             from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001
