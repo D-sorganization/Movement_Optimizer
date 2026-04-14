@@ -557,6 +557,46 @@ class TrajectoryOptimizer:
 
         return q, qd, qdd, torques, power, com_traj, bar_traj, com_x
 
+    def _check_com_feasibility(self, cost_finite: bool, com_x: NDArray[np.float64]) -> bool:
+        """Return True if COM trajectory satisfies inner-BOS bounds (or exercise is bench).
+
+        Emits a warning when the cost is finite but COM is out of bounds.
+        """
+        if self.exercise_type == "bench_press":
+            return True
+        in_bounds = bool(
+            np.all(com_x >= self.inner_heel - 0.005) and np.all(com_x <= self.inner_toe + 0.005)
+        )
+        if cost_finite and not in_bounds:
+            logger.warning(
+                "Solution found but COM violated inner BOS: min=%.4f max=%.4f "
+                "(bounds: [%.4f, %.4f])",
+                com_x.min(),
+                com_x.max(),
+                self.inner_heel,
+                self.inner_toe,
+            )
+        return in_bounds
+
+    def _count_joint_limit_violations(self, q: NDArray[np.float64]) -> int:
+        """Count and warn about trajectory points that violate joint limits.
+
+        Spline overshoot between control points can push q outside q_bounds.
+        Returns 0 when q_bounds is None.
+        """
+        if self.q_bounds is None:
+            return 0
+        lower = self.q_bounds[:, 0]
+        upper = self.q_bounds[:, 1]
+        n_violations = int(np.sum((q < lower) | (q > upper)))
+        if n_violations > 0:
+            logger.warning(
+                "Trajectory has %d point(s) violating joint limits "
+                "(spline overshoot between control points).",
+                n_violations,
+            )
+        return n_violations
+
     def _validate_solution(
         self,
         res: object,
@@ -564,42 +604,11 @@ class TrajectoryOptimizer:
         com_x: NDArray[np.float64],
     ) -> tuple[bool, int]:
         """Check cost/COM/joint-limit feasibility and emit warnings."""
-        # Success: cost is finite AND COM stays within inner BOS (the hard constraint)
-        # Bench press: no COM constraint (lifter is on a bench)
         cost_val = float(res.fun)  # type: ignore[attr-defined]
         cost_finite = cost_val < float("inf") and not np.isnan(cost_val)
-
-        if self.exercise_type == "bench_press":
-            com_in_bounds = True
-        else:
-            com_in_bounds = bool(
-                np.all(com_x >= self.inner_heel - 0.005) and np.all(com_x <= self.inner_toe + 0.005)
-            )
-            if cost_finite and not com_in_bounds:
-                logger.warning(
-                    "Solution found but COM violated inner BOS: min=%.4f max=%.4f "
-                    "(bounds: [%.4f, %.4f])",
-                    com_x.min(),
-                    com_x.max(),
-                    self.inner_heel,
-                    self.inner_toe,
-                )
-
+        com_in_bounds = self._check_com_feasibility(cost_finite, com_x)
         success = cost_finite and com_in_bounds
-
-        # Warn and record joint limit violations from spline overshoot
-        n_joint_limit_violations = 0
-        if self.q_bounds is not None:
-            _lower = self.q_bounds[:, 0]
-            _upper = self.q_bounds[:, 1]
-            n_joint_limit_violations = int(np.sum((q < _lower) | (q > _upper)))
-            if n_joint_limit_violations > 0:
-                logger.warning(
-                    "Trajectory has %d point(s) violating joint limits "
-                    "(spline overshoot between control points).",
-                    n_joint_limit_violations,
-                )
-
+        n_joint_limit_violations = self._count_joint_limit_violations(q)
         return success, n_joint_limit_violations
 
     def _build_result_object(

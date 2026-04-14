@@ -152,19 +152,15 @@ def _emit_cli_summary(summary: dict) -> None:
     sys.stdout.write(f"{json.dumps(summary, indent=2)}\n")
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Run CLI optimization.
+def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """DbC: validate numeric CLI arguments, exiting with usage error on failure.
 
-    Args:
-        argv: Argument list (uses sys.argv if None).
-
-    Returns:
-        0 on successful optimization, 1 on failure.
+    Preconditions:
+        args.body_mass > 0
+        args.height > 0
+        args.bar_mass >= 0
+        args.duration > 0
     """
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    # DbC: validate numeric CLI arguments
     if args.body_mass <= 0:
         parser.error(f"--body-mass must be positive, got {args.body_mass}")
     if args.height <= 0:
@@ -174,19 +170,35 @@ def main(argv: list[str] | None = None) -> int:
     if args.duration <= 0:
         parser.error(f"--duration must be positive, got {args.duration}")
 
-    level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
 
-    body = BodyModel(body_mass=args.body_mass, height=args.height)
-    bar_mass = args.bar_mass
-    exercise = args.exercise
-    duration = args.duration
-    smoothness = args.smoothness
+def _resolve_exercise_duration(exercise: str, requested: float) -> float:
+    """Return the effective duration, enforcing per-exercise minimums.
 
+    Multi-phase exercises (full_squat, snatch) need >= 3 s; two-phase
+    exercises (clean, jerk) need >= 2 s.
+    """
+    if exercise in ("full_squat", "snatch"):
+        return max(requested, 3.0)
+    if exercise in ("clean", "jerk"):
+        return max(requested, 2.0)
+    return requested
+
+
+def _run_optimizer(
+    body: BodyModel,
+    exercise: str,
+    bar_mass: float,
+    duration: float,
+    smoothness: float,
+) -> OptimizationResult:
+    """Build and run the TrajectoryOptimizer, returning the result.
+
+    Preconditions:
+        body is a valid BodyModel
+        exercise is a key in EXERCISE_FACTORIES
+        bar_mass >= 0
+        duration > 0
+    """
     factory = EXERCISE_FACTORIES[exercise]
     config = factory(body, bar_mass)
 
@@ -196,22 +208,6 @@ def main(argv: list[str] | None = None) -> int:
         dyn, qs, qe, qb = config
         q_via = None
 
-    # Enforce minimum duration for multi-phase exercises
-    if exercise in ("full_squat", "snatch"):
-        duration = max(duration, 3.0)
-    elif exercise in ("clean", "jerk"):
-        duration = max(duration, 2.0)
-
-    logger.info(
-        "Optimizing %s: body=%.0fkg, height=%.2fm, bar=%.0fkg, dur=%.1fs",
-        exercise,
-        args.body_mass,
-        args.height,
-        bar_mass,
-        duration,
-    )
-
-    t_start = time.perf_counter()
     opt = TrajectoryOptimizer(
         body,
         dyn,  # type: ignore[arg-type]
@@ -225,7 +221,57 @@ def main(argv: list[str] | None = None) -> int:
         n_waypoints=12,
         smoothness=smoothness,
     )
-    result = opt.optimize()
+    return opt.optimize()
+
+
+def _write_output(
+    result: OptimizationResult,
+    exercise: str,
+    output_path: str | None,
+) -> None:
+    """Persist results to a file or emit a summary to stdout."""
+    if output_path:
+        full_data = _result_to_full_dict(result, exercise)
+        Path(output_path).write_text(json.dumps(full_data, indent=2), encoding="utf-8")
+        logger.info("Results saved to %s", output_path)
+    else:
+        _emit_cli_summary(_result_to_summary(result, exercise))
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run CLI optimization.
+
+    Args:
+        argv: Argument list (uses sys.argv if None).
+
+    Returns:
+        0 on successful optimization, 1 on failure.
+    """
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    _validate_args(parser, args)
+
+    level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    body = BodyModel(body_mass=args.body_mass, height=args.height)
+    duration = _resolve_exercise_duration(args.exercise, args.duration)
+
+    logger.info(
+        "Optimizing %s: body=%.0fkg, height=%.2fm, bar=%.0fkg, dur=%.1fs",
+        args.exercise,
+        args.body_mass,
+        args.height,
+        args.bar_mass,
+        duration,
+    )
+
+    t_start = time.perf_counter()
+    result = _run_optimizer(body, args.exercise, args.bar_mass, duration, args.smoothness)
     elapsed = time.perf_counter() - t_start
 
     logger.info(
@@ -235,13 +281,7 @@ def main(argv: list[str] | None = None) -> int:
         result.success,
     )
 
-    if args.output:
-        full_data = _result_to_full_dict(result, exercise)
-        Path(args.output).write_text(json.dumps(full_data, indent=2), encoding="utf-8")
-        logger.info("Results saved to %s", args.output)
-    else:
-        _emit_cli_summary(_result_to_summary(result, exercise))
-
+    _write_output(result, args.exercise, args.output)
     return 0 if result.success else 1
 
 

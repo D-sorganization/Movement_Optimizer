@@ -81,7 +81,52 @@ class ComparisonDialog(QWidget):
             )
         return "\n".join(lines)
 
+    def _plot_trial_angles(
+        self, ax: object, trial: dict, color: str, joint_labels: list[str]
+    ) -> None:
+        """Overlay joint-angle traces for one trial onto *ax*."""
+        r = trial["result"]
+        label = trial["name"]
+        for j in range(3):
+            ax.plot(  # type: ignore[attr-defined]
+                r.t,
+                np.degrees(r.q[:, j]),
+                color=color,
+                lw=1.5,
+                alpha=0.7,
+                label=f"{label} - {joint_labels[j]}" if j == 0 else None,
+                linestyle=["-", "--", ":"][j],
+            )
+
+    def _plot_trial_torques(self, ax: object, trial: dict, color: str) -> None:
+        """Overlay joint-torque traces for one trial onto *ax*."""
+        r = trial["result"]
+        label = trial["name"]
+        for j in range(3):
+            ax.plot(  # type: ignore[attr-defined]
+                r.t,
+                r.torques[:, j],
+                color=color,
+                lw=1.5,
+                alpha=0.7,
+                label=label if j == 0 else None,
+                linestyle=["-", "--", ":"][j],
+            )
+
+    def _plot_trial_com(self, ax: object, trial: dict, color: str) -> None:
+        """Overlay the COM path for one trial onto *ax*."""
+        r = trial["result"]
+        ax.plot(  # type: ignore[attr-defined]
+            r.com[:, 0],
+            r.com[:, 1],
+            color=color,
+            lw=2,
+            alpha=0.8,
+            label=trial["name"],
+        )
+
     def _draw_comparison_plots(self) -> None:
+        """Build the three-panel comparison figure (angles, torques, COM path)."""
         gs = self.fig.add_gridspec(1, 3, hspace=0.3, wspace=0.35)
         ax_angles = self.fig.add_subplot(gs[0, 0])
         ax_torques = self.fig.add_subplot(gs[0, 1])
@@ -93,62 +138,39 @@ class ComparisonDialog(QWidget):
         joint_labels = ["Ankle", "Knee", "Hip"]
 
         for i, trial in enumerate(self.trials):
-            r = trial["result"]
             color = self.TRIAL_COLORS[i % len(self.TRIAL_COLORS)]
-            label = trial["name"]
+            self._plot_trial_angles(ax_angles, trial, color, joint_labels)
+            self._plot_trial_torques(ax_torques, trial, color)
+            self._plot_trial_com(ax_com, trial, color)
 
-            # Joint angles (use first joint as representative)
-            for j in range(3):
-                ax_angles.plot(
-                    r.t,
-                    np.degrees(r.q[:, j]),
-                    color=color,
-                    lw=1.5,
-                    alpha=0.7,
-                    label=f"{label} - {joint_labels[j]}" if j == 0 else None,
-                    linestyle=["-", "--", ":"][j],
-                )
-
-            # Torques
-            for j in range(3):
-                ax_torques.plot(
-                    r.t,
-                    r.torques[:, j],
-                    color=color,
-                    lw=1.5,
-                    alpha=0.7,
-                    label=f"{label}" if j == 0 else None,
-                    linestyle=["-", "--", ":"][j],
-                )
-
-            # COM path
-            ax_com.plot(
-                r.com[:, 0],
-                r.com[:, 1],
-                color=color,
-                lw=2,
-                alpha=0.8,
-                label=label,
-            )
-
-        ax_angles.set_title("Joint Angles", color=Palette.FG, fontsize=9)
-        ax_angles.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
-        ax_angles.set_ylabel("Angle (deg)", color=Palette.FG_DIM, fontsize=8)
-        ax_angles.legend(fontsize=6, loc="best")
-
-        ax_torques.set_title("Joint Torques", color=Palette.FG, fontsize=9)
-        ax_torques.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
-        ax_torques.set_ylabel("Torque (Nm)", color=Palette.FG_DIM, fontsize=8)
-        ax_torques.legend(fontsize=6, loc="best")
-
-        ax_com.set_title("COM Path", color=Palette.FG, fontsize=9)
-        ax_com.set_xlabel("X (m)", color=Palette.FG_DIM, fontsize=8)
-        ax_com.set_ylabel("Y (m)", color=Palette.FG_DIM, fontsize=8)
-        ax_com.legend(fontsize=6, loc="best")
-        ax_com.set_aspect("equal", adjustable="datalim")
+        self._label_angles_axis(ax_angles)
+        self._label_torques_axis(ax_torques)
+        self._label_com_axis(ax_com)
 
         self.fig.tight_layout()
         self.canvas.draw()
+
+    def _label_angles_axis(self, ax: object) -> None:
+        """Apply titles and legend to the joint-angles subplot."""
+        ax.set_title("Joint Angles", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]
+        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
+        ax.set_ylabel("Angle (deg)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
+        ax.legend(fontsize=6, loc="best")  # type: ignore[attr-defined]
+
+    def _label_torques_axis(self, ax: object) -> None:
+        """Apply titles and legend to the joint-torques subplot."""
+        ax.set_title("Joint Torques", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]
+        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
+        ax.set_ylabel("Torque (Nm)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
+        ax.legend(fontsize=6, loc="best")  # type: ignore[attr-defined]
+
+    def _label_com_axis(self, ax: object) -> None:
+        """Apply titles, legend, and aspect ratio to the COM-path subplot."""
+        ax.set_title("COM Path", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]
+        ax.set_xlabel("X (m)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
+        ax.set_ylabel("Y (m)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
+        ax.legend(fontsize=6, loc="best")  # type: ignore[attr-defined]
+        ax.set_aspect("equal", adjustable="datalim")  # type: ignore[attr-defined]
 
 
 # ==============================================================

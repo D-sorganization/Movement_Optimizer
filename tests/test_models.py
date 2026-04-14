@@ -11,6 +11,7 @@ from movement_optimizer.constants import (
     PLATE_RADIUS_STD_M,
 )
 from movement_optimizer.models import BodyModel, LagrangianDynamics
+from movement_optimizer.models.lagrangian_dynamics import _scan_for_bracket, balance_pose
 
 
 class TestBodyModel:
@@ -358,3 +359,85 @@ class TestLegAbductionCorrection:
         com_0 = dyn_0.com_position(np.zeros(3), "squat", 0.0)
         com_30 = dyn_30.com_position(np.zeros(3), "squat", 0.0)
         assert com_30[1] < com_0[1]
+
+
+class TestScanForBracket:
+    """Unit tests for the _scan_for_bracket helper extracted from balance_pose."""
+
+    def test_finds_bracket_for_simple_linear(self) -> None:
+        """Linear f(x)=x crosses zero at x=0; scan should find a bracket."""
+        blo, bhi, _angles, _f_vals, found = _scan_for_bracket(lambda x: x, -1.0, 1.0)
+        assert found
+        assert blo <= 0.0 <= bhi
+
+    def test_returns_not_found_when_no_sign_change(self) -> None:
+        """All-positive function has no sign change."""
+        _, _, _, _, found = _scan_for_bracket(lambda x: x**2 + 1, -1.0, 1.0)
+        assert not found
+
+    def test_returns_original_bounds_when_not_found(self) -> None:
+        blo, bhi, _, _, found = _scan_for_bracket(lambda x: 1.0, 0.0, 2.0)
+        assert not found
+        assert blo == pytest.approx(0.0)
+        assert bhi == pytest.approx(2.0)
+
+    def test_bracket_narrows_range(self) -> None:
+        """The returned bracket should be a sub-interval of [lo, hi]."""
+        blo, bhi, _, _, found = _scan_for_bracket(lambda x: x - 0.5, 0.0, 1.0)
+        assert found
+        # bracket must be a strict subset of [0, 1]
+        assert blo >= 0.0
+        assert bhi <= 1.0
+        assert bhi - blo < 1.0
+
+    def test_angles_array_has_n_scan_plus_1_points(self) -> None:
+        _, _, angles, _, _ = _scan_for_bracket(lambda x: x, -1.0, 1.0, n_scan=10)
+        assert len(angles) == 11
+
+
+class TestNumpyInverseDynamicsBatch:
+    """Tests for the extracted _numpy_inverse_dynamics_batch helper."""
+
+    def test_matches_loop_inverse_dynamics(self, squat_dynamics) -> None:
+        """_numpy_inverse_dynamics_batch must match per-row inverse_dynamics calls."""
+        dyn, qs, _, _ = squat_dynamics
+        rng = np.random.default_rng(0)
+        n = 8
+        q = np.tile(qs, (n, 1)) + rng.normal(0, 0.05, (n, 3))
+        qd = rng.normal(0, 0.5, (n, 3))
+        qdd = rng.normal(0, 1.0, (n, 3))
+        expected = np.array([dyn.inverse_dynamics(q[i], qd[i], qdd[i]) for i in range(n)])
+        result = dyn._numpy_inverse_dynamics_batch(q, qd, qdd)
+        np.testing.assert_allclose(result, expected, rtol=1e-10)
+
+    def test_output_shape(self, squat_dynamics) -> None:
+        dyn, qs, _, _ = squat_dynamics
+        n = 5
+        q = np.tile(qs, (n, 1))
+        qd = np.zeros((n, 3))
+        qdd = np.zeros((n, 3))
+        tau = dyn._numpy_inverse_dynamics_batch(q, qd, qdd)
+        assert tau.shape == (n, 3)
+
+
+class TestBalancePose:
+    """Tests for balance_pose (uses _scan_for_bracket internally)."""
+
+    def test_returns_length_3_array(self, squat_dynamics) -> None:
+        dyn, qs, _, _ = squat_dynamics
+        q_balanced = balance_pose(dyn, qs, "squat", 60.0)
+        assert q_balanced.shape == (3,)
+
+    def test_com_near_inner_center(self, squat_dynamics) -> None:
+        """balance_pose should place COM at or near body.inner_center."""
+        dyn, qs, _, _ = squat_dynamics
+        q_balanced = balance_pose(dyn, qs, "squat", 60.0, adjust_joint=2)
+        com_x = dyn.com_position(q_balanced, "squat", 60.0)[0]
+        assert abs(com_x - dyn.body.inner_center) < 0.03  # within 3 cm
+
+    def test_only_adjust_joint_changes(self, squat_dynamics) -> None:
+        """All joints except adjust_joint should remain at q_init values."""
+        dyn, qs, _, _ = squat_dynamics
+        q_balanced = balance_pose(dyn, qs, "squat", 60.0, adjust_joint=1)
+        assert q_balanced[0] == pytest.approx(qs[0])
+        assert q_balanced[2] == pytest.approx(qs[2])

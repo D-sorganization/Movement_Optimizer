@@ -213,15 +213,14 @@ class LagrangianDynamics(PhysicsBackend):
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
         return self.mass_matrix(q) @ qdd + self._coriolis_vector(q, qd) + self._gravity_vector(q)
 
-    def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-        """Vectorised batch torques for all timesteps.
+    def _try_rust_inverse_dynamics_batch(
+        self, q: NDArray, qd: NDArray, qdd: NDArray
+    ) -> NDArray | None:
+        """Attempt to compute batch inverse dynamics via the Rust accelerator.
 
-        Parameters:
-            q, qd, qdd: shape (N, 3)
-        Returns:
-            torques: shape (N, 3)
+        Returns the result array on success, or ``None`` if the extension is
+        unavailable (ImportError).
         """
-        # Try Rust accelerator first
         try:
             from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001
 
@@ -243,7 +242,16 @@ class LagrangianDynamics(PhysicsBackend):
             logger.debug(
                 "Rust accelerator unavailable; falling back to NumPy batch inverse dynamics"
             )
+            return None
 
+    def _numpy_inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
+        """Pure-NumPy vectorised inverse dynamics for all timesteps.
+
+        Parameters:
+            q, qd, qdd: shape (N, 3)
+        Returns:
+            torques: shape (N, 3)
+        """
         n = q.shape[0]
         # Supine (bench press): gravity perpendicular to chain → cos(q)
         sq = np.cos(q) if self.supine else np.sin(q)
@@ -251,11 +259,11 @@ class LagrangianDynamics(PhysicsBackend):
         d02 = q[:, 0] - q[:, 2]
         d12 = q[:, 1] - q[:, 2]
 
-        c01 = np.cos(d01)
-        c02 = np.cos(d02)
-        c12 = np.cos(d12)
+        c01, c02, c12 = np.cos(d01), np.cos(d02), np.cos(d12)
+        s01, s02, s12 = np.sin(d01), np.sin(d02), np.sin(d12)
 
         tau = np.empty((n, 3))
+        # Inertia (M * qdd) terms
         tau[:, 0] = (
             self._M00 * qdd[:, 0] + self._a01 * c01 * qdd[:, 1] + self._a02 * c02 * qdd[:, 2]
         )
@@ -265,20 +273,28 @@ class LagrangianDynamics(PhysicsBackend):
         tau[:, 2] = (
             self._a02 * c02 * qdd[:, 0] + self._a12 * c12 * qdd[:, 1] + self._M22 * qdd[:, 2]
         )
-
-        s01 = np.sin(d01)
-        s02 = np.sin(d02)
-        s12 = np.sin(d12)
-
+        # Coriolis / centrifugal terms
         tau[:, 0] += self._a01 * s01 * qd[:, 1] ** 2 + self._a02 * s02 * qd[:, 2] ** 2
         tau[:, 1] += -self._a01 * s01 * qd[:, 0] ** 2 + self._a12 * s12 * qd[:, 2] ** 2
         tau[:, 2] += -self._a02 * s02 * qd[:, 0] ** 2 - self._a12 * s12 * qd[:, 1] ** 2
-
+        # Gravity terms
         tau[:, 0] += self._g0 * sq[:, 0]
         tau[:, 1] += self._g1 * sq[:, 1]
         tau[:, 2] += self._g2 * sq[:, 2]
-
         return tau
+
+    def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
+        """Vectorised batch torques for all timesteps.
+
+        Parameters:
+            q, qd, qdd: shape (N, 3)
+        Returns:
+            torques: shape (N, 3)
+        """
+        result = self._try_rust_inverse_dynamics_batch(q, qd, qdd)
+        if result is not None:
+            return result
+        return self._numpy_inverse_dynamics_batch(q, qd, qdd)
 
     def com_x_batch(
         self,
@@ -392,6 +408,30 @@ class LagrangianDynamics(PhysicsBackend):
         return numerator / total_mass
 
 
+def _scan_for_bracket(
+    residual_fn: object,
+    lo: float,
+    hi: float,
+    n_scan: int = 20,
+) -> tuple[float, float, NDArray, NDArray, bool]:
+    """Scan a range for the first sign change in *residual_fn*.
+
+    Returns (bracket_lo, bracket_hi, angles, f_vals, found).
+    When no sign change is found, bracket_lo/hi are the original lo/hi
+    and found is False.
+
+    Preconditions:
+        lo < hi
+        n_scan >= 2
+    """
+    angles = np.linspace(lo, hi, n_scan + 1)
+    f_vals = np.array([residual_fn(a) for a in angles])  # type: ignore[operator]
+    for k in range(n_scan):
+        if f_vals[k] * f_vals[k + 1] <= 0:
+            return angles[k], angles[k + 1], angles, f_vals, True
+    return lo, hi, angles, f_vals, False
+
+
 def balance_pose(
     dyn: LagrangianDynamics,
     q_init: NDArray,
@@ -413,10 +453,6 @@ def balance_pose(
 
     body = dyn.body
     target_x = body.inner_center
-    # Use actual joint limits from JOINT_LIMITS for the bracket bounds
-    # instead of hardcoded values.  For non-monotonic residuals (e.g. hip
-    # in a deep squat), scan the bracket to find the first sign change so
-    # brentq converges to the nearest root.
     joint_names = ("ankle", "knee", "hip")
     lo, hi = JOINT_LIMITS[joint_names[adjust_joint]]
 
@@ -425,23 +461,9 @@ def balance_pose(
         q[adjust_joint] = angle
         return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x
 
-    # Scan for the first sign change within the bracket.  The residual
-    # may be non-monotonic (e.g. hip COM_x peaks mid-range then falls),
-    # so a full-bracket brentq can miss roots.  We subdivide into steps
-    # and use the first sub-interval that contains a sign change, which
-    # yields the smallest-magnitude solution closest to the lower limit.
-    n_scan = 20
-    angles = np.linspace(lo, hi, n_scan + 1)
-    f_vals = np.array([residual(a) for a in angles])
-    bracket_lo, bracket_hi = lo, hi
-    found_bracket = False
-    for k in range(n_scan):
-        if f_vals[k] * f_vals[k + 1] <= 0:
-            bracket_lo, bracket_hi = angles[k], angles[k + 1]
-            found_bracket = True
-            break
+    bracket_lo, bracket_hi, angles, f_vals, found = _scan_for_bracket(residual, lo, hi)
 
-    if not found_bracket:
+    if not found:
         # No root in the joint range -- pick the angle with smallest residual
         best_idx = int(np.argmin(np.abs(f_vals)))
         q = q_init.copy()

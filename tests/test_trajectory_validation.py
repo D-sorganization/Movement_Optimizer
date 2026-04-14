@@ -1,7 +1,8 @@
 """Tests for trajectory validation concerns.
 
 Covers: solution cache, bar-knee clearance constraint activation,
-and OptimizationResult joint-limit violation tracking.
+OptimizationResult joint-limit violation tracking, and the
+decomposed _check_com_feasibility / _count_joint_limit_violations helpers.
 """
 
 from __future__ import annotations
@@ -223,3 +224,75 @@ class TestJointLimitViolationTracking:
         _FakeRes.x = x
         result = opt._package_results(_FakeRes)
         assert result.n_joint_limit_violations > 0
+
+
+# ==============================================================
+# Decomposed validation helpers
+# ==============================================================
+
+
+class TestCheckComFeasibility:
+    """Unit tests for the extracted _check_com_feasibility helper."""
+
+    def _make_squat_opt(self) -> TrajectoryOptimizer:
+        body = BodyModel(75.0, 1.75)
+        dyn, qs, qe, qb = make_squat_config(body, 60.0)
+        return TrajectoryOptimizer(
+            body, dyn, "squat", 60.0, qs, qe, qb, n_waypoints=6, n_eval=20, n_starts=1
+        )
+
+    def test_bench_press_always_in_bounds(self) -> None:
+        body = BodyModel(75.0, 1.75)
+        dyn, qs, qe, qb, _ = make_bench_press_config(body, 60.0)
+        opt = TrajectoryOptimizer(
+            body, dyn, "bench_press", 60.0, qs, qe, qb, n_waypoints=6, n_eval=20, n_starts=1
+        )
+        # bench_press ignores COM; should always return True
+        com_x = np.zeros(20)  # COM doesn't matter
+        assert opt._check_com_feasibility(True, com_x) is True
+        assert opt._check_com_feasibility(False, com_x) is True
+
+    def test_com_within_bounds_returns_true(self) -> None:
+        opt = self._make_squat_opt()
+        # All COM values at inner_center (definitely in bounds)
+        com_x = np.full(20, opt.inner_center)
+        assert opt._check_com_feasibility(True, com_x) is True
+
+    def test_com_outside_bounds_returns_false(self) -> None:
+        opt = self._make_squat_opt()
+        # COM well outside inner toe (forward)
+        com_x = np.full(20, opt.inner_toe + 0.5)
+        assert opt._check_com_feasibility(True, com_x) is False
+
+    def test_cost_not_finite_does_not_warn_on_out_of_bounds(self) -> None:
+        opt = self._make_squat_opt()
+        # When cost is not finite, warning should not fire (infeasible anyway)
+        com_x = np.full(20, opt.inner_toe + 0.5)
+        # Should return False but not raise
+        result = opt._check_com_feasibility(False, com_x)
+        assert result is False
+
+
+class TestCountJointLimitViolations:
+    """Unit tests for the extracted _count_joint_limit_violations helper."""
+
+    def _make_opt_with_bounds(self) -> TrajectoryOptimizer:
+        body = BodyModel(75.0, 1.75)
+        dyn, qs, qe, qb = make_squat_config(body, 60.0)
+        return TrajectoryOptimizer(
+            body, dyn, "squat", 60.0, qs, qe, qb, n_waypoints=6, n_eval=20, n_starts=1
+        )
+
+    def test_zero_violations_for_in_bounds_trajectory(self) -> None:
+        opt = self._make_opt_with_bounds()
+        # Build q that stays exactly at midpoints of bounds
+        mid = (opt.q_bounds[:, 0] + opt.q_bounds[:, 1]) / 2
+        q = np.tile(mid, (10, 1))
+        assert opt._count_joint_limit_violations(q) == 0
+
+    def test_counts_violations_for_out_of_bounds(self) -> None:
+        opt = self._make_opt_with_bounds()
+        upper = opt.q_bounds[:, 1]
+        q = np.tile(upper * 2.0, (10, 1))  # all points violate upper bound
+        n_violations = opt._count_joint_limit_violations(q)
+        assert n_violations > 0

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 from typing import Any, ClassVar
@@ -14,9 +15,95 @@ from movement_optimizer import cli
 from movement_optimizer.cli import (
     _build_parser,
     _emit_cli_summary,
+    _resolve_exercise_duration,
     _result_to_full_dict,
     _result_to_summary,
+    _validate_args,
+    _write_output,
 )
+
+
+class TestValidateArgs:
+    """Unit tests for the extracted _validate_args helper."""
+
+    def _parse(self, extra_args: list[str]) -> argparse.Namespace:
+        return _build_parser().parse_args(["--exercise", "squat", *extra_args])
+
+    def test_valid_args_no_error(self):
+        parser = _build_parser()
+        args = self._parse([])
+        _validate_args(parser, args)  # should not raise
+
+    def test_negative_body_mass_exits(self):
+        parser = _build_parser()
+        args = self._parse(["--body-mass", "-1"])
+        with pytest.raises(SystemExit):
+            _validate_args(parser, args)
+
+    def test_zero_height_exits(self):
+        parser = _build_parser()
+        args = self._parse(["--height", "0"])
+        with pytest.raises(SystemExit):
+            _validate_args(parser, args)
+
+    def test_negative_bar_mass_exits(self):
+        parser = _build_parser()
+        args = self._parse(["--bar-mass", "-5"])
+        with pytest.raises(SystemExit):
+            _validate_args(parser, args)
+
+    def test_zero_duration_exits(self):
+        parser = _build_parser()
+        args = self._parse(["--duration", "0"])
+        with pytest.raises(SystemExit):
+            _validate_args(parser, args)
+
+
+class TestResolveExerciseDuration:
+    """Unit tests for the extracted _resolve_exercise_duration helper."""
+
+    def test_squat_uses_requested_duration(self):
+        assert _resolve_exercise_duration("squat", 2.0) == pytest.approx(2.0)
+
+    def test_full_squat_enforces_minimum(self):
+        assert _resolve_exercise_duration("full_squat", 1.0) == pytest.approx(3.0)
+
+    def test_full_squat_keeps_longer_duration(self):
+        assert _resolve_exercise_duration("full_squat", 5.0) == pytest.approx(5.0)
+
+    def test_snatch_enforces_minimum(self):
+        assert _resolve_exercise_duration("snatch", 1.5) == pytest.approx(3.0)
+
+    def test_clean_enforces_minimum(self):
+        assert _resolve_exercise_duration("clean", 0.5) == pytest.approx(2.0)
+
+    def test_jerk_enforces_minimum(self):
+        assert _resolve_exercise_duration("jerk", 1.0) == pytest.approx(2.0)
+
+    def test_jerk_keeps_longer_duration(self):
+        assert _resolve_exercise_duration("jerk", 4.0) == pytest.approx(4.0)
+
+    def test_deadlift_no_minimum_enforced(self):
+        assert _resolve_exercise_duration("deadlift", 1.5) == pytest.approx(1.5)
+
+
+class TestWriteOutput:
+    """Unit tests for the extracted _write_output helper."""
+
+    def test_writes_json_file(self, tmp_path: Path):
+        result = make_test_result(cost=9.9)
+        out_file = tmp_path / "out.json"
+        _write_output(result, "squat", str(out_file))
+        data = json.loads(out_file.read_text())
+        assert data["exercise"] == "squat"
+        assert data["cost"] == pytest.approx(9.9)
+
+    def test_emits_summary_when_no_output_path(self, monkeypatch: pytest.MonkeyPatch):
+        result = make_test_result(cost=5.0)
+        captured: list[dict] = []
+        monkeypatch.setattr(cli, "_emit_cli_summary", lambda s: captured.append(s))
+        _write_output(result, "deadlift", None)
+        assert captured[0]["exercise"] == "deadlift"
 
 
 class TestCLIParser:
