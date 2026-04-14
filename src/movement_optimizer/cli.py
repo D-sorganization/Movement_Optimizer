@@ -39,22 +39,8 @@ EXERCISE_FACTORIES = {
 }
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser for the CLI.
-
-    Returns:
-        Configured ArgumentParser instance with all CLI flags registered.
-    """
-    parser = argparse.ArgumentParser(
-        prog="movement-optimizer-cli",
-        description="Headless batch optimization for barbell exercises.",
-    )
-    parser.add_argument(
-        "--exercise",
-        choices=list(EXERCISE_FACTORIES.keys()),
-        required=True,
-        help="Exercise type to optimize.",
-    )
+def _add_body_args(parser: argparse.ArgumentParser) -> None:
+    """Register anthropometric and load arguments on *parser*."""
     parser.add_argument(
         "--body-mass",
         type=float,
@@ -73,6 +59,10 @@ def _build_parser() -> argparse.ArgumentParser:
         default=60.0,
         help="Barbell mass in kg (default: 60.0).",
     )
+
+
+def _add_run_args(parser: argparse.ArgumentParser) -> None:
+    """Register optimisation and output arguments on *parser*."""
     parser.add_argument(
         "--duration",
         type=float,
@@ -91,11 +81,23 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to save results as JSON. If omitted, prints summary to stdout.",
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging.",
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging.")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build and return the fully configured CLI argument parser."""
+    parser = argparse.ArgumentParser(
+        prog="movement-optimizer-cli",
+        description="Headless batch optimization for barbell exercises.",
     )
+    parser.add_argument(
+        "--exercise",
+        choices=list(EXERCISE_FACTORIES.keys()),
+        required=True,
+        help="Exercise type to optimize.",
+    )
+    _add_body_args(parser)
+    _add_run_args(parser)
     return parser
 
 
@@ -183,6 +185,28 @@ def _resolve_duration(exercise: str, requested: float) -> float:
     return requested
 
 
+def _unpack_exercise_config(config: tuple) -> tuple:
+    """Unpack a 4- or 5-tuple factory config into ``(dyn, qs, qe, qb, q_via)``.
+
+    Exercise factories return either a 4-tuple ``(dyn, qs, qe, qb)`` for
+    single-phase lifts or a 5-tuple ``(dyn, qs, qe, qb, q_via)`` for
+    multi-phase ones.  The ``q_via`` field is ``None`` when absent.
+
+    Args:
+        config: Raw tuple returned by an exercise factory.
+
+    Returns:
+        5-tuple ``(dyn, q_start, q_end, q_bounds, q_via)`` where ``q_via``
+        may be ``None``.
+    """
+    if len(config) == 5:
+        dyn, qs, qe, qb, q_via = config
+    else:
+        dyn, qs, qe, qb = config
+        q_via = None
+    return dyn, qs, qe, qb, q_via
+
+
 def _build_optimizer(
     body: BodyModel,
     exercise: str,
@@ -190,27 +214,13 @@ def _build_optimizer(
     duration: float,
     smoothness: float,
 ) -> tuple[TrajectoryOptimizer, object]:
-    """Construct the TrajectoryOptimizer from an exercise factory config.
+    """Construct the TrajectoryOptimizer for *exercise*.
 
-    Args:
-        body: Anthropometric body model.
-        exercise: Exercise key from EXERCISE_FACTORIES.
-        bar_mass: Barbell mass in kg.
-        duration: Movement duration in seconds.
-        smoothness: Smoothness regularisation weight.
-
-    Returns:
-        Tuple of (optimizer, dynamics_object).
+    Returns a ``(optimizer, dynamics)`` pair ready for ``opt.optimize()``.
     """
     factory = EXERCISE_FACTORIES[exercise]
     config = factory(body, bar_mass)
-
-    if len(config) == 5:
-        dyn, qs, qe, qb, q_via = config
-    else:
-        dyn, qs, qe, qb = config
-        q_via = None
-
+    dyn, qs, qe, qb, q_via = _unpack_exercise_config(config)
     opt = TrajectoryOptimizer(
         body,
         dyn,  # type: ignore[arg-type]
@@ -243,6 +253,49 @@ def _save_or_emit(result: OptimizationResult, exercise: str, output: str | None)
         _emit_cli_summary(_result_to_summary(result, exercise))
 
 
+def _validate_cli_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """DbC: reject invalid numeric CLI arguments via parser.error.
+
+    Preconditions:
+        args.body_mass > 0
+        args.height > 0
+        args.bar_mass >= 0
+        args.duration > 0
+    """
+    if args.body_mass <= 0:
+        parser.error(f"--body-mass must be positive, got {args.body_mass}")
+    if args.height <= 0:
+        parser.error(f"--height must be positive, got {args.height}")
+    if args.bar_mass < 0:
+        parser.error(f"--bar-mass must be non-negative, got {args.bar_mass}")
+    if args.duration <= 0:
+        parser.error(f"--duration must be positive, got {args.duration}")
+
+
+def _log_optimization_start(
+    exercise: str, body_mass: float, height: float, bar_mass: float, duration: float
+) -> None:
+    """Log a human-readable summary of the optimization parameters."""
+    logger.info(
+        "Optimizing %s: body=%.0fkg, height=%.2fm, bar=%.0fkg, dur=%.1fs",
+        exercise,
+        body_mass,
+        height,
+        bar_mass,
+        duration,
+    )
+
+
+def _log_optimization_done(elapsed: float, cost: float, success: bool) -> None:
+    """Log a summary of the completed optimization."""
+    logger.info(
+        "Optimization completed in %.1fs (cost=%.2f, success=%s)",
+        elapsed,
+        cost,
+        success,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run CLI optimization.
 
@@ -254,43 +307,15 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = _build_parser()
     args = parser.parse_args(argv)
-
-    # DbC: validate numeric CLI arguments
-    if args.body_mass <= 0:
-        parser.error(f"--body-mass must be positive, got {args.body_mass}")
-    if args.height <= 0:
-        parser.error(f"--height must be positive, got {args.height}")
-    if args.bar_mass < 0:
-        parser.error(f"--bar-mass must be non-negative, got {args.bar_mass}")
-    if args.duration <= 0:
-        parser.error(f"--duration must be positive, got {args.duration}")
-
+    _validate_cli_args(parser, args)
     _configure_logging(args.verbose)
-
     body = BodyModel(body_mass=args.body_mass, height=args.height)
     duration = _resolve_duration(args.exercise, args.duration)
-
-    logger.info(
-        "Optimizing %s: body=%.0fkg, height=%.2fm, bar=%.0fkg, dur=%.1fs",
-        args.exercise,
-        args.body_mass,
-        args.height,
-        args.bar_mass,
-        duration,
-    )
-
+    _log_optimization_start(args.exercise, args.body_mass, args.height, args.bar_mass, duration)
     t_start = time.perf_counter()
     opt, _dyn = _build_optimizer(body, args.exercise, args.bar_mass, duration, args.smoothness)
     result = opt.optimize()
-    elapsed = time.perf_counter() - t_start
-
-    logger.info(
-        "Optimization completed in %.1fs (cost=%.2f, success=%s)",
-        elapsed,
-        result.cost,
-        result.success,
-    )
-
+    _log_optimization_done(time.perf_counter() - t_start, result.cost, result.success)
     _save_or_emit(result, args.exercise, args.output)
     return 0 if result.success else 1
 

@@ -109,7 +109,7 @@ class TrajectoryOptimizer:
         if self.q_via is not None:
             n_ctrl += 1
         self.t_ctrl = np.linspace(0, self.duration, n_ctrl)
-        self.t_eval = np.linspace(0, self.duration, self.n_eval)
+        self.t_eval = np.linspace(0, self.duration, self.n_eval, dtype=np.float64)
 
     def build_splines(self, x: NDArray) -> list[CubicSpline]:
         """Build cubic splines from the flat optimisation vector *x*."""
@@ -286,10 +286,31 @@ class TrajectoryOptimizer:
         )
         return self._package_results(best_res, elapsed, total_evals)
 
+    def _check_solution_feasibility(
+        self, res: object, q: NDArray, com_x: NDArray
+    ) -> tuple[bool, int]:
+        """Assess cost finiteness, COM bounds, and joint-limit violations.
+
+        Args:
+            res: SciPy OptimizeResult (provides ``res.fun``).
+            q: Joint-angle trajectory, shape (N, 3).
+            com_x: Horizontal COM trajectory, shape (N,).
+
+        Returns:
+            ``(success, n_joint_limit_violations)``
+        """
+        cost_val = float(res.fun)  # type: ignore[attr-defined]
+        cost_finite = cost_val < float("inf") and not np.isnan(cost_val)
+        com_in_bounds = check_com_feasibility(
+            cost_finite, com_x, self.exercise_type, self.inner_heel, self.inner_toe
+        )
+        n_viol = count_joint_limit_violations(q, self.q_bounds)
+        return cost_finite and com_in_bounds, n_viol
+
     def _package_results(
         self, res: object, elapsed: float = 0.0, n_evals: int = 0
     ) -> OptimizationResult:
-        """Thin orchestrator: evaluate, validate, then build the final result."""
+        """Evaluate trajectories, assess feasibility, and build the result."""
         q, qd, qdd, torques, power, com_traj, bar_traj, com_x = evaluate_solution(
             res,
             self.dynamics,
@@ -298,12 +319,7 @@ class TrajectoryOptimizer:
             self.build_splines,
             self.eval_trajectory,
         )
-        cost_val = float(res.fun)  # type: ignore[attr-defined]
-        cost_finite = cost_val < float("inf") and not np.isnan(cost_val)
-        com_in_bounds = check_com_feasibility(
-            cost_finite, com_x, self.exercise_type, self.inner_heel, self.inner_toe
-        )
-        n_viol = count_joint_limit_violations(q, self.q_bounds)
+        success, n_viol = self._check_solution_feasibility(res, q, com_x)
         return build_result_object(
             t_eval=self.t_eval,
             res=res,
@@ -315,7 +331,7 @@ class TrajectoryOptimizer:
             com_traj=com_traj,
             bar_traj=bar_traj,
             com_x=com_x,
-            success=cost_finite and com_in_bounds,
+            success=success,
             n_joint_limit_violations=n_viol,
             elapsed=elapsed,
             n_evals=n_evals or self._progress.iteration_count,

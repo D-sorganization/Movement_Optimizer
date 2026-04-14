@@ -11,7 +11,7 @@
 | License | MIT |
 | Package Name | `movement-optimizer` |
 | Current Version | `1.0.0` |
-| Spec Version | `1.0.7` |
+| Spec Version | `1.0.8` |
 | Last Spec Update | 2026-04-14 |
 
 ## 2. Purpose
