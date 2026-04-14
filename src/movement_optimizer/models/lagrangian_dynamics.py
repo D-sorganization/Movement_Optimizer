@@ -213,6 +213,77 @@ class LagrangianDynamics(PhysicsBackend):
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
         return self.mass_matrix(q) @ qdd + self._coriolis_vector(q, qd) + self._gravity_vector(q)
 
+    def _batch_inertia_torques(
+        self,
+        qdd: NDArray,
+        c01: NDArray,
+        c02: NDArray,
+        c12: NDArray,
+    ) -> NDArray:
+        """Compute the inertia (mass-matrix) contribution to batch torques.
+
+        Parameters:
+            qdd:  Angular accelerations, shape (N, 3).
+            c01:  cos(q[:,0] - q[:,1]), shape (N,).
+            c02:  cos(q[:,0] - q[:,2]), shape (N,).
+            c12:  cos(q[:,1] - q[:,2]), shape (N,).
+        Returns:
+            Inertia torque contribution, shape (N, 3).
+        """
+        n = qdd.shape[0]
+        tau = np.empty((n, 3))
+        tau[:, 0] = (
+            self._M00 * qdd[:, 0] + self._a01 * c01 * qdd[:, 1] + self._a02 * c02 * qdd[:, 2]
+        )
+        tau[:, 1] = (
+            self._a01 * c01 * qdd[:, 0] + self._M11 * qdd[:, 1] + self._a12 * c12 * qdd[:, 2]
+        )
+        tau[:, 2] = (
+            self._a02 * c02 * qdd[:, 0] + self._a12 * c12 * qdd[:, 1] + self._M22 * qdd[:, 2]
+        )
+        return tau
+
+    def _batch_coriolis_torques(
+        self,
+        qd: NDArray,
+        s01: NDArray,
+        s02: NDArray,
+        s12: NDArray,
+    ) -> NDArray:
+        """Compute the centrifugal/Coriolis contribution to batch torques.
+
+        Parameters:
+            qd:  Angular velocities, shape (N, 3).
+            s01: sin(q[:,0] - q[:,1]), shape (N,).
+            s02: sin(q[:,0] - q[:,2]), shape (N,).
+            s12: sin(q[:,1] - q[:,2]), shape (N,).
+        Returns:
+            Coriolis torque contribution, shape (N, 3).
+        """
+        n = qd.shape[0]
+        tau = np.zeros((n, 3))
+        tau[:, 0] = self._a01 * s01 * qd[:, 1] ** 2 + self._a02 * s02 * qd[:, 2] ** 2
+        tau[:, 1] = -self._a01 * s01 * qd[:, 0] ** 2 + self._a12 * s12 * qd[:, 2] ** 2
+        tau[:, 2] = -self._a02 * s02 * qd[:, 0] ** 2 - self._a12 * s12 * qd[:, 1] ** 2
+        return tau
+
+    def _batch_gravity_torques(self, q: NDArray) -> NDArray:
+        """Compute the gravity contribution to batch torques.
+
+        Parameters:
+            q: Joint angles, shape (N, 3).
+        Returns:
+            Gravity torque contribution, shape (N, 3).
+        """
+        # Supine (bench press): gravity perpendicular to chain → cos(q)
+        sq = np.cos(q) if self.supine else np.sin(q)
+        n = q.shape[0]
+        tau = np.zeros((n, 3))
+        tau[:, 0] = self._g0 * sq[:, 0]
+        tau[:, 1] = self._g1 * sq[:, 1]
+        tau[:, 2] = self._g2 * sq[:, 2]
+        return tau
+
     def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
         """Vectorised batch torques for all timesteps.
 
@@ -244,40 +315,15 @@ class LagrangianDynamics(PhysicsBackend):
                 "Rust accelerator unavailable; falling back to NumPy batch inverse dynamics"
             )
 
-        n = q.shape[0]
-        # Supine (bench press): gravity perpendicular to chain → cos(q)
-        sq = np.cos(q) if self.supine else np.sin(q)
         d01 = q[:, 0] - q[:, 1]
         d02 = q[:, 0] - q[:, 2]
         d12 = q[:, 1] - q[:, 2]
 
-        c01 = np.cos(d01)
-        c02 = np.cos(d02)
-        c12 = np.cos(d12)
-
-        tau = np.empty((n, 3))
-        tau[:, 0] = (
-            self._M00 * qdd[:, 0] + self._a01 * c01 * qdd[:, 1] + self._a02 * c02 * qdd[:, 2]
+        tau = (
+            self._batch_inertia_torques(qdd, np.cos(d01), np.cos(d02), np.cos(d12))
+            + self._batch_coriolis_torques(qd, np.sin(d01), np.sin(d02), np.sin(d12))
+            + self._batch_gravity_torques(q)
         )
-        tau[:, 1] = (
-            self._a01 * c01 * qdd[:, 0] + self._M11 * qdd[:, 1] + self._a12 * c12 * qdd[:, 2]
-        )
-        tau[:, 2] = (
-            self._a02 * c02 * qdd[:, 0] + self._a12 * c12 * qdd[:, 1] + self._M22 * qdd[:, 2]
-        )
-
-        s01 = np.sin(d01)
-        s02 = np.sin(d02)
-        s12 = np.sin(d12)
-
-        tau[:, 0] += self._a01 * s01 * qd[:, 1] ** 2 + self._a02 * s02 * qd[:, 2] ** 2
-        tau[:, 1] += -self._a01 * s01 * qd[:, 0] ** 2 + self._a12 * s12 * qd[:, 2] ** 2
-        tau[:, 2] += -self._a02 * s02 * qd[:, 0] ** 2 - self._a12 * s12 * qd[:, 1] ** 2
-
-        tau[:, 0] += self._g0 * sq[:, 0]
-        tau[:, 1] += self._g1 * sq[:, 1]
-        tau[:, 2] += self._g2 * sq[:, 2]
-
         return tau
 
     def com_x_batch(

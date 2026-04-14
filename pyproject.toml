@@ -57,7 +57,7 @@ known-first-party = ["movement_optimizer"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "tests"]
-addopts = "-v --tb=short --no-xvfb"
+addopts = "-v --tb=short"
 
 [tool.mypy]
 ignore_missing_imports = true
