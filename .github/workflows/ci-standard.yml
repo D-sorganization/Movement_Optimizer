@@ -79,7 +79,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run Tests
-        run: pytest tests/ -v --tb=short --cov=movement_optimizer --cov-report=xml --cov-fail-under=53
+        run: python -m pytest tests/ -v --tb=short --no-xvfb --cov=movement_optimizer --cov-report=xml --cov-fail-under=53
 
       - name: Upload Coverage
         if: matrix.python-version == '3.12'
