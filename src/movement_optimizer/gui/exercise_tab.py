@@ -38,6 +38,50 @@ class ExerciseTab(QWidget):
 
         self._create_axes()
 
+    def _build_grid_axes(self, gs: GridSpec) -> dict:
+        """Allocate all subplot axes from a pre-built GridSpec.
+
+        Args:
+            gs: 3-row x 4-col GridSpec already attached to ``self.fig``.
+
+        Returns:
+            Dict mapping axis names to Matplotlib Axes objects.
+        """
+        axes = {
+            "anim": self.fig.add_subplot(gs[0, 0:3]),
+            "com_path": self.fig.add_subplot(gs[0, 3]),
+            "angles": self.fig.add_subplot(gs[1, 0]),
+            "torques": self.fig.add_subplot(gs[1, 1]),
+            "power": self.fig.add_subplot(gs[1, 2]),
+            "com_time": self.fig.add_subplot(gs[1, 3]),
+            "spine_comp": self.fig.add_subplot(gs[2, 0:2]),
+            "spine_shear": self.fig.add_subplot(gs[2, 2:4]),
+        }
+        for ax in axes.values():
+            style_axis(ax)
+        return axes
+
+    def _configure_anim_axis(self, ax: object) -> None:
+        """Set aspect, limits, and placeholder text on the animation axis.
+
+        Args:
+            ax: The animation Matplotlib Axes to configure.
+        """
+        ax.set_aspect("equal", adjustable="datalim")  # type: ignore[attr-defined]
+        ax.set_xlim(-0.9, 0.9)  # type: ignore[attr-defined]
+        ax.set_ylim(-0.15, 1.8)  # type: ignore[attr-defined]
+        ax.text(  # type: ignore[attr-defined]
+            0.5,
+            0.5,
+            "Click Optimize to begin",
+            ha="center",
+            va="center",
+            fontsize=13,
+            color=Palette.FG_DIM,
+            style="italic",
+            transform=ax.transAxes,  # type: ignore[attr-defined]
+        )
+
     def _create_axes(self) -> None:
         gs = GridSpec(
             3,
@@ -51,33 +95,8 @@ class ExerciseTab(QWidget):
             top=0.93,
             bottom=0.06,
         )
-        self.axes = {
-            "anim": self.fig.add_subplot(gs[0, 0:3]),
-            "com_path": self.fig.add_subplot(gs[0, 3]),
-            "angles": self.fig.add_subplot(gs[1, 0]),
-            "torques": self.fig.add_subplot(gs[1, 1]),
-            "power": self.fig.add_subplot(gs[1, 2]),
-            "com_time": self.fig.add_subplot(gs[1, 3]),
-            "spine_comp": self.fig.add_subplot(gs[2, 0:2]),
-            "spine_shear": self.fig.add_subplot(gs[2, 2:4]),
-        }
-        for ax in self.axes.values():
-            style_axis(ax)
-
-        self.axes["anim"].set_aspect("equal", adjustable="datalim")
-        self.axes["anim"].set_xlim(-0.9, 0.9)
-        self.axes["anim"].set_ylim(-0.15, 1.8)
-        self.axes["anim"].text(
-            0.5,
-            0.5,
-            "Click Optimize to begin",
-            ha="center",
-            va="center",
-            fontsize=13,
-            color=Palette.FG_DIM,
-            style="italic",
-            transform=self.axes["anim"].transAxes,
-        )
+        self.axes = self._build_grid_axes(gs)
+        self._configure_anim_axis(self.axes["anim"])
         self.fig.suptitle(
             f"{self.name} Optimization",
             color=Palette.FG,
@@ -85,6 +104,28 @@ class ExerciseTab(QWidget):
             fontweight="bold",
         )
         self.canvas.draw()
+
+    def _render_analysis_plots(
+        self,
+        result: OptimizationResult,
+        body: BodyModel,
+        bar_mass: float,
+        labels: list[str],
+    ) -> None:
+        """Delegate all per-panel plot calls to plot_renderer."""
+        plot_renderer.plot_angles(self.axes["angles"], result, labels)
+        plot_renderer.plot_torques(self.axes["torques"], result, labels)
+        plot_renderer.plot_power(self.axes["power"], result, labels)
+        plot_renderer.plot_com_path(self.axes["com_path"], result, body)
+        plot_renderer.plot_com_balance(self.axes["com_time"], result, body)
+        plot_renderer.plot_spine_loads(
+            self.axes["spine_comp"],
+            self.axes["spine_shear"],
+            result,
+            body,
+            bar_mass,
+            self.name,
+        )
 
     def draw_all_plots(
         self,
@@ -97,19 +138,8 @@ class ExerciseTab(QWidget):
             if k != "anim":
                 self.axes[k].clear()
                 style_axis(self.axes[k])
-
-        is_bench = exercise_type == "bench_press"
-        labels = Palette.BENCH_LABELS if is_bench else Palette.SEG_LABELS
-
-        plot_renderer.plot_angles(self.axes["angles"], result, labels)
-        plot_renderer.plot_torques(self.axes["torques"], result, labels)
-        plot_renderer.plot_power(self.axes["power"], result, labels)
-        plot_renderer.plot_com_path(self.axes["com_path"], result, body)
-        plot_renderer.plot_com_balance(self.axes["com_time"], result, body)
-        plot_renderer.plot_spine_loads(
-            self.axes["spine_comp"], self.axes["spine_shear"], result, body, bar_mass, self.name
-        )
-
+        labels = Palette.BENCH_LABELS if exercise_type == "bench_press" else Palette.SEG_LABELS
+        self._render_analysis_plots(result, body, bar_mass, labels)
         self.fig.suptitle(
             f"{self.name}  |  {body.body_mass:.0f} kg body, {bar_mass:.0f} kg barbell",
             color=Palette.FG,

@@ -285,15 +285,33 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         tau[:, 2] = self._g2 * sq[:, 2]
         return tau
 
-    def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-        """Vectorised batch torques for all timesteps.
+    def _numpy_inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
+        """NumPy fallback for batch inverse dynamics (no Rust extension).
 
         Parameters:
             q, qd, qdd: shape (N, 3)
         Returns:
             torques: shape (N, 3)
         """
-        # Try Rust accelerator first
+        d01 = q[:, 0] - q[:, 1]
+        d02 = q[:, 0] - q[:, 2]
+        d12 = q[:, 1] - q[:, 2]
+        return (
+            self._batch_inertia_torques(qdd, np.cos(d01), np.cos(d02), np.cos(d12))
+            + self._batch_coriolis_torques(qd, np.sin(d01), np.sin(d02), np.sin(d12))
+            + self._batch_gravity_torques(q)
+        )
+
+    def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
+        """Vectorised batch torques for all timesteps.
+
+        Attempts the Rust accelerator first; falls back to NumPy.
+
+        Parameters:
+            q, qd, qdd: shape (N, 3)
+        Returns:
+            torques: shape (N, 3)
+        """
         try:
             from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001
 
@@ -315,17 +333,7 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
             logger.debug(
                 "Rust accelerator unavailable; falling back to NumPy batch inverse dynamics"
             )
-
-        d01 = q[:, 0] - q[:, 1]
-        d02 = q[:, 0] - q[:, 2]
-        d12 = q[:, 1] - q[:, 2]
-
-        tau = (
-            self._batch_inertia_torques(qdd, np.cos(d01), np.cos(d02), np.cos(d12))
-            + self._batch_coriolis_torques(qd, np.sin(d01), np.sin(d02), np.sin(d12))
-            + self._batch_gravity_torques(q)
-        )
-        return tau
+        return self._numpy_inverse_dynamics_batch(q, qd, qdd)
 
 
 # Kinematic methods (com_x_batch, forward_kinematics, bar_position,
