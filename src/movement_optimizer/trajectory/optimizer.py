@@ -109,7 +109,7 @@ class TrajectoryOptimizer:
         if self.q_via is not None:
             n_ctrl += 1
         self.t_ctrl = np.linspace(0, self.duration, n_ctrl)
-        self.t_eval = np.linspace(0, self.duration, self.n_eval)
+        self.t_eval = np.linspace(0, self.duration, self.n_eval, dtype=np.float64)
 
     def build_splines(self, x: NDArray) -> list[CubicSpline]:
         """Build cubic splines from the flat optimisation vector *x*."""

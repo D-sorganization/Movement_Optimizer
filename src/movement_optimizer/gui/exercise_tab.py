@@ -110,7 +110,7 @@ class ExerciseTab(QWidget):
         result: OptimizationResult,
         body: BodyModel,
         bar_mass: float,
-        labels: list[str],
+        labels: tuple[str, ...],
     ) -> None:
         """Delegate all per-panel plot calls to plot_renderer."""
         plot_renderer.plot_angles(self.axes["angles"], result, labels)
