@@ -1,6 +1,8 @@
 """Lagrangian inverse dynamics for a 3-link planar chain.
 
-Contains ``LagrangianDynamics`` and the ``balance_pose`` helper.
+Contains ``LagrangianDynamics``.  Balance utilities (``balance_pose``,
+``_standing_balanced``) live in ``lagrangian_balance`` and are re-exported
+here for backward compatibility.
 """
 
 from __future__ import annotations
@@ -11,21 +13,20 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..backend import PhysicsBackend
-from ..constants import (
-    JOINT_LIMITS,
-    STANDING_DEG,
-)
 from .body_model import BodyModel, ChainGeometry
+from .lagrangian_balance import _standing_balanced, balance_pose
+from .lagrangian_kinematics import LagrangianKinematicsMixin
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
     "LagrangianDynamics",
+    "_standing_balanced",
     "balance_pose",
 ]
 
 
-class LagrangianDynamics(PhysicsBackend):
+class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
     """Analytical inverse dynamics for a 3-link planar chain.
 
     Computes M(q)*qdd + C(q,qd) + G(q) = tau analytically.
@@ -326,184 +327,8 @@ class LagrangianDynamics(PhysicsBackend):
         )
         return tau
 
-    def com_x_batch(
-        self,
-        q: NDArray,
-        exercise_type: str = "squat",
-        bar_mass: float = 0.0,
-    ) -> NDArray:
-        """Vectorised batch COM x-coordinate.
 
-        Parameters:
-            q: shape (N, 3)
-        Returns:
-            com_x: shape (N,)
-        """
-        b = self.body
-        sq = np.sin(q)
-        L = self.L_eff
-        d = self.d_eff
-
-        knee_x = L[0] * sq[:, 0]
-        hip_x = knee_x + L[1] * sq[:, 1]
-        shoulder_x = hip_x + L[2] * sq[:, 2]
-
-        c1x = d[0] * sq[:, 0]
-        c2x = knee_x + d[1] * sq[:, 1]
-        c3x = hip_x + d[2] * sq[:, 2]
-
-        total_mass = b.body_mass + bar_mass
-        numerator = b.m_feet * b.foot_com_x + self.m[0] * c1x + self.m[1] * c2x + self.m[2] * c3x
-
-        if exercise_type in ("squat", "full_squat"):
-            if hasattr(b, "squat_bar_depth") and (
-                b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0
-            ):
-                bar_x = (
-                    shoulder_x - b.squat_bar_height * sq[:, 2] - b.squat_bar_depth * np.cos(q[:, 2])
-                )
-            else:
-                bar_x = shoulder_x
-            numerator += bar_mass * bar_x
-        else:
-            numerator += b.m_arms * shoulder_x + bar_mass * shoulder_x
-
-        return numerator / total_mass
-
-    def forward_kinematics(self, q: NDArray) -> dict[str, NDArray]:
-        L = self.L_eff
-        names = self.joint_names
-        p0 = np.array([0.0, 0.0])
-        p1 = p0 + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        p2 = p1 + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        p3 = p2 + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
-        return {names[0]: p0, names[1]: p1, names[2]: p2, names[3]: p3}
-
-    def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
-        fk = self.forward_kinematics(q)
-        s = fk["shoulder"]
-        if exercise_type in ("squat", "full_squat"):
-            b = self.body
-            if hasattr(b, "squat_bar_depth") and (
-                b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0
-            ):
-                u_down = np.array([-np.sin(q[2]), -np.cos(q[2])])
-                u_back = np.array([-np.cos(q[2]), np.sin(q[2])])
-                return s + b.squat_bar_height * u_down + b.squat_bar_depth * u_back
-            return s.copy()
-        if exercise_type == "deadlift":
-            # Bar hangs from hands: arm-length below shoulder
-            return np.array([s[0], s[1] - self.body.L_arm])
-        if exercise_type in ("clean", "clean_and_jerk"):
-            # Front rack: bar sits at shoulder height
-            return s.copy()
-        if exercise_type in ("snatch", "jerk"):
-            # Overhead: bar is arm-length above shoulder
-            return np.array([s[0], s[1] + self.body.L_arm])
-        return s.copy()
-
-    def com_position(
-        self,
-        q: NDArray,
-        exercise_type: str = "squat",
-        bar_mass: float = 0.0,
-    ) -> NDArray:
-        from ..constants import COM_FRAC
-
-        b = self.body
-        L = self.L_eff
-        d = self.d_eff
-        ankle = np.array([0.0, 0.0])
-        c1 = ankle + d[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        knee = ankle + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        c2 = knee + d[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        hip = knee + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        c3 = hip + d[2] * np.array([np.sin(q[2]), np.cos(q[2])])
-        shoulder = hip + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
-
-        foot_com = np.array([b.foot_com_x, b.foot_com_y])
-        total_mass = b.body_mass + bar_mass
-
-        numerator = b.m_feet * foot_com + self.m[0] * c1 + self.m[1] * c2 + self.m[2] * c3
-
-        if exercise_type in ("squat", "full_squat"):
-            numerator += bar_mass * self.bar_position(q, exercise_type)
-        else:
-            bar_pos = self.bar_position(q, exercise_type)
-            # Arm vector from shoulder to bar
-            arm_vec = bar_pos - shoulder
-            arm_com = shoulder + COM_FRAC["arm"] * arm_vec
-            numerator += b.m_arms * arm_com + bar_mass * bar_pos
-
-        return numerator / total_mass
-
-
-def balance_pose(
-    dyn: LagrangianDynamics,
-    q_init: NDArray,
-    exercise_type: str,
-    bar_mass: float,
-    adjust_joint: int = 2,
-) -> NDArray:
-    """Adjust one joint angle so the COM lands at the inner BOS center.
-
-    Solves for the angle of ``adjust_joint`` (default: torso) that places
-    the whole-body COM_x at ``body.inner_center``.  Uses bisection on the
-    COM_x function — guaranteed to converge within joint bounds.
-
-    Preconditions:
-        adjust_joint in {0, 1, 2}
-        q_init is length-3
-    """
-    from scipy.optimize import brentq
-
-    body = dyn.body
-    target_x = body.inner_center
-    # Use actual joint limits from JOINT_LIMITS for the bracket bounds
-    # instead of hardcoded values.  For non-monotonic residuals (e.g. hip
-    # in a deep squat), scan the bracket to find the first sign change so
-    # brentq converges to the nearest root.
-    joint_names = ("ankle", "knee", "hip")
-    lo, hi = JOINT_LIMITS[joint_names[adjust_joint]]
-
-    def residual(angle: float) -> float:
-        q = q_init.copy()
-        q[adjust_joint] = angle
-        return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x
-
-    # Scan for the first sign change within the bracket.  The residual
-    # may be non-monotonic (e.g. hip COM_x peaks mid-range then falls),
-    # so a full-bracket brentq can miss roots.  We subdivide into steps
-    # and use the first sub-interval that contains a sign change, which
-    # yields the smallest-magnitude solution closest to the lower limit.
-    n_scan = 20
-    angles = np.linspace(lo, hi, n_scan + 1)
-    f_vals = np.array([residual(a) for a in angles])
-    bracket_lo, bracket_hi = lo, hi
-    found_bracket = False
-    for k in range(n_scan):
-        if f_vals[k] * f_vals[k + 1] <= 0:
-            bracket_lo, bracket_hi = angles[k], angles[k + 1]
-            found_bracket = True
-            break
-
-    if not found_bracket:
-        # No root in the joint range -- pick the angle with smallest residual
-        best_idx = int(np.argmin(np.abs(f_vals)))
-        q = q_init.copy()
-        q[adjust_joint] = angles[best_idx]
-        return q
-
-    angle_opt = brentq(residual, bracket_lo, bracket_hi, xtol=1e-6)
-    q = q_init.copy()
-    q[adjust_joint] = angle_opt
-    return q
-
-
-def _standing_balanced(dyn: LagrangianDynamics, bar_mass: float, exercise_type: str) -> NDArray:
-    """Find a near-standing pose with COM at inner BOS center.
-
-    Adjusts shin angle (joint 0) to shift COM forward over mid-foot.
-    """
-    q_stand = np.array([np.radians(a) for a in STANDING_DEG])
-    return balance_pose(dyn, q_stand, exercise_type, bar_mass, adjust_joint=0)
+# Kinematic methods (com_x_batch, forward_kinematics, bar_position,
+# com_position) are inherited from LagrangianKinematicsMixin.
+# Balance helpers (balance_pose, _standing_balanced) are imported from
+# lagrangian_balance and re-exported via __all__ for backward compatibility.
