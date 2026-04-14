@@ -180,6 +180,27 @@ class TestHillTorqueModel:
         with pytest.raises(ValueError, match="angle_width"):
             HillTorqueModel(tau_max=100, q_optimal=0.0, angle_width=0)
 
+    @pytest.mark.parametrize(
+        ("name", "kwargs"),
+        [
+            ("tau_max", {"tau_max": float("nan")}),
+            ("tau_max", {"tau_max": float("inf")}),
+            ("q_optimal", {"q_optimal": float("nan")}),
+            ("angle_width", {"angle_width": float("inf")}),
+            ("v_max", {"v_max": float("nan")}),
+            ("k_shape", {"k_shape": float("inf")}),
+            ("ecc_factor", {"ecc_factor": float("nan")}),
+            ("max_ecc_ratio", {"max_ecc_ratio": float("inf")}),
+        ],
+    )
+    def test_non_finite_constructor_values_raise(
+        self, name: str, kwargs: dict[str, float]
+    ) -> None:
+        params = {"tau_max": 100.0, "q_optimal": 0.0}
+        params.update(kwargs)
+        with pytest.raises(ValueError, match=name):
+            HillTorqueModel(**params)
+
     def test_batch_angle_factor(self) -> None:
         """Torque-angle factor should vectorize correctly."""
         model = HillTorqueModel(tau_max=200.0, q_optimal=0.5)
@@ -226,6 +247,12 @@ class TestJointTorqueSet:
     def test_set_max_torque(self, default_torque_set: JointTorqueSet) -> None:
         default_torque_set.set_max_torque("knee", 300.0)
         assert default_torque_set.get_max_torque("knee") == 300.0
+
+    def test_set_max_torque_rejects_non_finite(
+        self, default_torque_set: JointTorqueSet
+    ) -> None:
+        with pytest.raises(ValueError, match="tau_max"):
+            default_torque_set.set_max_torque("knee", float("nan"))
 
     def test_set_invalid_joint_raises(self, default_torque_set: JointTorqueSet) -> None:
         with pytest.raises(ValueError, match="Unknown joint"):

@@ -20,6 +20,11 @@ from .constants import (
 )
 
 
+def _require_finite(name: str, value: float) -> None:
+    if not np.isfinite(value):
+        raise ValueError(f"{name} must be finite")
+
+
 class HillTorqueModel:
     """Hill-type torque-angle-velocity model for a joint."""
 
@@ -33,6 +38,16 @@ class HillTorqueModel:
         ecc_factor: float = HILL_ECCENTRIC_FACTOR,
         max_ecc_ratio: float = HILL_MAX_ECCENTRIC_RATIO,
     ) -> None:
+        for name, value in (
+            ("tau_max", tau_max),
+            ("q_optimal", q_optimal),
+            ("angle_width", angle_width),
+            ("v_max", v_max),
+            ("k_shape", k_shape),
+            ("ecc_factor", ecc_factor),
+            ("max_ecc_ratio", max_ecc_ratio),
+        ):
+            _require_finite(name, value)
         if tau_max <= 0:
             raise ValueError("tau_max must be positive")
         if angle_width <= 0:
@@ -115,6 +130,7 @@ class JointTorqueSet:
         """Update the maximum isometric torque for a joint."""
         if joint_name not in self._models:
             raise ValueError(f"Unknown joint: {joint_name}")
+        _require_finite("tau_max", tau_max)
         if tau_max <= 0:
             raise ValueError("tau_max must be positive")
         self._models[joint_name].tau_max = tau_max
