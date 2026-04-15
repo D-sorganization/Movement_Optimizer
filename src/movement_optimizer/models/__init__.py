@@ -39,6 +39,8 @@ from ..strength import (
 # continue to work without modification.
 from .bench_press_model import BenchPressModel as BenchPressModel
 from .bench_press_model import make_bench_press_config as make_bench_press_config
+from .bilateral_3d import Bilateral3DModel as Bilateral3DModel
+from .bilateral_3d import Bilateral3DPose as Bilateral3DPose
 from .body_model import BodyModel as BodyModel
 from .body_model import ChainGeometry as ChainGeometry
 from .body_model import clamp_joint_angles as clamp_joint_angles
@@ -51,6 +53,8 @@ from .lagrangian_dynamics import balance_pose as balance_pose
 
 __all__ = [
     "BenchPressModel",
+    "Bilateral3DModel",
+    "Bilateral3DPose",
     "BodyModel",
     "ChainGeometry",
     "HillTorqueModel",

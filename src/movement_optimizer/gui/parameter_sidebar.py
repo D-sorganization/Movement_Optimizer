@@ -113,7 +113,9 @@ class ParameterSidebar(QScrollArea):
         model_row.addWidget(QLabel("Model:"))
         self.model_combo = QComboBox()
         self.model_combo.addItems(["2D Sagittal", "3D Bilateral"])
-        # Disable 3D mode until forward kinematics is implemented
+        # 3D Bilateral: forward-kinematics only (MVP); optimisation still
+        # runs in the 2D sagittal model and the 3D pose is rendered for
+        # visualisation. See issue #225.
         idx_3d = self.model_combo.findText("3D Bilateral")
         if idx_3d >= 0:
             from PyQt6.QtGui import QStandardItemModel
@@ -122,8 +124,10 @@ class ParameterSidebar(QScrollArea):
             if isinstance(model, QStandardItemModel):
                 item = model.item(idx_3d)
                 if item is not None:
-                    item.setEnabled(False)
-                    item.setToolTip("3D mode not yet implemented")
+                    item.setToolTip(
+                        "3D Bilateral: renders the optimised 2D trajectory "
+                        "in a bilateral (two-leg) 3D pose."
+                    )
         model_row.addWidget(self.model_combo)
         lay.addLayout(model_row)
 
