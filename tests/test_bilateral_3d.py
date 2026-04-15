@@ -62,9 +62,7 @@ class TestTPose:
         assert fk["left_ankle"][2] == pytest.approx(0.0)
         assert fk["right_ankle"][2] == pytest.approx(0.0)
 
-    def test_t_pose_shoulder_height_equals_sum_of_segments(
-        self, model: Bilateral3DModel
-    ) -> None:
+    def test_t_pose_shoulder_height_equals_sum_of_segments(self, model: Bilateral3DModel) -> None:
         fk = model.forward_kinematics(model.t_pose())
         expected_height = model.L_shin + model.L_thigh + model.L_torso
         assert fk["shoulder"][2] == pytest.approx(expected_height)
@@ -86,9 +84,7 @@ class TestTPose:
 class TestKneeFlexion:
     """Flexing only the knee should produce a known-position check."""
 
-    def test_90deg_knee_flex_drops_hip_by_thigh_length(
-        self, model: Bilateral3DModel
-    ) -> None:
+    def test_90deg_knee_flex_drops_hip_by_thigh_length(self, model: Bilateral3DModel) -> None:
         # Flex the left knee 90deg forward: ankle stays, shin stays vertical,
         # thigh now horizontal (pointing +x).  So left_hip should be at
         # (L_thigh, +half_w, L_shin) -- the thigh rotated from "up" to "forward".
