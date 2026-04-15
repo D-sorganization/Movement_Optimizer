@@ -86,7 +86,7 @@ class Bilateral3DPose:
     torso: float
 
     @classmethod
-    def from_sagittal(cls, q: NDArray | tuple[float, float, float]) -> "Bilateral3DPose":
+    def from_sagittal(cls, q: NDArray | tuple[float, float, float]) -> Bilateral3DPose:
         """Build a symmetric pose from a 2D ``(ankle, knee, hip)`` vector.
 
         This is the canonical way to lift a 2D joint configuration into

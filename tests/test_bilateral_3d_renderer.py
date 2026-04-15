@@ -6,14 +6,14 @@ import matplotlib
 
 matplotlib.use("Agg")  # headless
 
-import matplotlib.pyplot as plt  # noqa: E402
-import pytest  # noqa: E402
+import matplotlib.pyplot as plt
+import pytest
 
-from movement_optimizer.gui.bilateral_3d_renderer import (  # noqa: E402
+from movement_optimizer.gui.bilateral_3d_renderer import (
     draw_bilateral_3d_pose,
     is_3d_axis,
 )
-from movement_optimizer.models import (  # noqa: E402
+from movement_optimizer.models import (
     Bilateral3DModel,
     Bilateral3DPose,
     BodyModel,
