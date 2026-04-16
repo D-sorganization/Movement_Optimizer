@@ -9,7 +9,6 @@ from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.interpolate import CubicSpline
 
 from ..backend import PhysicsBackend
 from ..constants import BENCH_BAR_PATH_WEIGHT
@@ -32,6 +31,8 @@ from .optimizer_packaging import (
 )
 from .optimizer_parallel import run_parallel_starts, select_best_result
 from .optimizer_progress import ProgressTracker, detect_stall
+from .optimizer_spline import build_splines as _build_splines_fn
+from .optimizer_spline import eval_trajectory as _eval_trajectory_fn
 from .result import CancelledError, OptimizationResult, ProgressReport
 from .tuning import (
     BALANCE_CENTER_WEIGHT,
@@ -111,27 +112,42 @@ class TrajectoryOptimizer:
         self.t_ctrl = np.linspace(0, self.duration, n_ctrl)
         self.t_eval = np.linspace(0, self.duration, self.n_eval, dtype=np.float64)
 
-    def build_splines(self, x: NDArray) -> list[CubicSpline]:
-        """Build cubic splines from the flat optimisation vector *x*."""
-        wp = x.reshape(self.n_waypoints, self.n_dof)
+    def build_splines(self, x: NDArray):  # type: ignore[override]
+        """Build cubic splines from the flat optimisation vector *x*.
 
-        if self.q_via is not None:
-            n_half = self.n_waypoints // 2
-            q_all = np.vstack([self.q_start, wp[:n_half], self.q_via, wp[n_half:], self.q_end])
-        else:
-            q_all = np.vstack([self.q_start, wp, self.q_end])
+        Delegates to :func:`optimizer_spline.build_splines`.
+        """
+        return _build_splines_fn(
+            x,
+            self.q_start,
+            self.q_end,
+            self.q_via,
+            self.t_ctrl,
+            self.n_waypoints,
+            self.n_dof,
+        )
 
-        return [CubicSpline(self.t_ctrl, q_all[:, j], bc_type="clamped") for j in range(self.n_dof)]
+    def eval_trajectory(self, splines) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+        """Evaluate position, velocity, acceleration, jerk at eval grid.
 
-    def eval_trajectory(
-        self, splines: list[CubicSpline]
-    ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
-        """Evaluate position, velocity, acceleration, jerk at eval grid."""
-        q = np.column_stack([s(self.t_eval) for s in splines])
-        qd = np.column_stack([s(self.t_eval, 1) for s in splines])
-        qdd = np.column_stack([s(self.t_eval, 2) for s in splines])
-        qddd = np.column_stack([s(self.t_eval, 3) for s in splines])
-        return q, qd, qdd, qddd
+        Delegates to :func:`optimizer_spline.eval_trajectory`.
+        """
+        return _eval_trajectory_fn(splines, self.t_eval)
+
+    def _compute_bench_bar_cost(self, q: NDArray) -> float:
+        """Penalise lateral bar-path deviation for bench press exercises.
+
+        Computes the horizontal hand position from the arm segment lengths and
+        joint angles, then returns a weighted integral of squared deviation.
+
+        Preconditions:
+            self.exercise_type == "bench_press"
+            self.dynamics.L is a sequence of segment lengths
+            q.shape[1] == self.n_dof
+        """
+        L = self.dynamics.L  # type: ignore[attr-defined]
+        hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
+        return BENCH_BAR_PATH_WEIGHT * float(np.sum(hand_x**2)) * self.dt
 
     def _compute_cost(self, x: NDArray) -> float:
         """Compute total cost without mutating instance state."""
@@ -152,9 +168,7 @@ class TrajectoryOptimizer:
         )
 
         if self.exercise_type == "bench_press":
-            L = self.dynamics.L  # type: ignore[attr-defined]
-            hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
-            total += BENCH_BAR_PATH_WEIGHT * float(np.sum(hand_x**2)) * self.dt
+            total += self._compute_bench_bar_cost(q)
         else:
             com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
             total += compute_balance_cost(

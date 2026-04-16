@@ -11,6 +11,8 @@ from .optimizer_guess import build_initial_guess as build_initial_guess
 from .optimizer_guess import build_perturbed_guess as build_perturbed_guess
 from .optimizer_progress import ProgressTracker as ProgressTracker
 from .optimizer_progress import detect_stall as detect_stall
+from .optimizer_spline import build_splines as build_splines
+from .optimizer_spline import eval_trajectory as eval_trajectory
 from .result import CancelledError as CancelledError
 from .result import OptimizationResult as OptimizationResult
 from .result import ProgressReport as ProgressReport
@@ -25,7 +27,9 @@ __all__ = [
     "build_bounds",
     "build_initial_guess",
     "build_perturbed_guess",
+    "build_splines",
     "detect_stall",
+    "eval_trajectory",
     "run_minimize",
     "run_single_start",
 ]
