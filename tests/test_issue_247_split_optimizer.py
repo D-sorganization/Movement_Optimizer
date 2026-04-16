@@ -15,7 +15,6 @@ from movement_optimizer.models import BodyModel, make_bench_press_config, make_s
 from movement_optimizer.trajectory import TrajectoryOptimizer
 from movement_optimizer.trajectory.optimizer_spline import build_splines, eval_trajectory
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -25,7 +24,7 @@ from movement_optimizer.trajectory.optimizer_spline import build_splines, eval_t
 def squat_spline_args():
     """Minimal squat configuration for spline tests."""
     body = BodyModel(75.0, 1.75)
-    dyn, qs, qe, qb = make_squat_config(body, 60.0)
+    _dyn, qs, qe, qb = make_squat_config(body, 60.0)
     n_waypoints = 6
     n_dof = qb.shape[0]
     n_ctrl = n_waypoints + 2
@@ -76,8 +75,13 @@ class TestBuildSplines:
     def test_returns_correct_number_of_splines(self, squat_spline_args) -> None:
         a = squat_spline_args
         splines = build_splines(
-            a["x"], a["q_start"], a["q_end"], a["q_via"],
-            a["t_ctrl"], a["n_waypoints"], a["n_dof"],
+            a["x"],
+            a["q_start"],
+            a["q_end"],
+            a["q_via"],
+            a["t_ctrl"],
+            a["n_waypoints"],
+            a["n_dof"],
         )
         assert len(splines) == a["n_dof"]
 
@@ -85,8 +89,13 @@ class TestBuildSplines:
         """Clamped spline must pass through start and end control points."""
         a = squat_spline_args
         splines = build_splines(
-            a["x"], a["q_start"], a["q_end"], a["q_via"],
-            a["t_ctrl"], a["n_waypoints"], a["n_dof"],
+            a["x"],
+            a["q_start"],
+            a["q_end"],
+            a["q_via"],
+            a["t_ctrl"],
+            a["n_waypoints"],
+            a["n_dof"],
         )
         t0 = a["t_ctrl"][0]
         tf = a["t_ctrl"][-1]
@@ -102,7 +111,8 @@ class TestBuildSplines:
         """Via-point variant must also honour boundary conditions."""
         body = BodyModel(75.0, 1.75)
         from movement_optimizer.models import make_full_squat_config
-        dyn, qs, qe, qb, q_via = make_full_squat_config(body, 60.0)
+
+        _dyn, qs, qe, qb, q_via = make_full_squat_config(body, 60.0)
         n_waypoints = 8
         n_dof = qb.shape[0]
         n_ctrl = n_waypoints + 3  # +1 for via
@@ -120,8 +130,13 @@ class TestBuildSplines:
         a = squat_spline_args
         x_zeros = np.zeros_like(a["x"])
         splines = build_splines(
-            x_zeros, a["q_start"], a["q_end"], a["q_via"],
-            a["t_ctrl"], a["n_waypoints"], a["n_dof"],
+            x_zeros,
+            a["q_start"],
+            a["q_end"],
+            a["q_via"],
+            a["t_ctrl"],
+            a["n_waypoints"],
+            a["n_dof"],
         )
         assert len(splines) == a["n_dof"]
 
@@ -135,8 +150,13 @@ class TestEvalTrajectory:
     def test_output_shapes(self, squat_spline_args) -> None:
         a = squat_spline_args
         splines = build_splines(
-            a["x"], a["q_start"], a["q_end"], a["q_via"],
-            a["t_ctrl"], a["n_waypoints"], a["n_dof"],
+            a["x"],
+            a["q_start"],
+            a["q_end"],
+            a["q_via"],
+            a["t_ctrl"],
+            a["n_waypoints"],
+            a["n_dof"],
         )
         q, qd, qdd, qddd = eval_trajectory(splines, a["t_eval"])
         n_eval = len(a["t_eval"])
@@ -149,8 +169,13 @@ class TestEvalTrajectory:
     def test_output_dtype_float64(self, squat_spline_args) -> None:
         a = squat_spline_args
         splines = build_splines(
-            a["x"], a["q_start"], a["q_end"], a["q_via"],
-            a["t_ctrl"], a["n_waypoints"], a["n_dof"],
+            a["x"],
+            a["q_start"],
+            a["q_end"],
+            a["q_via"],
+            a["t_ctrl"],
+            a["n_waypoints"],
+            a["n_dof"],
         )
         q, qd, qdd, qddd = eval_trajectory(splines, a["t_eval"])
         for arr in (q, qd, qdd, qddd):
@@ -159,18 +184,28 @@ class TestEvalTrajectory:
     def test_position_is_finite(self, squat_spline_args) -> None:
         a = squat_spline_args
         splines = build_splines(
-            a["x"], a["q_start"], a["q_end"], a["q_via"],
-            a["t_ctrl"], a["n_waypoints"], a["n_dof"],
+            a["x"],
+            a["q_start"],
+            a["q_end"],
+            a["q_via"],
+            a["t_ctrl"],
+            a["n_waypoints"],
+            a["n_dof"],
         )
-        q, qd, qdd, qddd = eval_trajectory(splines, a["t_eval"])
+        q, _qd, _qdd, _qddd = eval_trajectory(splines, a["t_eval"])
         assert np.all(np.isfinite(q)), "Position trajectory must be finite"
 
     def test_velocity_at_t0_near_zero_for_clamped(self, squat_spline_args) -> None:
         """Clamped spline has zero first derivative at endpoints."""
         a = squat_spline_args
         splines = build_splines(
-            a["x"], a["q_start"], a["q_end"], a["q_via"],
-            a["t_ctrl"], a["n_waypoints"], a["n_dof"],
+            a["x"],
+            a["q_start"],
+            a["q_end"],
+            a["q_via"],
+            a["t_ctrl"],
+            a["n_waypoints"],
+            a["n_dof"],
         )
         _, qd, _, _ = eval_trajectory(splines, a["t_eval"])
         # Clamped BC → velocity ≈ 0 at first eval point
@@ -227,21 +262,37 @@ class TestOptimizerUsesSplineModule:
         standalone build_splines function."""
         a = squat_spline_args
         body = BodyModel(75.0, 1.75)
-        dyn, qs, qe, qb = make_squat_config(body, 60.0)
+        _dyn, qs, qe, qb = make_squat_config(body, 60.0)
         opt = TrajectoryOptimizer(
-            body, dyn, "squat", 60.0, qs, qe, qb,
-            duration=2.0, n_waypoints=a["n_waypoints"], n_eval=20, n_starts=1,
+            body,
+            _dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=a["n_waypoints"],
+            n_eval=20,
+            n_starts=1,
         )
         wp = opt._initial_guess()
         splines_opt = opt.build_splines(wp.flatten())
         splines_direct = build_splines(
-            wp.flatten(), qs, qe, None,
-            opt.t_ctrl, opt.n_waypoints, opt.n_dof,
+            wp.flatten(),
+            qs,
+            qe,
+            None,
+            opt.t_ctrl,
+            opt.n_waypoints,
+            opt.n_dof,
         )
         t_test = np.linspace(0, 2.0, 15)
-        for j, (s_opt, s_direct) in enumerate(zip(splines_opt, splines_direct)):
+        for j, (s_opt, s_direct) in enumerate(zip(splines_opt, splines_direct, strict=True)):
             np.testing.assert_allclose(
-                s_opt(t_test), s_direct(t_test), rtol=1e-12,
+                s_opt(t_test),
+                s_direct(t_test),
+                rtol=1e-12,
                 err_msg=f"DOF {j}: TrajectoryOptimizer.build_splines diverges from standalone",
             )
 
@@ -249,10 +300,19 @@ class TestOptimizerUsesSplineModule:
         """TrajectoryOptimizer.eval_trajectory must match standalone eval_trajectory."""
         a = squat_spline_args
         body = BodyModel(75.0, 1.75)
-        dyn, qs, qe, qb = make_squat_config(body, 60.0)
+        _dyn, qs, qe, qb = make_squat_config(body, 60.0)
         opt = TrajectoryOptimizer(
-            body, dyn, "squat", 60.0, qs, qe, qb,
-            duration=2.0, n_waypoints=a["n_waypoints"], n_eval=20, n_starts=1,
+            body,
+            _dyn,
+            "squat",
+            60.0,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=a["n_waypoints"],
+            n_eval=20,
+            n_starts=1,
         )
         wp = opt._initial_guess()
         splines = opt.build_splines(wp.flatten())
