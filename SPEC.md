@@ -11,8 +11,8 @@
 | License | MIT |
 | Package Name | `movement-optimizer` |
 | Current Version | `1.0.0` |
-| Spec Version | `1.0.8` |
-| Last Spec Update | 2026-04-14 |
+| Spec Version | `1.0.9` |
+| Last Spec Update | 2026-04-16 |
 
 ## 2. Purpose
 
@@ -130,6 +130,7 @@ mypy --ignore-missing-imports src/movement_optimizer/
 
 | Date | Version | Changes |
 | --- | --- | --- |
+| 2026-04-16 | 1.0.9 | Extracted spline-building responsibility from `TrajectoryOptimizer` into `optimizer_spline.py` (`build_splines`, `eval_trajectory`); extracted `_compute_bench_bar_cost` private helper from `_compute_cost`; exported new functions from `trajectory/__init__.py`; added 14 characterization/unit tests in `test_issue_247_split_optimizer.py` (#247). |
 | 2026-04-14 | 1.0.7 | Split `gui/widgets.py` (489 LOC) into three focused modules (`labelled_slider.py`, `parameter_sidebar.py`, `playback_controls.py`) and decomposed `models/lagrangian_dynamics.py` (463 LOC) by extracting `LagrangianKinematicsMixin` into `lagrangian_kinematics.py` and balance helpers into `lagrangian_balance.py`. Each resulting module is ≤300 LOC; `widgets.py` becomes a thin re-export shim (#218). |
 | 2026-04-14 | 1.0.6 | Added NaN/infinite input validation to `HillTorqueModel` constructor and key methods (`torque_angle_factor`, `torque_velocity_factor`, `available_torque`). All seven numeric constructor parameters are now checked with `math.isfinite`; NaN or infinite values raise `ValueError` immediately rather than propagating silently (#236). |
 | 2026-04-11 | 1.0.5 | Split `tests/test_trajectory.py` (678 LOC) into three focused modules — `test_trajectory_generation.py`, `test_trajectory_optimization.py`, and `test_trajectory_validation.py` — and promoted the `squat_optimizer` / `full_squat_optimizer` fixtures to `conftest.py` for shared reuse (#211). |
