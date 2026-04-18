@@ -1,0 +1,248 @@
+{
+  "repository": "Movement-Optimizer",
+  "assessment_date": "2026-04-17",
+  "run_at_utc": "2026-04-17T08:01:19.6221680Z",
+  "sync_status": "pull-blocked",
+  "sync_notes": "ff-only pull failed: fatal: couldn't find remote ref codex/an-assessment-2026-04-14",
+  "overall_grade": "C",
+  "overall_score": 77,
+  "category_grades": [
+    {
+      "id": "A",
+      "name": "Architecture and Boundaries",
+      "grade": "B",
+      "score": 82,
+      "evidence": [
+        "148 tracked first-party files",
+        "51 files under source-like directories"
+      ],
+      "notes": "Assesses source organization and boundary clarity from tracked first-party layout."
+    },
+    {
+      "id": "B",
+      "name": "Build and Dependency Management",
+      "grade": "B",
+      "score": 84,
+      "evidence": [
+        "Dockerfile",
+        "pyproject.toml",
+        "rust_core/pyproject.toml"
+      ],
+      "notes": "Assesses committed build, dependency, and tool configuration."
+    },
+    {
+      "id": "C",
+      "name": "Configuration and Environment Hygiene",
+      "grade": "C",
+      "score": 78,
+      "evidence": [
+        "Dockerfile",
+        "pyproject.toml",
+        "rust_core/pyproject.toml"
+      ],
+      "notes": "Checks whether runtime and developer configuration is explicit."
+    },
+    {
+      "id": "D",
+      "name": "Contracts, Types, and Domain Modeling",
+      "grade": "B",
+      "score": 82,
+      "evidence": [
+        "rust_core/src/lib.rs",
+        "scripts/movement_provider_manifest.py",
+        "src/movement_optimizer/config.py",
+        "src/movement_optimizer/constants.py",
+        "src/movement_optimizer/exercises/gait.py",
+        "src/movement_optimizer/exercises/sit_to_stand.py",
+        "src/movement_optimizer/export.py",
+        "src/movement_optimizer/gui/__init__.py",
+        "src/movement_optimizer/gui/animation_control.py",
+        "src/movement_optimizer/gui/file_operations.py"
+      ],
+      "notes": "Design by Contract evidence includes validation, assertions, typed models, explicit raised errors, and invariants."
+    },
+    {
+      "id": "E",
+      "name": "Reliability and Error Handling",
+      "grade": "C",
+      "score": 76,
+      "evidence": [
+        ".agent/skills/tests/SKILL.md",
+        ".claude/skills/tests/SKILL.md",
+        "docs/assessments/Assessment_C_Test_Coverage.md",
+        "tests/__init__.py",
+        "tests/conftest.py",
+        "rust_core/src/lib.rs",
+        "scripts/movement_provider_manifest.py",
+        "src/movement_optimizer/config.py",
+        "src/movement_optimizer/constants.py",
+        "src/movement_optimizer/exercises/gait.py"
+      ],
+      "notes": "Reliability is graded from test presence plus explicit validation/error-handling signals."
+    },
+    {
+      "id": "F",
+      "name": "Function, Module Size, and SRP",
+      "grade": "C",
+      "score": 70,
+      "evidence": [
+        "src/movement_optimizer/trajectory/optimizer.py (641 lines)"
+      ],
+      "notes": "Evaluates function size, script/module size, and single responsibility using static size signals."
+    },
+    {
+      "id": "G",
+      "name": "Testing and TDD Posture",
+      "grade": "B",
+      "score": 82,
+      "evidence": [
+        ".agent/skills/tests/SKILL.md",
+        ".claude/skills/tests/SKILL.md",
+        "docs/assessments/Assessment_C_Test_Coverage.md",
+        "tests/__init__.py",
+        "tests/conftest.py",
+        "tests/test_anim_renderer.py",
+        "tests/test_bench_press.py",
+        "tests/test_benchmarks.py",
+        "tests/test_cli.py",
+        "tests/test_comparison.py",
+        "tests/test_exercises.py",
+        "tests/test_export.py"
+      ],
+      "notes": "TDD history cannot be confirmed statically; grade reflects committed automated test posture."
+    },
+    {
+      "id": "H",
+      "name": "CI/CD and Automation",
+      "grade": "C",
+      "score": 78,
+      "evidence": [
+        ".github/workflows/Comment-to-Issue-Converter.yml",
+        ".github/workflows/Jules-Control-Tower.yml",
+        ".github/workflows/Jules-Issue-Resolver.yml",
+        ".github/workflows/Jules-PR-Compiler.yml",
+        ".github/workflows/ci-failure-digest.yml",
+        ".github/workflows/ci-standard.yml",
+        ".github/workflows/pr-auto-labeler.yml",
+        ".github/workflows/stale-cleanup.yml"
+      ],
+      "notes": "Checks for tracked CI/CD workflow files."
+    },
+    {
+      "id": "I",
+      "name": "Security and Secret Hygiene",
+      "grade": "B",
+      "score": 82,
+      "evidence": [],
+      "notes": "Secret scan is regex-based; findings require manual confirmation."
+    },
+    {
+      "id": "J",
+      "name": "Documentation and Onboarding",
+      "grade": "B",
+      "score": 82,
+      "evidence": [
+        ".agent/skills/lint/SKILL.md",
+        ".agent/skills/tests/SKILL.md",
+        ".agent/workflows/issues-10-sequential.md",
+        ".agent/workflows/issues-5-combined.md",
+        ".agent/workflows/lint.md",
+        ".agent/workflows/tests.md",
+        ".agent/workflows/update-issues.md",
+        ".claude/skills/lint/SKILL.md",
+        ".claude/skills/tests/SKILL.md",
+        ".gaai/project/contexts/rules/project.rules.md",
+        "AGENTS.md",
+        "CHANGELOG.md"
+      ],
+      "notes": "Checks docs, README, onboarding, and release documents."
+    },
+    {
+      "id": "K",
+      "name": "Maintainability, DRY, and Duplication",
+      "grade": "B",
+      "score": 80,
+      "evidence": [],
+      "notes": "DRY is assessed through duplicate filename clusters and TODO/FIXME density as static heuristics."
+    },
+    {
+      "id": "L",
+      "name": "API Surface and Law of Demeter",
+      "grade": "F",
+      "score": 58,
+      "evidence": [
+        "src/movement_optimizer/__init__.py",
+        "src/movement_optimizer/gui/animation_control.py",
+        "src/movement_optimizer/gui/comparison_mixin.py",
+        "src/movement_optimizer/gui/file_operations.py",
+        "src/movement_optimizer/gui/main_window.py",
+        "src/movement_optimizer/gui/optimization_mixin.py",
+        "src/movement_optimizer/gui/widgets.py"
+      ],
+      "notes": "Law of Demeter is approximated with deep member-chain hints; confirmed violations require semantic review."
+    },
+    {
+      "id": "M",
+      "name": "Observability and Operability",
+      "grade": "C",
+      "score": 74,
+      "evidence": [
+        "docs/assessments/Assessment_L_Logging.md"
+      ],
+      "notes": "Checks for logging, metrics, monitoring, and operational artifacts."
+    },
+    {
+      "id": "N",
+      "name": "Governance, Licensing, and Release Hygiene",
+      "grade": "C",
+      "score": 74,
+      "evidence": [
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "docs/assessments/Assessment_F_Security.md"
+      ],
+      "notes": "Checks ownership, release, contribution, security, and license metadata."
+    }
+  ],
+  "key_risks": [
+    "Large modules/scripts reduce maintainability and SRP clarity.",
+    "Deep member-chain usage may indicate Law of Demeter pressure points."
+  ],
+  "recommendations": [
+    "Split the largest modules by responsibility and add characterization tests before refactoring.",
+    "Review deep member chains and introduce boundary methods where object graph traversal leaks across modules."
+  ],
+  "issue_candidates": [
+    {
+      "title": "Split oversized modules by responsibility",
+      "severity": "medium",
+      "problem": "Oversized files found: src/movement_optimizer/trajectory/optimizer.py (641 lines)",
+      "evidence": "Category F lists files over 500 lines or coarse long-definition signals.",
+      "impact": "Large modules obscure ownership, complicate review, and weaken SRP.",
+      "fix": "Add characterization tests, then split cohesive responsibilities into smaller modules.",
+      "acceptance": "Largest files are reduced or justified; extracted modules have focused tests.",
+      "refs": "SRP, function size, module size, maintainability"
+    },
+    {
+      "title": "Review deep object traversal hotspots",
+      "severity": "medium",
+      "problem": "Deep member-chain hints found in: src/movement_optimizer/__init__.py; src/movement_optimizer/gui/animation_control.py; src/movement_optimizer/gui/comparison_mixin.py; src/movement_optimizer/gui/file_operations.py; src/movement_optimizer/gui/main_window.py; src/movement_optimizer/gui/optimization_mixin.py; src/movement_optimizer/gui/widgets.py",
+      "evidence": "Category L found repeated chains with three or more member hops.",
+      "impact": "Law of Demeter pressure can make APIs brittle and increase coupling.",
+      "fix": "Review hotspots and introduce boundary methods or DTOs where callers traverse object graphs.",
+      "acceptance": "Hotspots are documented, simplified, or justified; tests cover any API boundary changes.",
+      "refs": "Law of Demeter, SRP, maintainability"
+    }
+  ],
+  "coverage": {
+    "tracked_files": 148,
+    "code_files": 78,
+    "test_files": 28,
+    "ci_files": 8,
+    "config_files": 3,
+    "docs_files": 44,
+    "exclusions": "cache/build/vendor/virtualenv/temp/generated output directories excluded",
+    "static_limits": "TDD workflow history and confirmed Law of Demeter semantics require deeper review."
+  }
+}
