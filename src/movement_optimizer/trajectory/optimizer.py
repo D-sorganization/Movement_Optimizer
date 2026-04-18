@@ -9,6 +9,7 @@ from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.interpolate import CubicSpline
 
 from ..backend import PhysicsBackend
 from ..constants import BENCH_BAR_PATH_WEIGHT
@@ -127,7 +128,9 @@ class TrajectoryOptimizer:
             self.n_dof,
         )
 
-    def eval_trajectory(self, splines) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+    def eval_trajectory(
+        self, splines: list[CubicSpline]
+    ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
         """Evaluate position, velocity, acceleration, jerk at eval grid.
 
         Delegates to :func:`optimizer_spline.eval_trajectory`.
