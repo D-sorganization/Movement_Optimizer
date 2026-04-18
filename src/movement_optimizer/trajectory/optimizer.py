@@ -9,6 +9,7 @@ from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.interpolate import CubicSpline
 
 from ..backend import PhysicsBackend
 from ..constants import BENCH_BAR_PATH_WEIGHT
@@ -112,7 +113,7 @@ class TrajectoryOptimizer:
         self.t_ctrl = np.linspace(0, self.duration, n_ctrl)
         self.t_eval = np.linspace(0, self.duration, self.n_eval, dtype=np.float64)
 
-    def build_splines(self, x: NDArray):  # type: ignore[override]
+    def build_splines(self, x: NDArray) -> list[CubicSpline]:
         """Build cubic splines from the flat optimisation vector *x*.
 
         Delegates to :func:`optimizer_spline.build_splines`.
@@ -127,7 +128,9 @@ class TrajectoryOptimizer:
             self.n_dof,
         )
 
-    def eval_trajectory(self, splines) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+    def eval_trajectory(
+        self, splines: list[CubicSpline]
+    ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
         """Evaluate position, velocity, acceleration, jerk at eval grid.
 
         Delegates to :func:`optimizer_spline.eval_trajectory`.
