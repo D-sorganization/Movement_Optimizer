@@ -6,7 +6,7 @@ on:
     paths-ignore: ["docs/**", "LICENSE", ".gitignore"]
   pull_request:
     types: [opened, synchronize, reopened]
-    paths-ignore: ["docs/**", "LICENSE", ".gitignore"]
+    paths-ignore: ["LICENSE", ".gitignore"]
   workflow_dispatch:
 
 concurrency:
