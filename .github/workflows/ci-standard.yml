@@ -50,7 +50,7 @@ jobs:
         run: mypy --ignore-missing-imports src/movement_optimizer/
 
       - name: Security Scan (bandit)
-        run: bandit -r src/movement_optimizer/ -ll -ii
+        run: python -m bandit -r src/movement_optimizer/ -ll -ii
 
       - name: Security Audit (pip-audit)
         run: |
