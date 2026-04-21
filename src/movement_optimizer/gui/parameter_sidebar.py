@@ -367,3 +367,64 @@ class ParameterSidebar(QScrollArea):
         self.bar_height_slider.set_value(0.0)
         self.dur_slider.set_value(2.0)
         self.smooth_slider.set_value(1.0)
+
+    # ------------------------------------------------------------------
+    # Façade methods — encapsulate widget-chain access so callers do not
+    # need to traverse into individual child widgets (issue #263 — Law of
+    # Demeter / deep object traversal).
+    # ------------------------------------------------------------------
+
+    def get_optimization_params(self) -> tuple[float, float, float]:
+        """Return ``(bar_kg, duration_s, smoothness)`` from the current slider state."""
+        return (
+            self.bar_slider.value(),
+            self.dur_slider.value(),
+            self.smooth_slider.value(),
+        )
+
+    def get_segment_multipliers(self) -> dict[str, float]:
+        """Return the segment-length multiplier dict from the current slider state."""
+        return {
+            "lower_leg": self.ll_slider.value(),
+            "upper_leg": self.ul_slider.value(),
+            "torso": self.to_slider.value(),
+        }
+
+    def set_progress_done(self, elapsed_str: str, n_evals: int) -> None:
+        """Mark the progress bar as complete and update the label."""
+        self.progress.setValue(100)
+        self.prog_label.setText(f"Done in {elapsed_str} ({n_evals} evals)")
+
+    def set_cancelled(self) -> None:
+        """Update UI to the cancelled state."""
+        self.prog_label.setText("Cancelled")
+        self.cancel_btn.setEnabled(True)
+
+    def set_stall_message(self, msg: str) -> None:
+        """Show *msg* in the stall label."""
+        self.stall_label.setText(msg)
+        self.stall_label.setVisible(True)
+
+    def clear_stall_message(self) -> None:
+        """Hide the stall label."""
+        self.stall_label.setVisible(False)
+
+    def set_result_label(self, text: str) -> None:
+        """Set the result summary text."""
+        self.result_label.setText(text)
+
+    def enable_post_run_buttons(self) -> None:
+        """Enable export/save/compare buttons after a successful run."""
+        self.export_btn.setEnabled(True)
+        self.save_btn.setEnabled(True)
+        self.export_video_btn.setEnabled(True)
+        self.export_plots_btn.setEnabled(True)
+        self.add_compare_btn.setEnabled(True)
+
+    def get_body_params_dict(self) -> dict[str, object]:
+        """Return the current body parameter dict suitable for JSON serialisation."""
+        return {
+            "body_mass": self.mass_slider.value(),
+            "height": self.height_slider.value(),
+            "seg_multipliers": self.get_segment_multipliers(),
+        }

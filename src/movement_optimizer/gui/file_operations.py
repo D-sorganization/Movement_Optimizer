@@ -60,17 +60,9 @@ class FileOperationsMixin:
         if not path:
             return
         try:
-            body_params = {
-                "body_mass": self.sidebar.mass_slider.value(),
-                "height": self.sidebar.height_slider.value(),
-                "seg_multipliers": {
-                    "lower_leg": self.sidebar.ll_slider.value(),
-                    "upper_leg": self.sidebar.ul_slider.value(),
-                    "torso": self.sidebar.to_slider.value(),
-                },
-            }
+            body_params = self.sidebar.get_body_params_dict()
             _, etype = self.EXERCISE_CONFIGS[idx]
-            bar = self.sidebar.bar_slider.value()
+            bar, _dur, _smooth = self.sidebar.get_optimization_params()
             save_solution(path, r, body_params, etype, bar)
             self.status_label.setText(f"Saved: {os.path.basename(path)}")
         except (OSError, TypeError, ValueError) as e:
