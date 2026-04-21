@@ -19,10 +19,21 @@ class PlaybackControls(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
 
         self.btn_rewind = QPushButton("\u23ee")
+        self.btn_rewind.setToolTip("Rewind to start")
+        self.btn_rewind.setAccessibleName("Rewind to start")
+
         self.btn_back = QPushButton("\u25c0")
+        self.btn_back.setToolTip("Step backward one frame")
+        self.btn_back.setAccessibleName("Step backward")
+
         self.btn_play = QPushButton("\u25b6 Play")
         self.btn_play.setProperty("class", "primary")
+        self.btn_play.setToolTip("Play animation")
+        self.btn_play.setAccessibleName("Play animation")
+
         self.btn_fwd = QPushButton("\u25b6")
+        self.btn_fwd.setToolTip("Step forward one frame")
+        self.btn_fwd.setAccessibleName("Step forward")
 
         self.btn_rewind.clicked.connect(self.rewind.emit)
         self.btn_back.clicked.connect(self.step_back.emit)
@@ -51,4 +62,11 @@ class PlaybackControls(QWidget):
         layout.addWidget(self.frame_label)
 
     def set_playing(self, playing: bool) -> None:
-        self.btn_play.setText("\u23f8 Pause" if playing else "\u25b6 Play")
+        if playing:
+            self.btn_play.setText("\u23f8 Pause")
+            self.btn_play.setToolTip("Pause animation")
+            self.btn_play.setAccessibleName("Pause animation")
+        else:
+            self.btn_play.setText("\u25b6 Play")
+            self.btn_play.setToolTip("Play animation")
+            self.btn_play.setAccessibleName("Play animation")
