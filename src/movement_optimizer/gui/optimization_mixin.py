@@ -45,9 +45,7 @@ class OptimizationMixin:
 
     def _resolve_exercise_params(self, idx: int) -> tuple[Any, Any, str, float, float, float]:
         body = self.sidebar.get_body_model()  # type: ignore[attr-defined]
-        bar = self.sidebar.bar_slider.value()  # type: ignore[attr-defined]
-        dur = self.sidebar.dur_slider.value()  # type: ignore[attr-defined]
-        smoothness = self.sidebar.smooth_slider.value()  # type: ignore[attr-defined]
+        bar, dur, smoothness = self.sidebar.get_optimization_params()  # type: ignore[attr-defined]
         _, etype = self.EXERCISE_CONFIGS[idx]
 
         factory = EXERCISE_FACTORIES[etype]
@@ -74,11 +72,7 @@ class OptimizationMixin:
         return body, dyn, etype, bar, dur, smoothness
 
     def _seg_mults(self) -> dict[str, float]:
-        return {
-            "lower_leg": self.sidebar.ll_slider.value(),  # type: ignore[attr-defined]
-            "upper_leg": self.sidebar.ul_slider.value(),  # type: ignore[attr-defined]
-            "torso": self.sidebar.to_slider.value(),  # type: ignore[attr-defined]
-        }
+        return self.sidebar.get_segment_multipliers()  # type: ignore[attr-defined]
 
     def _run_optimizer(
         self,
@@ -185,7 +179,6 @@ class OptimizationMixin:
     ) -> None:
         """Handle successful optimization completion (called from main thread via signal)."""
         try:
-            self.sidebar.progress.setValue(100)  # type: ignore[attr-defined]
             name = self.EXERCISE_CONFIGS[idx][0]  # type: ignore[attr-defined]
             _, etype = self.EXERCISE_CONFIGS[idx]  # type: ignore[attr-defined]
             self._update_result_summary(name, result, exercise_type=etype)
@@ -196,17 +189,16 @@ class OptimizationMixin:
             t_str = (
                 f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
             )
-            self.sidebar.prog_label.setText(f"Done in {t_str} ({result.n_evals} evals)")  # type: ignore[attr-defined]
+            self.sidebar.set_progress_done(t_str, result.n_evals)  # type: ignore[attr-defined]
             self._enable_post_run_buttons()
             if result.success:
-                self.sidebar.stall_label.setVisible(False)  # type: ignore[attr-defined]
+                self.sidebar.clear_stall_message()  # type: ignore[attr-defined]
                 status_msg = f"{name} optimization complete in {t_str}!"
             else:
-                self.sidebar.stall_label.setText(  # type: ignore[attr-defined]
+                self.sidebar.set_stall_message(  # type: ignore[attr-defined]
                     "\u26a0 COM went outside the inner 60% BOS zone. "
                     "Try increasing smoothness or adjusting body parameters."
                 )
-                self.sidebar.stall_label.setVisible(True)  # type: ignore[attr-defined]
                 status_msg = f"{name} done in {t_str} -- WARNING: COM balance violated"
             self._finish_or_chain(then_chain, status_msg)
         except (ValueError, RuntimeError, OSError, AttributeError) as exc:
@@ -219,11 +211,7 @@ class OptimizationMixin:
 
     def _enable_post_run_buttons(self) -> None:
         """Enable export/save/compare buttons after a successful optimization run."""
-        self.sidebar.export_btn.setEnabled(True)  # type: ignore[attr-defined]
-        self.sidebar.save_btn.setEnabled(True)  # type: ignore[attr-defined]
-        self.sidebar.export_video_btn.setEnabled(True)  # type: ignore[attr-defined]
-        self.sidebar.export_plots_btn.setEnabled(True)  # type: ignore[attr-defined]
-        self.sidebar.add_compare_btn.setEnabled(True)  # type: ignore[attr-defined]
+        self.sidebar.enable_post_run_buttons()  # type: ignore[attr-defined]
 
     def _finish_or_chain(self, then_chain: list[int] | None, status_msg: str) -> None:
         """Either chain to the next exercise or finalize the run."""
@@ -242,9 +230,8 @@ class OptimizationMixin:
         with self._opt_lock:  # type: ignore[attr-defined]
             self._opt_running = False  # type: ignore[attr-defined]
         self.sidebar.show_idle()  # type: ignore[attr-defined]
-        self.sidebar.prog_label.setText("Cancelled")  # type: ignore[attr-defined]
+        self.sidebar.set_cancelled()  # type: ignore[attr-defined]
         self.status_label.setText("Optimization cancelled by user.")  # type: ignore[attr-defined]
-        self.sidebar.cancel_btn.setEnabled(True)  # type: ignore[attr-defined]
 
     def _update_result_summary(
         self, name: str, r: OptimizationResult, exercise_type: str = "squat"
@@ -267,7 +254,7 @@ class OptimizationMixin:
                 f"  COM sway: {r.com_horizontal_range_cm:.1f} cm\n"
                 f"  Balance: {balance_ok}"
             )
-        self.sidebar.result_label.setText(  # type: ignore[attr-defined]
+        self.sidebar.set_result_label(  # type: ignore[attr-defined]
             f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J"
         )
 

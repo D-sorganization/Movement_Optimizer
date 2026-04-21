@@ -15,6 +15,12 @@ from numpy.typing import NDArray
 from ..backend import PhysicsBackend
 from .body_model import BodyModel, ChainGeometry
 from .lagrangian_balance import _standing_balanced, balance_pose
+from .lagrangian_batch import (
+    batch_coriolis_torques,
+    batch_gravity_torques,
+    batch_inertia_torques,
+    numpy_inverse_dynamics_batch,
+)
 from .lagrangian_kinematics import LagrangianKinematicsMixin
 
 logger = logging.getLogger(__name__)
@@ -221,28 +227,19 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         c02: NDArray,
         c12: NDArray,
     ) -> NDArray:
-        """Compute the inertia (mass-matrix) contribution to batch torques.
-
-        Parameters:
-            qdd:  Angular accelerations, shape (N, 3).
-            c01:  cos(q[:,0] - q[:,1]), shape (N,).
-            c02:  cos(q[:,0] - q[:,2]), shape (N,).
-            c12:  cos(q[:,1] - q[:,2]), shape (N,).
-        Returns:
-            Inertia torque contribution, shape (N, 3).
-        """
-        n = qdd.shape[0]
-        tau = np.empty((n, 3))
-        tau[:, 0] = (
-            self._M00 * qdd[:, 0] + self._a01 * c01 * qdd[:, 1] + self._a02 * c02 * qdd[:, 2]
+        """Inertia contribution — delegates to :func:`lagrangian_batch.batch_inertia_torques`."""
+        return batch_inertia_torques(
+            qdd,
+            c01,
+            c02,
+            c12,
+            M00=self._M00,
+            M11=self._M11,
+            M22=self._M22,
+            a01=self._a01,
+            a02=self._a02,
+            a12=self._a12,
         )
-        tau[:, 1] = (
-            self._a01 * c01 * qdd[:, 0] + self._M11 * qdd[:, 1] + self._a12 * c12 * qdd[:, 2]
-        )
-        tau[:, 2] = (
-            self._a02 * c02 * qdd[:, 0] + self._a12 * c12 * qdd[:, 1] + self._M22 * qdd[:, 2]
-        )
-        return tau
 
     def _batch_coriolis_torques(
         self,
@@ -251,119 +248,44 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         s02: NDArray,
         s12: NDArray,
     ) -> NDArray:
-        """Compute the centrifugal/Coriolis contribution to batch torques.
-
-        Parameters:
-            qd:  Angular velocities, shape (N, 3).
-            s01: sin(q[:,0] - q[:,1]), shape (N,).
-            s02: sin(q[:,0] - q[:,2]), shape (N,).
-            s12: sin(q[:,1] - q[:,2]), shape (N,).
-        Returns:
-            Coriolis torque contribution, shape (N, 3).
-        """
-        n = qd.shape[0]
-        tau = np.zeros((n, 3))
-        tau[:, 0] = self._a01 * s01 * qd[:, 1] ** 2 + self._a02 * s02 * qd[:, 2] ** 2
-        tau[:, 1] = -self._a01 * s01 * qd[:, 0] ** 2 + self._a12 * s12 * qd[:, 2] ** 2
-        tau[:, 2] = -self._a02 * s02 * qd[:, 0] ** 2 - self._a12 * s12 * qd[:, 1] ** 2
-        return tau
+        """Coriolis contribution — delegates to :func:`lagrangian_batch.batch_coriolis_torques`."""
+        return batch_coriolis_torques(
+            qd,
+            s01,
+            s02,
+            s12,
+            a01=self._a01,
+            a02=self._a02,
+            a12=self._a12,
+        )
 
     def _batch_gravity_torques(self, q: NDArray) -> NDArray:
-        """Compute the gravity contribution to batch torques.
-
-        Parameters:
-            q: Joint angles, shape (N, 3).
-        Returns:
-            Gravity torque contribution, shape (N, 3).
-        """
-        # Supine (bench press): gravity perpendicular to chain → cos(q)
-        sq = np.cos(q) if self.supine else np.sin(q)
-        n = q.shape[0]
-        tau = np.zeros((n, 3))
-        tau[:, 0] = self._g0 * sq[:, 0]
-        tau[:, 1] = self._g1 * sq[:, 1]
-        tau[:, 2] = self._g2 * sq[:, 2]
-        return tau
+        """Gravity contribution — delegates to :func:`lagrangian_batch.batch_gravity_torques`."""
+        return batch_gravity_torques(
+            q,
+            g0=self._g0,
+            g1=self._g1,
+            g2=self._g2,
+            supine=self.supine,
+        )
 
     def _numpy_inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-        """NumPy fallback for batch inverse dynamics (no Rust extension).
-
-        Parameters:
-            q, qd, qdd: shape (N, 3)
-        Returns:
-            torques: shape (N, 3)
-        """
-        q0 = q[:, 0]
-        q1 = q[:, 1]
-        q2 = q[:, 2]
-
-        d01 = q0 - q1
-        d02 = q0 - q2
-        d12 = q1 - q2
-
-        # PERFORMANCE OPTIMISATION:
-        # Fusing the inertia, Coriolis, and gravity torque computations into a single
-        # pre-allocated array assignment. This avoids the creation of multiple
-        # intermediate (N, 3) arrays and redundant loop iterations, reducing
-        # batch evaluation time by ~20-30%.
-
-        # Pre-allocate output array
-        tau = np.empty((q.shape[0], 3))
-
-        c01 = np.cos(d01)
-        c02 = np.cos(d02)
-        c12 = np.cos(d12)
-
-        s01 = np.sin(d01)
-        s02 = np.sin(d02)
-        s12 = np.sin(d12)
-
-        qd2_0 = qd[:, 0] ** 2
-        qd2_1 = qd[:, 1] ** 2
-        qd2_2 = qd[:, 2] ** 2
-
-        qdd_0 = qdd[:, 0]
-        qdd_1 = qdd[:, 1]
-        qdd_2 = qdd[:, 2]
-
-        a01_c01 = self._a01 * c01
-        a02_c02 = self._a02 * c02
-        a12_c12 = self._a12 * c12
-
-        a01_s01 = self._a01 * s01
-        a02_s02 = self._a02 * s02
-        a12_s12 = self._a12 * s12
-
-        sq0 = np.cos(q0) if self.supine else np.sin(q0)
-        sq1 = np.cos(q1) if self.supine else np.sin(q1)
-        sq2 = np.cos(q2) if self.supine else np.sin(q2)
-
-        tau[:, 0] = (
-            self._M00 * qdd_0
-            + a01_c01 * qdd_1
-            + a02_c02 * qdd_2
-            + a01_s01 * qd2_1
-            + a02_s02 * qd2_2
-            + self._g0 * sq0
+        """NumPy fallback — delegates to :func:`lagrangian_batch.numpy_inverse_dynamics_batch`."""
+        return numpy_inverse_dynamics_batch(
+            q,
+            qd,
+            qdd,
+            M00=self._M00,
+            M11=self._M11,
+            M22=self._M22,
+            a01=self._a01,
+            a02=self._a02,
+            a12=self._a12,
+            g0=self._g0,
+            g1=self._g1,
+            g2=self._g2,
+            supine=self.supine,
         )
-        tau[:, 1] = (
-            a01_c01 * qdd_0
-            + self._M11 * qdd_1
-            + a12_c12 * qdd_2
-            - a01_s01 * qd2_0
-            + a12_s12 * qd2_2
-            + self._g1 * sq1
-        )
-        tau[:, 2] = (
-            a02_c02 * qdd_0
-            + a12_c12 * qdd_1
-            + self._M22 * qdd_2
-            - a02_s02 * qd2_0
-            - a12_s12 * qd2_1
-            + self._g2 * sq2
-        )
-
-        return tau
 
     def inverse_dynamics_batch(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
         """Vectorised batch torques (N, 3) for q/qd/qdd each (N, 3).
