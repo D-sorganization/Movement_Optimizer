@@ -46,7 +46,7 @@ def com_constraint_values(
         inner_heel <= inner_toe
     """
     splines = build_splines_fn(x)  # type: ignore[operator]
-    q = np.column_stack([s(t_eval) for s in splines])
+    q = splines(t_eval)
     com_x = dynamics.com_x_batch(q, exercise_type, bar_mass)
     lower = com_x - inner_heel
     upper = inner_toe - com_x
@@ -70,7 +70,7 @@ def bar_knee_clearance(
         x.ndim == 1
     """
     splines = build_splines_fn(x)  # type: ignore[operator]
-    q = np.column_stack([s(t_eval) for s in splines])
+    q = splines(t_eval)
     L = body.L
     knee_x = L[0] * np.sin(q[:, 0])
     hip_x = knee_x + L[1] * np.sin(q[:, 1])
@@ -99,7 +99,7 @@ def joint_limit_constraint_values(
         q_bounds.shape == (n_dof, 2)
     """
     splines = build_splines_fn(x)  # type: ignore[operator]
-    q = np.column_stack([s(t_eval) for s in splines])
+    q = splines(t_eval)
     lower = q - q_bounds[:, 0]
     upper = q_bounds[:, 1] - q
     return np.concatenate([lower.flatten(), upper.flatten()])

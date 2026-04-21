@@ -53,7 +53,7 @@ def evaluate_solution(
             com_position, and bar_position.
         exercise_type: exercise identifier string.
         bar_mass: barbell mass in kg.
-        build_splines_fn: callable(x) -> list[CubicSpline].
+        build_splines_fn: callable(x) -> CubicSpline.
         eval_trajectory_fn: callable(splines) -> (q, qd, qdd, qddd).
 
     Returns:

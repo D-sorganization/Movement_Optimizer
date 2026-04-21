@@ -24,8 +24,8 @@ def build_splines(
     t_ctrl: NDArray,
     n_waypoints: int,
     n_dof: int,
-) -> list[CubicSpline]:
-    """Build per-DOF clamped cubic splines from the flat optimisation vector *x*.
+) -> CubicSpline:
+    """Build a multidimensional clamped cubic spline from the flat optimisation vector *x*.
 
     Parameters:
         x: Flat waypoint vector of length n_waypoints * n_dof.
@@ -37,7 +37,7 @@ def build_splines(
         n_dof: Degrees of freedom.
 
     Returns:
-        List of length n_dof, one CubicSpline per DOF.
+        CubicSpline evaluating to shape (..., n_dof).
 
     Preconditions:
         len(x) == n_waypoints * n_dof
@@ -51,28 +51,27 @@ def build_splines(
     else:
         q_all = np.vstack([q_start, wp, q_end])
 
-    return [CubicSpline(t_ctrl, q_all[:, j], bc_type="clamped") for j in range(n_dof)]
+    return CubicSpline(t_ctrl, q_all, bc_type="clamped")
 
 
 def eval_trajectory(
-    splines: list[CubicSpline],
+    splines: CubicSpline,
     t_eval: NDArray,
 ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
     """Evaluate position, velocity, acceleration, and jerk at the eval grid.
 
     Parameters:
-        splines: Per-DOF CubicSpline objects (length n_dof).
+        splines: Multidimensional CubicSpline object.
         t_eval: Evaluation time grid, shape (n_eval,).
 
     Returns:
         Tuple (q, qd, qdd, qddd), each of shape (n_eval, n_dof).
 
     Preconditions:
-        len(splines) >= 1
         t_eval.ndim == 1
     """
-    q = np.column_stack([s(t_eval) for s in splines])
-    qd = np.column_stack([s(t_eval, 1) for s in splines])
-    qdd = np.column_stack([s(t_eval, 2) for s in splines])
-    qddd = np.column_stack([s(t_eval, 3) for s in splines])
+    q = splines(t_eval)
+    qd = splines(t_eval, 1)
+    qdd = splines(t_eval, 2)
+    qddd = splines(t_eval, 3)
     return q, qd, qdd, qddd
