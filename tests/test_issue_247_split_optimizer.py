@@ -74,7 +74,7 @@ def bench_optimizer():
 class TestBuildSplines:
     def test_returns_correct_number_of_splines(self, squat_spline_args) -> None:
         a = squat_spline_args
-        splines = build_splines(
+        spline = build_splines(
             a["x"],
             a["q_start"],
             a["q_end"],
@@ -83,12 +83,13 @@ class TestBuildSplines:
             a["n_waypoints"],
             a["n_dof"],
         )
-        assert len(splines) == a["n_dof"]
+        # Evaluated spline output shape should have n_dof as the last dimension.
+        assert spline(a["t_eval"]).shape[-1] == a["n_dof"]
 
     def test_splines_satisfy_boundary_conditions(self, squat_spline_args) -> None:
         """Clamped spline must pass through start and end control points."""
         a = squat_spline_args
-        splines = build_splines(
+        spline = build_splines(
             a["x"],
             a["q_start"],
             a["q_end"],
@@ -99,11 +100,13 @@ class TestBuildSplines:
         )
         t0 = a["t_ctrl"][0]
         tf = a["t_ctrl"][-1]
-        for j, s in enumerate(splines):
-            assert abs(float(s(t0)) - a["q_start"][j]) < 1e-10, (
+        q_start_eval = spline(t0)
+        q_end_eval = spline(tf)
+        for j in range(a["n_dof"]):
+            assert abs(float(q_start_eval[j]) - a["q_start"][j]) < 1e-10, (
                 f"DOF {j}: spline does not pass through q_start"
             )
-            assert abs(float(s(tf)) - a["q_end"][j]) < 1e-10, (
+            assert abs(float(q_end_eval[j]) - a["q_end"][j]) < 1e-10, (
                 f"DOF {j}: spline does not pass through q_end"
             )
 
@@ -118,18 +121,20 @@ class TestBuildSplines:
         n_ctrl = n_waypoints + 3  # +1 for via
         t_ctrl = np.linspace(0, 4.0, n_ctrl)
         wp = np.zeros(n_waypoints * n_dof)
-        splines = build_splines(wp, qs, qe, q_via, t_ctrl, n_waypoints, n_dof)
-        assert len(splines) == n_dof
+        spline = build_splines(wp, qs, qe, q_via, t_ctrl, n_waypoints, n_dof)
+        assert spline(t_ctrl).shape[-1] == n_dof
         # Start and end boundary conditions
-        for j, s in enumerate(splines):
-            assert abs(float(s(t_ctrl[0])) - qs[j]) < 1e-10
-            assert abs(float(s(t_ctrl[-1])) - qe[j]) < 1e-10
+        q_start_eval = spline(t_ctrl[0])
+        q_end_eval = spline(t_ctrl[-1])
+        for j in range(n_dof):
+            assert abs(float(q_start_eval[j]) - qs[j]) < 1e-10
+            assert abs(float(q_end_eval[j]) - qe[j]) < 1e-10
 
     def test_zero_waypoints_vector_uses_linear_interp(self, squat_spline_args) -> None:
         """All-zero waypoint vector still produces valid splines."""
         a = squat_spline_args
         x_zeros = np.zeros_like(a["x"])
-        splines = build_splines(
+        spline = build_splines(
             x_zeros,
             a["q_start"],
             a["q_end"],
@@ -138,7 +143,7 @@ class TestBuildSplines:
             a["n_waypoints"],
             a["n_dof"],
         )
-        assert len(splines) == a["n_dof"]
+        assert spline(a["t_eval"]).shape[-1] == a["n_dof"]
 
 
 # ---------------------------------------------------------------------------
@@ -277,8 +282,8 @@ class TestOptimizerUsesSplineModule:
             n_starts=1,
         )
         wp = opt._initial_guess()
-        splines_opt = opt.build_splines(wp.flatten())
-        splines_direct = build_splines(
+        spline_opt = opt.build_splines(wp.flatten())
+        spline_direct = build_splines(
             wp.flatten(),
             qs,
             qe,
@@ -288,13 +293,12 @@ class TestOptimizerUsesSplineModule:
             opt.n_dof,
         )
         t_test = np.linspace(0, 2.0, 15)
-        for j, (s_opt, s_direct) in enumerate(zip(splines_opt, splines_direct, strict=True)):
-            np.testing.assert_allclose(
-                s_opt(t_test),
-                s_direct(t_test),
-                rtol=1e-12,
-                err_msg=f"DOF {j}: TrajectoryOptimizer.build_splines diverges from standalone",
-            )
+        np.testing.assert_allclose(
+            spline_opt(t_test),
+            spline_direct(t_test),
+            rtol=1e-12,
+            err_msg="TrajectoryOptimizer.build_splines diverges from standalone",
+        )
 
     def test_eval_trajectory_matches_standalone(self, squat_spline_args) -> None:
         """TrajectoryOptimizer.eval_trajectory must match standalone eval_trajectory."""
