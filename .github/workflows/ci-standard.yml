@@ -36,12 +36,9 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m venv .ci-venv
-          . .ci-venv/bin/activate
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-          python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7
-          echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7
 
       - name: Lint (Ruff)
         run: ruff check src/ tests/
@@ -57,7 +54,7 @@ jobs:
 
       - name: Security Audit (pip-audit)
         run: |
-          python -m pip install pip-audit
+          pip install pip-audit
           pip-audit || echo "::warning::pip-audit found vulnerabilities — review before merging"
         continue-on-error: true
 
@@ -78,11 +75,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m venv .ci-venv
-          . .ci-venv/bin/activate
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-          echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
+          pip install --upgrade pip
+          pip install -e ".[dev]"
 
       - name: Run Tests
         env:
