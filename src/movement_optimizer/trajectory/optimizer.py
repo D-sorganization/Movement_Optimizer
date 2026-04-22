@@ -148,7 +148,8 @@ class TrajectoryOptimizer:
         """
         L = self.dynamics.L  # type: ignore[attr-defined]
         hand_x = L[0] * np.sin(q[:, 0]) + L[1] * np.sin(q[:, 1]) + L[2] * np.sin(q[:, 2])
-        return BENCH_BAR_PATH_WEIGHT * float(np.sum(hand_x**2)) * self.dt
+        # np.vdot is significantly faster than np.sum(x**2)
+        return BENCH_BAR_PATH_WEIGHT * float(np.vdot(hand_x, hand_x)) * self.dt
 
     def _compute_cost(self, x: NDArray) -> float:
         """Compute total cost without mutating instance state."""
