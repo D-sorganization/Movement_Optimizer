@@ -12,8 +12,8 @@ from numpy.typing import NDArray
 from scipy.interpolate import CubicSpline
 
 from ..backend import PhysicsBackend
-from ..constants import BENCH_BAR_PATH_WEIGHT
 from ..models import BodyModel
+from .optimizer_bench import compute_bench_bar_cost
 from .optimizer_constraints import build_constraints
 from .optimizer_cost import (
     compute_balance_cost,
@@ -135,22 +135,6 @@ class TrajectoryOptimizer:
         """
         return _eval_trajectory_fn(splines, self.t_eval)
 
-    def _compute_bench_bar_cost(self, q: NDArray) -> float:
-        """Penalise lateral bar-path deviation for bench press exercises.
-
-        Computes the horizontal hand position from the arm segment lengths and
-        joint angles, then returns a weighted integral of squared deviation.
-
-        Preconditions:
-            self.exercise_type == "bench_press"
-            self.dynamics.L is a sequence of segment lengths
-            q.shape[1] == self.n_dof
-        """
-        L = self.dynamics.L  # type: ignore[attr-defined]
-        hand_x = np.sin(q) @ np.array(L)
-        # np.vdot is significantly faster than np.sum(x**2)
-        return BENCH_BAR_PATH_WEIGHT * float(np.vdot(hand_x, hand_x)) * self.dt
-
     def _compute_cost(self, x: NDArray) -> float:
         """Compute total cost without mutating instance state."""
         if self.cancel_event.is_set():
@@ -170,7 +154,8 @@ class TrajectoryOptimizer:
         )
 
         if self.exercise_type == "bench_press":
-            total += self._compute_bench_bar_cost(q)
+            segment_lengths = self.dynamics.L  # type: ignore[attr-defined]
+            total += compute_bench_bar_cost(q, segment_lengths, self.dt)
         else:
             com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
             total += compute_balance_cost(
