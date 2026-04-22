@@ -177,6 +177,21 @@ class _FakeSidebar:
         self.export_plots_btn.enabled = True
         self.add_compare_btn.enabled = True
 
+    def get_comparison_context(self) -> tuple[float, dict[str, float]]:
+        return (
+            self.bar_slider.value(),
+            {
+                "body_mass": self.mass_slider.value(),
+                "height": self.height_slider.value(),
+            },
+        )
+
+    def set_comparison_available(self, available: bool) -> None:
+        self.compare_btn.enabled = available
+
+    def set_cancellation_available(self, available: bool) -> None:
+        self.cancel_btn.enabled = available
+
 
 class _FakeTab:
     """Surrogate for ExerciseTab — records draw calls."""

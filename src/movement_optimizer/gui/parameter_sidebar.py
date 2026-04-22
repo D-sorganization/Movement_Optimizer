@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Mapping
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -279,6 +280,21 @@ class ParameterSidebar(QScrollArea):
         lay.addWidget(self.clear_compare_btn)
         self.main_layout.addWidget(grp)
 
+    def connect_action_handlers(self, handlers: Mapping[str, Callable[..., None]]) -> None:
+        """Connect sidebar action signals to handlers supplied by the main window."""
+        self.optimize_current.connect(handlers["optimize_current"])
+        self.optimize_both.connect(handlers["optimize_both"])
+        self.cancel_requested.connect(handlers["cancel_requested"])
+        self.export_requested.connect(handlers["export_requested"])
+        self.reset_requested.connect(handlers["reset_requested"])
+        self.save_solution_requested.connect(handlers["save_solution_requested"])
+        self.load_solution_requested.connect(handlers["load_solution_requested"])
+        self.export_video_requested.connect(handlers["export_video_requested"])
+        self.export_plots_requested.connect(handlers["export_plots_requested"])
+        self.add_comparison_requested.connect(handlers["add_comparison_requested"])
+        self.compare_trials_requested.connect(handlers["compare_trials_requested"])
+        self.clear_comparison_requested.connect(handlers["clear_comparison_requested"])
+
     def show_optimizing(self) -> None:
         self.opt_btn.setEnabled(False)
         self.both_btn.setEnabled(False)
@@ -432,3 +448,16 @@ class ParameterSidebar(QScrollArea):
     def get_comparison_trial_data(self) -> tuple[dict[str, object], float]:
         """Return the comparison payload without exposing widget internals."""
         return self.get_body_params_dict(), self.bar_slider.value()
+
+    def get_comparison_context(self) -> tuple[float, dict[str, object]]:
+        """Return bar mass and body parameters for trial comparison records."""
+        body_params, bar_mass = self.get_comparison_trial_data()
+        return bar_mass, body_params
+
+    def set_comparison_available(self, available: bool) -> None:
+        """Enable or disable the comparison action."""
+        self.compare_btn.setEnabled(available)
+
+    def set_cancellation_available(self, available: bool) -> None:
+        """Enable or disable the cancellation action."""
+        self.cancel_btn.setEnabled(available)
