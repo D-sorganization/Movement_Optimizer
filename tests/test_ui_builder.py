@@ -40,34 +40,21 @@ class TestUIBuilder:
         assert tabs.tabText(0) == "  Squat  "
         assert tabs.tabText(1) == "  Deadlift  "
 
-    def test_sidebar_exposes_comparison_trial_data(self, qapp):
+    def test_playback_controls_expose_frame_and_speed_helpers(self, qapp):
         window = QWidget()
         exercise_configs = (("Squat", "squat"),)
         (
             _central,
-            sidebar,
+            _sidebar,
             _tabs,
             _exercise_tabs,
-            _controls,
+            controls,
             _status_label,
         ) = build_central_widget(window, exercise_configs)
 
-        sidebar.mass_slider.set_value(82.0)
-        sidebar.height_slider.set_value(1.83)
-        sidebar.ll_slider.set_value(1.08)
-        sidebar.ul_slider.set_value(0.97)
-        sidebar.to_slider.set_value(1.04)
-        sidebar.bar_slider.set_value(92.0)
+        controls.speed_slider.setValue(15)
+        controls.set_playback_status(4, 12, 1.5)
 
-        body_params, bar_mass = sidebar.get_comparison_trial_data()
-
-        assert body_params["body_mass"] == pytest.approx(sidebar.mass_slider.value())
-        assert body_params["height"] == pytest.approx(sidebar.height_slider.value())
-        assert body_params["seg_multipliers"]["lower_leg"] == pytest.approx(
-            sidebar.ll_slider.value()
-        )
-        assert body_params["seg_multipliers"]["upper_leg"] == pytest.approx(
-            sidebar.ul_slider.value()
-        )
-        assert body_params["seg_multipliers"]["torso"] == pytest.approx(sidebar.to_slider.value())
-        assert bar_mass == pytest.approx(sidebar.bar_slider.value())
+        assert controls.frame_label.text() == "Frame 4/12"
+        assert controls.speed_label.text() == "1.5x"
+        assert controls.speed_multiplier() == pytest.approx(1.5)

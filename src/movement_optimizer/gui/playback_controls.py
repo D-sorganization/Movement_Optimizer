@@ -92,3 +92,8 @@ class PlaybackControls(QWidget):
     def set_speed_multiplier_text(self, speed: float) -> None:
         """Display the current playback speed multiplier."""
         self.speed_label.setText(f"{speed:.1f}x")
+
+    def set_playback_status(self, current_frame: int, total_frames: int, speed: float) -> None:
+        """Update the frame and speed labels together."""
+        self.set_frame_position(current_frame, total_frames)
+        self.set_speed_multiplier_text(speed)
