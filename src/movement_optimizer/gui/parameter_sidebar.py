@@ -428,3 +428,7 @@ class ParameterSidebar(QScrollArea):
             "height": self.height_slider.value(),
             "seg_multipliers": self.get_segment_multipliers(),
         }
+
+    def get_comparison_trial_data(self) -> tuple[dict[str, object], float]:
+        """Return the comparison payload without exposing widget internals."""
+        return self.get_body_params_dict(), self.bar_slider.value()

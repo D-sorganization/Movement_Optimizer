@@ -27,11 +27,7 @@ class ComparisonMixin:
         if r is None:
             return
         display_name, _etype = self.EXERCISE_CONFIGS[idx]
-        bar = self.sidebar.bar_slider.value()
-        body_params = {
-            "body_mass": self.sidebar.mass_slider.value(),
-            "height": self.sidebar.height_slider.value(),
-        }
+        body_params, bar = self.sidebar.get_comparison_trial_data()
         n = len(self._comparison_store.get_trials()) + 1
         trial_name = f"{display_name} #{n} ({bar:.0f}kg)"
         self._comparison_store.add_trial(trial_name, r, body_params, bar)
