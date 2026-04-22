@@ -3,7 +3,7 @@
 Covers:
 - optimizer_spline.build_splines
 - optimizer_spline.eval_trajectory
-- TrajectoryOptimizer._compute_bench_bar_cost
+- optimizer_bench.compute_bench_bar_cost
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import pytest
 
 from movement_optimizer.models import BodyModel, make_bench_press_config, make_squat_config
 from movement_optimizer.trajectory import TrajectoryOptimizer
+from movement_optimizer.trajectory.optimizer_bench import compute_bench_bar_cost
 from movement_optimizer.trajectory.optimizer_spline import build_splines, eval_trajectory
 
 # ---------------------------------------------------------------------------
@@ -218,7 +219,7 @@ class TestEvalTrajectory:
 
 
 # ---------------------------------------------------------------------------
-# TrajectoryOptimizer._compute_bench_bar_cost tests
+# optimizer_bench.compute_bench_bar_cost tests
 # ---------------------------------------------------------------------------
 
 
@@ -228,7 +229,7 @@ class TestComputeBenchBarCost:
         wp0 = opt._initial_guess()
         splines = opt.build_splines(wp0.flatten())
         q, _, _, _ = opt.eval_trajectory(splines)
-        cost = opt._compute_bench_bar_cost(q)
+        cost = compute_bench_bar_cost(q, opt.dynamics.L, opt.dt)
         assert isinstance(cost, float)
         assert cost >= 0.0
 
@@ -236,7 +237,7 @@ class TestComputeBenchBarCost:
         """All-zero joint angles → all hand_x are zero → zero cost."""
         opt = bench_optimizer
         q_zero = np.zeros((opt.n_eval, opt.n_dof))
-        cost = opt._compute_bench_bar_cost(q_zero)
+        cost = compute_bench_bar_cost(q_zero, opt.dynamics.L, opt.dt)
         assert cost == pytest.approx(0.0, abs=1e-12)
 
     def test_cost_scales_with_magnitude(self, bench_optimizer) -> None:
@@ -244,8 +245,8 @@ class TestComputeBenchBarCost:
         opt = bench_optimizer
         q_small = np.full((opt.n_eval, opt.n_dof), 0.1)
         q_large = np.full((opt.n_eval, opt.n_dof), 0.5)
-        cost_small = opt._compute_bench_bar_cost(q_small)
-        cost_large = opt._compute_bench_bar_cost(q_large)
+        cost_small = compute_bench_bar_cost(q_small, opt.dynamics.L, opt.dt)
+        cost_large = compute_bench_bar_cost(q_large, opt.dynamics.L, opt.dt)
         assert cost_large > cost_small
 
     def test_cost_is_finite_for_initial_guess(self, bench_optimizer) -> None:
@@ -253,7 +254,7 @@ class TestComputeBenchBarCost:
         wp0 = opt._initial_guess()
         splines = opt.build_splines(wp0.flatten())
         q, _, _, _ = opt.eval_trajectory(splines)
-        assert np.isfinite(opt._compute_bench_bar_cost(q))
+        assert np.isfinite(compute_bench_bar_cost(q, opt.dynamics.L, opt.dt))
 
 
 # ---------------------------------------------------------------------------
