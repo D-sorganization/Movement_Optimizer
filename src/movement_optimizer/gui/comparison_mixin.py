@@ -27,15 +27,11 @@ class ComparisonMixin:
         if r is None:
             return
         display_name, _etype = self.EXERCISE_CONFIGS[idx]
-        bar = self.sidebar.bar_slider.value()
-        body_params = {
-            "body_mass": self.sidebar.mass_slider.value(),
-            "height": self.sidebar.height_slider.value(),
-        }
+        bar, body_params = self.sidebar.get_comparison_context()
         n = len(self._comparison_store.get_trials()) + 1
         trial_name = f"{display_name} #{n} ({bar:.0f}kg)"
         self._comparison_store.add_trial(trial_name, r, body_params, bar)
-        self.sidebar.compare_btn.setEnabled(True)
+        self.sidebar.set_comparison_available(True)
         self.status_label.setText(f"Added '{trial_name}' to comparison list.")
 
     def _compare_trials(self: MainWindow) -> None:  # type: ignore[misc]
@@ -48,5 +44,5 @@ class ComparisonMixin:
 
     def _clear_comparison(self: MainWindow) -> None:  # type: ignore[misc]
         self._comparison_store.clear()
-        self.sidebar.compare_btn.setEnabled(False)
+        self.sidebar.set_comparison_available(False)
         self.status_label.setText("Comparison list cleared.")

@@ -136,23 +136,31 @@ class MainWindow(
         self._connect_signals()
 
     def _connect_signals(self) -> None:
-        self.sidebar.optimize_current.connect(self._run_current)
-        self.sidebar.optimize_both.connect(self._run_all)
-        self.sidebar.cancel_requested.connect(self._cancel_optimization)
-        self.sidebar.export_requested.connect(self._export)
-        self.sidebar.reset_requested.connect(self._reset)
-        self.sidebar.save_solution_requested.connect(self._save_solution)
-        self.sidebar.load_solution_requested.connect(self._load_solution)
-        self.sidebar.export_video_requested.connect(self._export_video)
-        self.sidebar.export_plots_requested.connect(self._export_plots)
-        self.sidebar.add_comparison_requested.connect(self._add_comparison)
-        self.sidebar.compare_trials_requested.connect(self._compare_trials)
-        self.sidebar.clear_comparison_requested.connect(self._clear_comparison)
-        self.controls.play_toggled.connect(self._toggle_play)
-        self.controls.step_fwd.connect(self._step_fwd)
-        self.controls.step_back.connect(self._step_back)
-        self.controls.rewind.connect(self._rewind)
-        self.controls.speed_changed.connect(self._on_speed)
+        self.sidebar.connect_action_handlers(
+            {
+                "optimize_current": self._run_current,
+                "optimize_both": self._run_all,
+                "cancel_requested": self._cancel_optimization,
+                "export_requested": self._export,
+                "reset_requested": self._reset,
+                "save_solution_requested": self._save_solution,
+                "load_solution_requested": self._load_solution,
+                "export_video_requested": self._export_video,
+                "export_plots_requested": self._export_plots,
+                "add_comparison_requested": self._add_comparison,
+                "compare_trials_requested": self._compare_trials,
+                "clear_comparison_requested": self._clear_comparison,
+            }
+        )
+        self.controls.connect_action_handlers(
+            {
+                "play_toggled": self._toggle_play,
+                "step_fwd": self._step_fwd,
+                "step_back": self._step_back,
+                "rewind": self._rewind,
+                "speed_changed": self._on_speed,
+            }
+        )
 
     def closeEvent(self, event: Any) -> None:
         self._save_layout()
@@ -205,7 +213,7 @@ class MainWindow(
     def _cancel_optimization(self) -> None:
         self._cancel_event.set()
         self.status_label.setText("Cancelling...")
-        self.sidebar.cancel_btn.setEnabled(False)
+        self.sidebar.set_cancellation_available(False)
 
     def _run_current(self) -> None:
         self._run_exercise(self.tabs.currentIndex())

@@ -57,9 +57,9 @@ class AnimationControlMixin:
 
         n = len(r.t)
         self.anim_frames[idx] = (fi + 1) % n
-        self.controls.frame_label.setText(f"Frame {fi + 1}/{n}")
+        self.controls.set_frame_position(fi + 1, n)
 
-        speed = self.controls.speed_slider.value() / 10.0
+        speed = self.controls.speed_multiplier()
         delay = max(15, int(40 / max(0.1, speed)))
         if self.anim_frames[idx] == 0:
             delay = 700
@@ -81,7 +81,7 @@ class AnimationControlMixin:
             self.bodies_list[idx],  # type: ignore[arg-type]
             etype,
         )
-        self.controls.frame_label.setText(f"Frame {self.anim_frames[idx] + 1}/{n}")
+        self.controls.set_frame_position(self.anim_frames[idx] + 1, n)
 
     def _step_back(self: MainWindow) -> None:  # type: ignore[override]
         idx = self.tabs.currentIndex()
@@ -117,4 +117,4 @@ class AnimationControlMixin:
         )
 
     def _on_speed(self: MainWindow, speed: float) -> None:  # type: ignore[override]
-        self.controls.speed_label.setText(f"{speed:.1f}x")
+        self.controls.set_speed_multiplier_text(speed)
