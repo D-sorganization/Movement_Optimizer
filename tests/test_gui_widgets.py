@@ -52,6 +52,22 @@ class TestWidgetImports:
 
         assert PlaybackControls is not None
 
+    def test_parameter_sidebar_lod_facades_defined(self):
+        from movement_optimizer.gui import ParameterSidebar
+
+        assert hasattr(ParameterSidebar, "connect_action_handlers")
+        assert hasattr(ParameterSidebar, "get_comparison_context")
+        assert hasattr(ParameterSidebar, "set_comparison_available")
+        assert hasattr(ParameterSidebar, "set_cancellation_available")
+
+    def test_playback_controls_lod_facades_defined(self):
+        from movement_optimizer.gui import PlaybackControls
+
+        assert hasattr(PlaybackControls, "connect_action_handlers")
+        assert hasattr(PlaybackControls, "set_frame_position")
+        assert hasattr(PlaybackControls, "speed_multiplier")
+        assert hasattr(PlaybackControls, "set_speed_multiplier_text")
+
 
 class TestGuiPackageStructure:
     """Verify the gui package sub-module structure."""
