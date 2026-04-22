@@ -142,6 +142,30 @@ class _FakeSidebar:
     def stall_label_set_visible(self, v: bool) -> None:
         pass
 
+    def get_optimization_params(self) -> tuple[float, float, float]:
+        return (self.bar_slider.value(), self.dur_slider.value(), self.smooth_slider.value())
+
+    def get_segment_multipliers(self) -> dict[str, float]:
+        return {
+            "lower_leg": self.ll_slider.value(),
+            "upper_leg": self.ul_slider.value(),
+            "torso": self.to_slider.value(),
+        }
+
+    def set_cancelled(self) -> None:
+        self.cancel_btn.enabled = True
+        self.prog_label.setText("Cancelled")
+
+    def set_result_label(self, text: str) -> None:
+        self.result_label.setText(text)
+
+    def enable_post_run_buttons(self) -> None:
+        self.export_btn.enabled = True
+        self.save_btn.enabled = True
+        self.export_video_btn.enabled = True
+        self.export_plots_btn.enabled = True
+        self.add_compare_btn.enabled = True
+
 
 class _FakeTab:
     """Surrogate for ExerciseTab — records draw calls."""

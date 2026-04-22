@@ -19,10 +19,21 @@ class PlaybackControls(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
 
         self.btn_rewind = QPushButton("\u23ee")
+        self.btn_rewind.setToolTip("Rewind to start")
+        self.btn_rewind.setAccessibleName("Rewind to start")
+
         self.btn_back = QPushButton("\u25c0")
+        self.btn_back.setToolTip("Step backward")
+        self.btn_back.setAccessibleName("Step backward")
+
         self.btn_play = QPushButton("\u25b6 Play")
+        self.btn_play.setToolTip("Play/Pause animation")
+        self.btn_play.setAccessibleName("Play or Pause animation")
         self.btn_play.setProperty("class", "primary")
+
         self.btn_fwd = QPushButton("\u25b6")
+        self.btn_fwd.setToolTip("Step forward")
+        self.btn_fwd.setAccessibleName("Step forward")
 
         self.btn_rewind.clicked.connect(self.rewind.emit)
         self.btn_back.clicked.connect(self.step_back.emit)
