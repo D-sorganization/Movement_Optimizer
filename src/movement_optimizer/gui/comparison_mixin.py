@@ -27,7 +27,7 @@ class ComparisonMixin:
         if r is None:
             return
         display_name, _etype = self.EXERCISE_CONFIGS[idx]
-        bar, body_params = self.sidebar.get_comparison_context()
+        body_params, bar = self.sidebar.get_comparison_trial_data()
         n = len(self._comparison_store.get_trials()) + 1
         trial_name = f"{display_name} #{n} ({bar:.0f}kg)"
         self._comparison_store.add_trial(trial_name, r, body_params, bar)

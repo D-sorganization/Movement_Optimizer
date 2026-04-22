@@ -445,15 +445,14 @@ class ParameterSidebar(QScrollArea):
             "seg_multipliers": self.get_segment_multipliers(),
         }
 
-    def get_comparison_context(self) -> tuple[float, dict[str, float]]:
+    def get_comparison_trial_data(self) -> tuple[dict[str, object], float]:
+        """Return the comparison payload without exposing widget internals."""
+        return self.get_body_params_dict(), self.bar_slider.value()
+
+    def get_comparison_context(self) -> tuple[float, dict[str, object]]:
         """Return bar mass and body parameters for trial comparison records."""
-        return (
-            self.bar_slider.value(),
-            {
-                "body_mass": self.mass_slider.value(),
-                "height": self.height_slider.value(),
-            },
-        )
+        body_params, bar_mass = self.get_comparison_trial_data()
+        return bar_mass, body_params
 
     def set_comparison_available(self, available: bool) -> None:
         """Enable or disable the comparison action."""

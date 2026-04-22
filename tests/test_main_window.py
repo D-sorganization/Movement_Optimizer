@@ -114,6 +114,7 @@ class _FakeSidebar:
         self.export_video_btn = _FakeButton(enabled=False)
         self.export_plots_btn = _FakeButton(enabled=False)
         self.add_compare_btn = _FakeButton(enabled=False)
+        self.compare_btn = _FakeButton(enabled=False)
         self._showing_optimizing = False
         self._showing_idle = False
 
@@ -151,6 +152,16 @@ class _FakeSidebar:
             "upper_leg": self.ul_slider.value(),
             "torso": self.to_slider.value(),
         }
+
+    def get_comparison_trial_data(self) -> tuple[dict[str, object], float]:
+        return (
+            {
+                "body_mass": self.mass_slider.value(),
+                "height": self.height_slider.value(),
+                "seg_multipliers": self.get_segment_multipliers(),
+            },
+            self.bar_slider.value(),
+        )
 
     def set_cancelled(self) -> None:
         self.cancel_btn.enabled = True
@@ -218,9 +229,13 @@ class _FakeWindow:
         self.sidebar = _FakeSidebar()
         self.status_label = _FakeLabel()
         self.exercise_tabs = [_FakeTab() for _ in self.EXERCISE_CONFIGS]
+        self.tabs = type("_FakeTabs", (), {"currentIndex": lambda self: 0})()
         self._opt_lock = threading.Lock()
         self._opt_running = False
         self._cache = SolutionCache()
+        from movement_optimizer.comparison import ComparisonStore
+
+        self._comparison_store = ComparisonStore()
         self._cancel_event = threading.Event()
         self._last_config: tuple = ()
         self._run_exercise_calls: list[tuple] = []
@@ -406,6 +421,38 @@ class TestSegMults:
         assert mults["lower_leg"] == pytest.approx(1.1)
         assert mults["upper_leg"] == pytest.approx(0.9)
         assert mults["torso"] == pytest.approx(1.05)
+
+
+# ---------------------------------------------------------------------------
+# ComparisonMixin._add_comparison
+# ---------------------------------------------------------------------------
+
+
+class TestAddComparison:
+    def test_add_comparison_uses_sidebar_payload(self) -> None:
+        from movement_optimizer.gui.comparison_mixin import ComparisonMixin
+
+        window = _FakeWindow()
+        window.results[0] = _make_result()
+        window.sidebar.mass_slider.current = 84.0
+        window.sidebar.height_slider.current = 1.82
+        window.sidebar.ll_slider.current = 1.07
+        window.sidebar.ul_slider.current = 0.98
+        window.sidebar.to_slider.current = 1.03
+        window.sidebar.bar_slider.current = 90.0
+
+        ComparisonMixin._add_comparison(window)  # type: ignore[arg-type]
+
+        trials = window._comparison_store.get_trials()
+        assert len(trials) == 1
+        trial = trials[0]
+        assert trial["name"] == "Bottoms Up Squat #1 (90kg)"
+        assert trial["body_params"]["body_mass"] == pytest.approx(84.0)
+        assert trial["body_params"]["height"] == pytest.approx(1.82)
+        assert trial["body_params"]["seg_multipliers"]["lower_leg"] == pytest.approx(1.07)
+        assert trial["bar_mass"] == pytest.approx(90.0)
+        assert window.sidebar.compare_btn.enabled
+        assert "comparison list" in window.status_label.text.lower()
 
 
 # ---------------------------------------------------------------------------
