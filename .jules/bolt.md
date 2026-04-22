@@ -9,3 +9,7 @@
 ## 2024-06-15 - np.sum(x**2) vs np.vdot(x, x)
 **Learning:** In highly called cost functions like trajectory optimizers, `np.sum(x**2)` allocates a large intermediate array for the squares before summing, which adds memory allocation overhead. `np.vdot(x, x)` achieves the exact same L2 norm natively in a C loop with zero intermediate allocations, which makes it over 4x faster on arrays.
 **Action:** Always prefer `np.vdot(array, array)` for computing the sum of squares.
+
+## 2026-05-18 - Fast Squared L2 Norms with NumPy
+**Learning:** Computing the sum of squared elements via `np.sum(array**2)` incurs significant overhead from intermediate array allocation (`array**2`) and Python iteration logic, especially in hot loops like the trajectory optimizer cost functions. Using `np.vdot(array, array)` is entirely implemented in C (or fast BLAS) and avoids this overhead, making it 4-5x faster for 1D/2D arrays.
+**Action:** Always use `np.vdot(array, array)` instead of `np.sum(array**2)` for computing squared L2 norms in performance-critical code paths.

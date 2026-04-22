@@ -29,7 +29,8 @@ def compute_torque_cost(torques: NDArray, dt: float) -> float:
         torques.ndim == 2
         dt > 0
     """
-    return float(np.vdot(torques, torques) * dt)
+    # np.vdot is significantly faster than np.sum(x**2)
+    return float(np.vdot(torques, torques)) * dt
 
 
 def compute_jerk_cost(qddd: NDArray, dt: float, weight: float) -> float:
@@ -40,6 +41,7 @@ def compute_jerk_cost(qddd: NDArray, dt: float, weight: float) -> float:
         dt > 0
         weight >= 0
     """
+    # np.vdot is significantly faster than np.sum(x**2)
     return weight * float(np.vdot(qddd, qddd)) * dt
 
 
@@ -52,6 +54,7 @@ def compute_torque_rate_cost(torques: NDArray, dt: float, weight: float) -> floa
         weight >= 0
     """
     dtau = np.diff(torques, axis=0) / dt
+    # np.vdot is significantly faster than np.sum(x**2)
     l2_cost = float(np.vdot(dtau, dtau)) * dt
     tv_cost = float(np.sum(np.abs(dtau))) * dt * TV_RATE_WEIGHT_RATIO
     return weight * (l2_cost + tv_cost)
@@ -100,5 +103,6 @@ def compute_balance_cost(com_x: NDArray, center: float, dt: float, weight: float
         dt > 0
         weight >= 0
     """
-    diff = com_x - center
-    return weight * float(np.vdot(diff, diff)) * dt
+    delta = com_x - center
+    # np.vdot is significantly faster than np.sum(x**2)
+    return weight * float(np.vdot(delta, delta)) * dt

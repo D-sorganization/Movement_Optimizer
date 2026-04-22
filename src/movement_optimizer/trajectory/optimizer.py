@@ -148,6 +148,7 @@ class TrajectoryOptimizer:
         """
         L = self.dynamics.L  # type: ignore[attr-defined]
         hand_x = np.sin(q) @ np.array(L)
+        # np.vdot is significantly faster than np.sum(x**2)
         return BENCH_BAR_PATH_WEIGHT * float(np.vdot(hand_x, hand_x)) * self.dt
 
     def _compute_cost(self, x: NDArray) -> float:
