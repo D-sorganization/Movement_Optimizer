@@ -72,13 +72,13 @@ def bar_knee_clearance(
     splines = build_splines_fn(x)  # type: ignore[operator]
     q = splines(t_eval)
     L = body.L
-    knee_x = L[0] * np.sin(q[:, 0])
-    hip_x = knee_x + L[1] * np.sin(q[:, 1])
-    shoulder_x = hip_x + L[2] * np.sin(q[:, 2])
-    # Approximation: bar_x = shoulder_x assumes the bar hangs directly
-    # below the shoulder in the sagittal plane.
-    bar_x = shoulder_x
-    return bar_x - knee_x + BAR_KNEE_CLEARANCE_M
+    # Using @ for matrix-vector multiplication is significantly faster than
+    # calculating individual segment x-coordinates via element-wise multiplication and summing.
+    # We want: bar_x - knee_x = (shoulder_x) - knee_x
+    # Since shoulder_x = knee_x + L[1]*sin(q1) + L[2]*sin(q2),
+    # bar_x - knee_x = L[1]*sin(q1) + L[2]*sin(q2) = sin(q[:, 1:3]) @ L[1:3]
+    bar_minus_knee_x = np.sin(q[:, 1:3]) @ L[1:3]
+    return bar_minus_knee_x + BAR_KNEE_CLEARANCE_M
 
 
 def joint_limit_constraint_values(
