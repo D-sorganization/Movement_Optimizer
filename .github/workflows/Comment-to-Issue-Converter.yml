@@ -1,8 +1,8 @@
 name: Comment to Issue Converter
 on:
   pull_request_review_comment:
-    types: [created]
-
+    types:
+    - created
 jobs:
 
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
@@ -31,88 +31,220 @@ jobs:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 5
-    if: >-
-      contains(github.event.comment.body, '/issue') ||
-      contains(github.event.comment.body, 'TODO') ||
-      contains(github.event.comment.body, 'FIXME') ||
-      contains(github.event.comment.body, 'HACK')
+    if: contains(github.event.comment.body, '/issue') || contains(github.event.comment.body, 'TODO') || contains(github.event.comment.body, 'FIXME') || contains(github.event.comment.body, 'HACK')
     steps:
-      - name: Extract comment details
-        id: extract
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const comment = context.payload.comment;
-            const pr = context.payload.pull_request;
+    - name: Extract comment details
+      id: extract
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comment = context.payload.comment;
+          const pr = context.payload.pull_request;
 
-            const body = comment.body;
-            const file = comment.path || 'unknown';
-            const line = comment.line || comment.original_line || 'N/A';
-            const author = comment.user.login;
-            const prNumber = pr.number;
-            const prTitle = pr.title;
-            const commentUrl = comment.html_url;
+          const body = comment.body;
+          const file = comment.path || 'unknown';
+          const line = comment.line || comment.original_line || 'N/A';
+          const author = comment.user.login;
+          const prNumber = pr.number;
+          const prTitle = pr.title;
+          const commentUrl = comment.html_url;
 
-            // Determine labels based on content
-            const labels = ['from-review'];
-            if (body.includes('FIXME') || body.includes('bug')) labels.push('bug');
-            if (body.includes('TODO')) labels.push('enhancement');
-            if (body.includes('HACK')) labels.push('tech-debt');
-            if (body.includes('security') || body.includes('SECURITY')) labels.push('security');
+          // Determine labels based on content
+          const labels = ['from-review'];
+          if (body.includes('FIXME') || body.includes('bug')) labels.push('bug');
+          if (body.includes('TODO')) labels.push('enhancement');
+          if (body.includes('HACK')) labels.push('tech-debt');
+          if (body.includes('security') || body.includes('SECURITY')) labels.push('security');
 
-            // Extract title: use text after /issue if present, otherwise first line
-            let title;
-            const issueMatch = body.match(/\/issue\s+(.+?)(\n|$)/);
-            if (issueMatch) {
-              title = issueMatch[1].trim();
-            } else {
-              title = body.split('\n')[0].substring(0, 80);
-            }
+          // Extract title: use text after /issue if present, otherwise first line
+          let title;
+          const issueMatch = body.match(/\/issue\s+(.+?)(\n|$)/);
+          if (issueMatch) {
+            title = issueMatch[1].trim();
+          } else {
+            title = body.split('\n')[0].substring(0, 80);
+          }
 
-            const issueBody = [
-              `## Origin`,
-              `- **PR:** #${prNumber} (${prTitle})`,
-              `- **File:** \`${file}\` (line ${line})`,
-              `- **Author:** @${author}`,
-              `- **Comment:** ${commentUrl}`,
-              ``,
-              `## Description`,
-              body.replace(/\/issue\s*/, '').trim(),
-              ``,
-              `---`,
-              `*Auto-generated from PR review comment.*`
-            ].join('\n');
+          const issueBody = [
+            `## Origin`,
+            `- **PR:** #${prNumber} (${prTitle})`,
+            `- **File:** \`${file}\` (line ${line})`,
+            `- **Author:** @${author}`,
+            `- **Comment:** ${commentUrl}`,
+            ``,
+            `## Description`,
+            body.replace(/\/issue\s*/, '').trim(),
+            ``,
+            `---`,
+            `*Auto-generated from PR review comment.*`
+          ].join('\n');
 
-            core.setOutput('title', title);
-            core.setOutput('body', issueBody);
-            core.setOutput('labels', labels.join(','));
-            core.setOutput('comment_url', commentUrl);
-            core.setOutput('pr_number', prNumber.toString());
+          core.setOutput('title', title);
+          core.setOutput('body', issueBody);
+          core.setOutput('labels', labels.join(','));
+          core.setOutput('comment_url', commentUrl);
+          core.setOutput('pr_number', prNumber.toString());
+    - name: Create issue
+      id: create
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: issue } = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `${{ steps.extract.outputs.title }}`,
+            body: `${{ steps.extract.outputs.body }}`,
+            labels: '${{ steps.extract.outputs.labels }}'.split(',')
+          });
 
-      - name: Create issue
-        id: create
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: issue } = await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `${{ steps.extract.outputs.title }}`,
-              body: `${{ steps.extract.outputs.body }}`,
-              labels: '${{ steps.extract.outputs.labels }}'.split(',')
-            });
+          core.setOutput('issue_number', issue.number.toString());
+          core.setOutput('issue_url', issue.html_url);
+    - name: Reply to comment with issue link
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.pulls.createReplyForReviewComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: parseInt('${{ steps.extract.outputs.pr_number }}'),
+            comment_id: context.payload.comment.id,
+            body: `Created issue #${{ steps.create.outputs.issue_number }}: ${{ steps.create.outputs.issue_url }}`
+          });
+  pick-runner:
+    name: pick-runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      runner: ${{ steps.pick.outputs.runner }}
+      mode: ${{ steps.pick.outputs.mode }}
+      online: ${{ steps.pick.outputs.online }}
+      idle: ${{ steps.pick.outputs.idle }}
+      busy: ${{ steps.pick.outputs.busy }}
+      queued_runs: ${{ steps.pick.outputs.queued_runs }}
+      threshold: ${{ steps.pick.outputs.threshold }}
+    steps:
+    - name: Select runner target
+      id: pick
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN || secrets.GITHUB_TOKEN }}
+        RUNNER_OWNER: D-sorganization
+        RUNNER_LABEL: d-sorg-fleet
+        RUNNER_QUEUE_THRESHOLD: '12'
+      run: |-
+        python3 <<'PY'
+        import json
+        import os
+        import subprocess
 
-            core.setOutput('issue_number', issue.number.toString());
-            core.setOutput('issue_url', issue.html_url);
+        owner = os.environ["RUNNER_OWNER"]
+        label = os.environ["RUNNER_LABEL"]
+        threshold = int(os.environ["RUNNER_QUEUE_THRESHOLD"])
 
-      - name: Reply to comment with issue link
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.pulls.createReplyForReviewComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: parseInt('${{ steps.extract.outputs.pr_number }}'),
-              comment_id: context.payload.comment.id,
-              body: `Created issue #${{ steps.create.outputs.issue_number }}: ${{ steps.create.outputs.issue_url }}`
-            });
+
+        def run_json(command: list[str], default):
+            result = subprocess.run(command, capture_output=True, text=True, check=False)
+            if result.returncode != 0 or not result.stdout.strip():
+                return default
+            try:
+                return json.loads(result.stdout)
+            except json.JSONDecodeError:
+                return default
+
+
+        runners_response = run_json(
+            ["gh", "api", f"/orgs/{owner}/actions/runners?per_page=100"],
+            {"runners": []},
+        )
+        runners = [
+            runner
+            for runner in runners_response.get("runners", [])
+            if any(item.get("name") == label for item in runner.get("labels", []))
+        ]
+        online = sum(1 for runner in runners if runner.get("status") == "online")
+        idle = sum(
+            1
+            for runner in runners
+            if runner.get("status") == "online" and not runner.get("busy", False)
+        )
+        busy = sum(
+            1
+            for runner in runners
+            if runner.get("status") == "online" and runner.get("busy", False)
+        )
+
+        repos = run_json(
+            [
+                "gh",
+                "repo",
+                "list",
+                owner,
+                "--limit",
+                "100",
+                "--json",
+                "name,isArchived",
+            ],
+            [],
+        )
+        queued_runs = 0
+        for repo in repos:
+            if repo.get("isArchived"):
+                continue
+            repo_name = repo.get("name")
+            if not repo_name:
+                continue
+            result = subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    f"/repos/{owner}/{repo_name}/actions/runs?status=queued&per_page=1",
+                    "--jq",
+                    ".total_count",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0 and result.stdout.strip().isdigit():
+                queued_runs += int(result.stdout.strip())
+
+        if online == 0:
+            runner = "ubuntu-latest"
+            mode = "cloud-no-self-hosted"
+        elif idle > 0:
+            runner = label
+            mode = "self-hosted-idle"
+        elif queued_runs < threshold:
+            runner = label
+            mode = "self-hosted-queue"
+        else:
+            runner = "ubuntu-latest"
+            mode = "cloud-queue-threshold"
+
+        output_path = os.environ["GITHUB_OUTPUT"]
+        with open(output_path, "a", encoding="utf-8") as handle:
+            handle.write(f"runner={runner}\n")
+            handle.write(f"mode={mode}\n")
+            handle.write(f"online={online}\n")
+            handle.write(f"idle={idle}\n")
+            handle.write(f"busy={busy}\n")
+            handle.write(f"queued_runs={queued_runs}\n")
+            handle.write(f"threshold={threshold}\n")
+
+        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_path:
+            with open(summary_path, "a", encoding="utf-8") as handle:
+                handle.write("## Runner Selection\n")
+                handle.write(f"- label: `{label}`\n")
+                handle.write(f"- online: `{online}`\n")
+                handle.write(f"- idle: `{idle}`\n")
+                handle.write(f"- busy: `{busy}`\n")
+                handle.write(f"- queued workflow runs (fleet): `{queued_runs}`\n")
+                handle.write(f"- queue threshold: `{threshold}`\n")
+                handle.write(f"- selected target: `{runner}` (`{mode}`)\n")
+
+        print(
+            f"Selected {runner} ({mode}); online={online}, idle={idle}, "
+            f"busy={busy}, queued_runs={queued_runs}, threshold={threshold}"
+        )
+        PY
