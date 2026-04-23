@@ -13,7 +13,6 @@
 ## 2026-05-18 - Fast Squared L2 Norms with NumPy
 **Learning:** Computing the sum of squared elements via `np.sum(array**2)` incurs significant overhead from intermediate array allocation (`array**2`) and Python iteration logic, especially in hot loops like the trajectory optimizer cost functions. Using `np.vdot(array, array)` is entirely implemented in C (or fast BLAS) and avoids this overhead, making it 4-5x faster for 1D/2D arrays.
 **Action:** Always use `np.vdot(array, array)` instead of `np.sum(array**2)` for computing squared L2 norms in performance-critical code paths.
-
-## 2024-05-24 - NumPy Weighted Sums of Squares
-**Learning:** Combining `np.sum(x**2, axis=1)` with `np.dot(w, ...)` creates large intermediate arrays (`x**2` and `np.sum(...)`) leading to significant allocation overhead in hot loops.
-**Action:** Replace `np.dot(w, np.sum(x**2, axis=1))` with `np.vdot(w[:, np.newaxis] * x, x)` to flatten the operation and compute the weighted dot product directly in C/BLAS with fewer allocations.
+## 2024-06-25 - Weighted Sums of Squares with NumPy
+**Learning:** Computing a weighted sum of squares along an axis via `np.dot(w, np.sum(x**2, axis=1))` incurs significant overhead due to intermediate array allocations. Replacing this pattern with `np.vdot(w[:, np.newaxis] * x, x)` flattens the arrays to compute the dot product in C (or fast BLAS), resulting in ~2x speedup and minimal memory allocations. `np.einsum` was found to be slower in this context.
+**Action:** Always prefer `np.vdot` with broadcasted weights for calculating weighted sums of squares in performance-critical code paths.

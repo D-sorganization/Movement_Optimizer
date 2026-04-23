@@ -81,13 +81,15 @@ def compute_endpoint_damping_cost(
     w = damp_weights
     w_end = w[::-1]
 
-    # np.vdot is significantly faster than np.sum(x**2) combined with np.dot
-    # because it avoids intermediate array allocations and maps to C/BLAS
+    # np.vdot is significantly faster than np.sum(x**2, axis=1) combined with np.dot
+    w_col = w[:, np.newaxis]
+    w_end_col = w_end[:, np.newaxis]
+
     cost = (
-        np.vdot(w[:, np.newaxis] * qd[:nd], qd[:nd])
-        + np.vdot(w_end[:, np.newaxis] * qd[-nd:], qd[-nd:])
-        + 0.1 * np.vdot(w[:, np.newaxis] * qdd[:nd], qdd[:nd])
-        + 0.1 * np.vdot(w_end[:, np.newaxis] * qdd[-nd:], qdd[-nd:])
+        np.vdot(w_col * qd[:nd], qd[:nd])
+        + np.vdot(w_end_col * qd[-nd:], qd[-nd:])
+        + 0.1 * np.vdot(w_col * qdd[:nd], qdd[:nd])
+        + 0.1 * np.vdot(w_end_col * qdd[-nd:], qdd[-nd:])
     )
     return weight * float(cost) * dt
 
