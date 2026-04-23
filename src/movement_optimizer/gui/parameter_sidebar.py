@@ -148,15 +148,20 @@ class ParameterSidebar(QScrollArea):
     def _build_buttons(self) -> None:
         self.opt_btn = QPushButton("\u25b6  Optimize Current Tab")
         self.opt_btn.setProperty("class", "primary")
+        self.opt_btn.setToolTip(
+            "Start trajectory optimization for the currently selected exercise tab"
+        )
         self.opt_btn.clicked.connect(self.optimize_current.emit)
         self.main_layout.addWidget(self.opt_btn)
 
         self.both_btn = QPushButton("Optimize All Tabs")
+        self.both_btn.setToolTip("Start trajectory optimization sequentially for all exercise tabs")
         self.both_btn.clicked.connect(self.optimize_both.emit)
         self.main_layout.addWidget(self.both_btn)
 
         self.cancel_btn = QPushButton("\u2716  Cancel")
         self.cancel_btn.setProperty("class", "cancel")
+        self.cancel_btn.setToolTip("Cancel the currently running optimization")
         self.cancel_btn.clicked.connect(self.cancel_requested.emit)
         self.cancel_btn.setVisible(False)
         self.main_layout.addWidget(self.cancel_btn)
@@ -228,10 +233,12 @@ class ParameterSidebar(QScrollArea):
 
         self.export_btn = QPushButton("Export CSV")
         self.export_btn.setEnabled(False)
+        self.export_btn.setToolTip("Run optimization first to enable exporting kinematics to CSV")
         self.export_btn.clicked.connect(self.export_requested.emit)
         self.main_layout.addWidget(self.export_btn)
 
         self.reset_btn = QPushButton("Reset Defaults")
+        self.reset_btn.setToolTip("Reset all parameters to default values")
         self.reset_btn.clicked.connect(self.reset_requested.emit)
         self.main_layout.addWidget(self.reset_btn)
 
@@ -244,9 +251,11 @@ class ParameterSidebar(QScrollArea):
         lay = QVBoxLayout(grp)
         self.save_btn = QPushButton("Save Solution")
         self.save_btn.setEnabled(False)
+        self.save_btn.setToolTip("Run optimization first to enable saving the trajectory solution")
         self.save_btn.clicked.connect(self.save_solution_requested.emit)
         lay.addWidget(self.save_btn)
         self.load_btn = QPushButton("Load Solution")
+        self.load_btn.setToolTip("Load a previously saved trajectory solution file")
         self.load_btn.clicked.connect(self.load_solution_requested.emit)
         lay.addWidget(self.load_btn)
         self.main_layout.addWidget(grp)
@@ -256,10 +265,12 @@ class ParameterSidebar(QScrollArea):
         lay = QVBoxLayout(grp)
         self.export_video_btn = QPushButton("Export Animation GIF")
         self.export_video_btn.setEnabled(False)
+        self.export_video_btn.setToolTip("Run optimization first to enable exporting animation GIF")
         self.export_video_btn.clicked.connect(self.export_video_requested.emit)
         lay.addWidget(self.export_video_btn)
         self.export_plots_btn = QPushButton("Export Plots (PNG/PDF)")
         self.export_plots_btn.setEnabled(False)
+        self.export_plots_btn.setToolTip("Run optimization first to enable exporting plots")
         self.export_plots_btn.clicked.connect(self.export_plots_requested.emit)
         lay.addWidget(self.export_plots_btn)
         self.main_layout.addWidget(grp)
@@ -269,13 +280,16 @@ class ParameterSidebar(QScrollArea):
         lay = QVBoxLayout(grp)
         self.add_compare_btn = QPushButton("Add to Comparison")
         self.add_compare_btn.setEnabled(False)
+        self.add_compare_btn.setToolTip("Run optimization first to add current trial to comparison")
         self.add_compare_btn.clicked.connect(self.add_comparison_requested.emit)
         lay.addWidget(self.add_compare_btn)
         self.compare_btn = QPushButton("Compare Trials")
         self.compare_btn.setEnabled(False)
+        self.compare_btn.setToolTip("Add multiple trials to comparison first")
         self.compare_btn.clicked.connect(self.compare_trials_requested.emit)
         lay.addWidget(self.compare_btn)
         self.clear_compare_btn = QPushButton("Clear Comparison")
+        self.clear_compare_btn.setToolTip("Clear all trials currently saved for comparison")
         self.clear_compare_btn.clicked.connect(self.clear_comparison_requested.emit)
         lay.addWidget(self.clear_compare_btn)
         self.main_layout.addWidget(grp)
@@ -432,10 +446,19 @@ class ParameterSidebar(QScrollArea):
     def enable_post_run_buttons(self) -> None:
         """Enable export/save/compare buttons after a successful run."""
         self.export_btn.setEnabled(True)
+        self.export_btn.setToolTip("Export kinematics and forces to CSV")
+
         self.save_btn.setEnabled(True)
+        self.save_btn.setToolTip("Save the current trajectory solution to file")
+
         self.export_video_btn.setEnabled(True)
+        self.export_video_btn.setToolTip("Export the current animation to a GIF file")
+
         self.export_plots_btn.setEnabled(True)
+        self.export_plots_btn.setToolTip("Export the current plots to PNG/PDF files")
+
         self.add_compare_btn.setEnabled(True)
+        self.add_compare_btn.setToolTip("Add current trial to the comparison set")
 
     def get_body_params_dict(self) -> dict[str, object]:
         """Return the current body parameter dict suitable for JSON serialisation."""
@@ -457,6 +480,10 @@ class ParameterSidebar(QScrollArea):
     def set_comparison_available(self, available: bool) -> None:
         """Enable or disable the comparison action."""
         self.compare_btn.setEnabled(available)
+        if available:
+            self.compare_btn.setToolTip("Open dialog to compare saved trials")
+        else:
+            self.compare_btn.setToolTip("Add multiple trials to comparison first")
 
     def set_cancellation_available(self, available: bool) -> None:
         """Enable or disable the cancellation action."""
