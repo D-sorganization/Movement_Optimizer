@@ -21,9 +21,6 @@ def compute_bench_bar_cost(q: NDArray, segment_lengths: NDArray, dt: float) -> f
         len(segment_lengths) >= 3
         dt > 0
     """
-    hand_x = (
-        segment_lengths[0] * np.sin(q[:, 0])
-        + segment_lengths[1] * np.sin(q[:, 1])
-        + segment_lengths[2] * np.sin(q[:, 2])
-    )
+    # Prefer @ for matrix-vector multiplication over element-wise sum for speed
+    hand_x = np.sin(q[:, :3]) @ segment_lengths[:3]
     return BENCH_BAR_PATH_WEIGHT * float(np.vdot(hand_x, hand_x)) * dt
