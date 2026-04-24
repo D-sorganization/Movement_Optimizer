@@ -41,21 +41,15 @@ class LagrangianKinematicsMixin:
         L = self.L_eff  # type: ignore[attr-defined]
         d = self.d_eff  # type: ignore[attr-defined]
 
-        knee_x = L[0] * sq[:, 0]
-        hip_x = knee_x + L[1] * sq[:, 1]
-        shoulder_x = hip_x + L[2] * sq[:, 2]
+        m = self.m  # type: ignore[attr-defined]
 
-        c1x = d[0] * sq[:, 0]
-        c2x = knee_x + d[1] * sq[:, 1]
-        c3x = hip_x + d[2] * sq[:, 2]
+        # Using @ for matrix-vector multiplication is significantly faster than
+        # allocating intermediate arrays for individual joints.
+        shoulder_x = sq @ L
+        w = np.array([m[0] * d[0] + (m[1] + m[2]) * L[0], m[1] * d[1] + m[2] * L[1], m[2] * d[2]])
 
         total_mass = b.body_mass + bar_mass
-        numerator = (
-            b.m_feet * b.foot_com_x
-            + self.m[0] * c1x  # type: ignore[attr-defined]
-            + self.m[1] * c2x  # type: ignore[attr-defined]
-            + self.m[2] * c3x  # type: ignore[attr-defined]
-        )
+        numerator = b.m_feet * b.foot_com_x + sq @ w
 
         if exercise_type in ("squat", "full_squat"):
             if hasattr(b, "squat_bar_depth") and (
@@ -76,10 +70,16 @@ class LagrangianKinematicsMixin:
         """Compute joint positions for all joints in the chain."""
         L = self.L_eff  # type: ignore[attr-defined]
         names = self.joint_names  # type: ignore[attr-defined]
+
+        sq = np.sin(q)
+        cq = np.cos(q)
+
+        # Computing scalar coordinates avoids allocating 3 intermediate length-2 arrays.
         p0 = np.array([0.0, 0.0])
-        p1 = p0 + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        p2 = p1 + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        p3 = p2 + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
+        p1 = np.array([L[0] * sq[0], L[0] * cq[0]])
+        p2 = np.array([p1[0] + L[1] * sq[1], p1[1] + L[1] * cq[1]])
+        p3 = np.array([p2[0] + L[2] * sq[2], p2[1] + L[2] * cq[2]])
+
         return {names[0]: p0, names[1]: p1, names[2]: p2, names[3]: p3}
 
     def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
@@ -118,22 +118,25 @@ class LagrangianKinematicsMixin:
         b = self.body  # type: ignore[attr-defined]
         L = self.L_eff  # type: ignore[attr-defined]
         d = self.d_eff  # type: ignore[attr-defined]
-        ankle = np.array([0.0, 0.0])
-        c1 = ankle + d[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        knee = ankle + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        c2 = knee + d[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        hip = knee + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        c3 = hip + d[2] * np.array([np.sin(q[2]), np.cos(q[2])])
-        shoulder = hip + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
+        sq = np.sin(q)
+        cq = np.cos(q)
+        m = self.m  # type: ignore[attr-defined]
 
         foot_com = np.array([b.foot_com_x, b.foot_com_y])
         total_mass = b.body_mass + bar_mass
 
-        numerator = (
-            b.m_feet * foot_com
-            + self.m[0] * c1  # type: ignore[attr-defined]
-            + self.m[1] * c2  # type: ignore[attr-defined]
-            + self.m[2] * c3  # type: ignore[attr-defined]
+        # Computing scalar coordinates and unrolling the sums is significantly faster
+        # than allocating ~15 intermediate numpy arrays for vectors.
+        w0 = m[0] * d[0] + (m[1] + m[2]) * L[0]
+        w1 = m[1] * d[1] + m[2] * L[1]
+        w2 = m[2] * d[2]
+
+        numerator = b.m_feet * foot_com + np.array(
+            [w0 * sq[0] + w1 * sq[1] + w2 * sq[2], w0 * cq[0] + w1 * cq[1] + w2 * cq[2]]
+        )
+
+        shoulder = np.array(
+            [L[0] * sq[0] + L[1] * sq[1] + L[2] * sq[2], L[0] * cq[0] + L[1] * cq[1] + L[2] * cq[2]]
         )
 
         if exercise_type in ("squat", "full_squat"):

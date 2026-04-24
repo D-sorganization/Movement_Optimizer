@@ -24,7 +24,17 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
-        run: "ONLINE=$(gh api /orgs/${{ github.repository_owner }}/actions/runners \\\n  --jq '[.runners[] | select(.status == \"online\") | select(.labels[].name == \"d-sorg-fleet\")] | length' \\\n  2>/dev/null || echo \"0\")\nif [[ \"$ONLINE\" -gt 0 ]]; then\n  echo \"runner=d-sorg-fleet\" >> $GITHUB_OUTPUT\n  echo \"Self-hosted runner online — routing locally\"\nelse\n  echo \"runner=ubuntu-latest\" >> $GITHUB_OUTPUT\n  echo \"No self-hosted runner — using GitHub-hosted\"\nfi"
+        run: |
+          ONLINE=$(gh api /orgs/${{ github.repository_owner }}/actions/runners \
+            --jq '[.runners[] | select(.status == "online") | select(.labels[].name == "d-sorg-fleet")] | length' \
+            2>/dev/null || echo "0")
+          if [ "$ONLINE" -gt 0 ]; then
+            echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT
+            echo "Self-hosted runner online — routing locally"
+          else
+            echo "runner=ubuntu-latest" >> $GITHUB_OUTPUT
+            echo "No self-hosted runner — using GitHub-hosted"
+          fi
   quality-gate:
     runs-on: self-hosted
     timeout-minutes: 15
@@ -37,11 +47,12 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m venv .ci-venv
-          . .ci-venv/bin/activate
+          # Cross-platform venv activation
+          if [ "$RUNNER_OS" = "Windows" ]; then . .ci-venv/Scripts/activate; else . .ci-venv/bin/activate; fi
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
           python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7
-          echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "$PWD\.ci-venv\Scripts" >> $GITHUB_PATH; else echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"; fi
 
       - name: Lint (Ruff)
         run: ruff check src/ tests/
@@ -79,10 +90,11 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m venv .ci-venv
-          . .ci-venv/bin/activate
+          # Cross-platform venv activation
+          if [ "$RUNNER_OS" = "Windows" ]; then . .ci-venv/Scripts/activate; else . .ci-venv/bin/activate; fi
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-          echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "$PWD\.ci-venv\Scripts" >> $GITHUB_PATH; else echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"; fi
 
       - name: Run Tests
         env:
