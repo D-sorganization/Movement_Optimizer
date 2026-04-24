@@ -47,11 +47,12 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m venv .ci-venv
-          . .ci-venv/bin/activate
+          # Cross-platform venv activation
+          if [ "$RUNNER_OS" = "Windows" ]; then . .ci-venv/Scripts/activate; else . .ci-venv/bin/activate; fi
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
           python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7
-          echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "$PWD\.ci-venv\Scripts" >> $GITHUB_PATH; else echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"; fi
 
       - name: Lint (Ruff)
         run: ruff check src/ tests/
@@ -89,10 +90,11 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m venv .ci-venv
-          . .ci-venv/bin/activate
+          # Cross-platform venv activation
+          if [ "$RUNNER_OS" = "Windows" ]; then . .ci-venv/Scripts/activate; else . .ci-venv/bin/activate; fi
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-          echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "$PWD\.ci-venv\Scripts" >> $GITHUB_PATH; else echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"; fi
 
       - name: Run Tests
         env:
