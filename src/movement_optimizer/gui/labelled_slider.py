@@ -46,7 +46,6 @@ class LabelledSlider(QWidget):
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setRange(0, steps)
         self.slider.setValue(self._to_tick(default))
-        self.slider.setAccessibleName(label)
         self.slider.valueChanged.connect(self._on_change)
         layout.addWidget(self.slider)
 
