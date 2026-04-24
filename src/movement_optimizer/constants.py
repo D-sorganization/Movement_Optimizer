@@ -27,8 +27,9 @@ MASS_FRAC: dict[str, float] = {
     "trunk_head": 0.578,
     "arms": 0.100,
 }
-if abs(sum(MASS_FRAC.values()) - 1.0) >= 1e-9:
-    raise ValueError(f"MASS_FRAC values must sum to 1.0, got {sum(MASS_FRAC.values())}")
+assert abs(sum(MASS_FRAC.values()) - 1.0) < 1e-9, (
+    f"MASS_FRAC values must sum to 1.0, got {sum(MASS_FRAC.values())}"
+)
 
 # ------------------------------------------------------------------
 # Segment length fractions  (fraction of body height)
