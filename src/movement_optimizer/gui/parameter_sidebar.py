@@ -322,7 +322,9 @@ class ParameterSidebar(QScrollArea):
 
     def show_idle(self) -> None:
         self.opt_btn.setEnabled(True)
-        self.opt_btn.setToolTip("Start trajectory optimization for the currently selected exercise tab")
+        self.opt_btn.setToolTip(
+            "Start trajectory optimization for the currently selected exercise tab"
+        )
         self.both_btn.setEnabled(True)
         self.both_btn.setToolTip("Start trajectory optimization sequentially for all exercise tabs")
         self.cancel_btn.setVisible(False)
