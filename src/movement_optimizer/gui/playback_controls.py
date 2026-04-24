@@ -46,13 +46,16 @@ class PlaybackControls(QWidget):
             layout.addWidget(btn)
 
         layout.addSpacing(12)
-        layout.addWidget(QLabel("Speed:"))
+        speed_lbl = QLabel("Speed:")
+        layout.addWidget(speed_lbl)
 
         self.speed_slider = QSlider(Qt.Orientation.Horizontal)
         self.speed_slider.setRange(1, 30)
         self.speed_slider.setValue(10)
         self.speed_slider.setFixedWidth(100)
         self.speed_slider.valueChanged.connect(lambda v: self.speed_changed.emit(v / 10.0))
+        self.speed_slider.setAccessibleName("Playback speed")
+        speed_lbl.setBuddy(self.speed_slider)
         layout.addWidget(self.speed_slider)
 
         self.speed_label = QLabel("1.0x")
