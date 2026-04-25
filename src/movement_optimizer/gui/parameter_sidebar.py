@@ -111,9 +111,12 @@ class ParameterSidebar(QScrollArea):
 
         # 2D/3D model selector
         model_row = QHBoxLayout()
-        model_row.addWidget(QLabel("Model:"))
+        model_label = QLabel("Model:")
+        model_row.addWidget(model_label)
         self.model_combo = QComboBox()
         self.model_combo.addItems(["2D Sagittal", "3D Bilateral"])
+        self.model_combo.setAccessibleName("Model")
+        model_label.setBuddy(self.model_combo)
         # 3D Bilateral: forward-kinematics only (MVP); optimisation still
         # runs in the 2D sagittal model and the 3D pose is rendered for
         # visualisation. See issue #225.
