@@ -34,9 +34,14 @@ jobs:
       - uses: actions/setup-python@v6
         with: {python-version: "3.12"}
 
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 xvfb
+
       - name: Install Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y xvfb libegl1
+          sudo apt-get update && sudo apt-get install -y libegl1
           python -m venv .ci-venv
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
@@ -77,9 +82,14 @@ jobs:
       - uses: actions/setup-python@v6
         with: {python-version: "${{ matrix.python-version }}"}
 
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 xvfb
+
       - name: Install Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y xvfb libegl1
+          sudo apt-get update && sudo apt-get install -y libegl1
           python -m venv .ci-venv
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
