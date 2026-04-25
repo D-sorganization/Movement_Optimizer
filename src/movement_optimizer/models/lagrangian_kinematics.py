@@ -76,11 +76,28 @@ class LagrangianKinematicsMixin:
         """Compute joint positions for all joints in the chain."""
         L = self.L_eff  # type: ignore[attr-defined]
         names = self.joint_names  # type: ignore[attr-defined]
-        p0 = np.array([0.0, 0.0])
-        p1 = p0 + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        p2 = p1 + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        p3 = p2 + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
-        return {names[0]: p0, names[1]: p1, names[2]: p2, names[3]: p3}
+
+        # Performance optimization: Fully unroll scalar components and only instantiate
+        # the final return vectors to prevent massive memory allocation overhead from
+        # intermediate np.array combinations.
+        sq0, sq1, sq2 = np.sin(q)
+        cq0, cq1, cq2 = np.cos(q)
+
+        p1_x = L[0] * sq0
+        p1_y = L[0] * cq0
+
+        p2_x = p1_x + L[1] * sq1
+        p2_y = p1_y + L[1] * cq1
+
+        p3_x = p2_x + L[2] * sq2
+        p3_y = p2_y + L[2] * cq2
+
+        return {
+            names[0]: np.array([0.0, 0.0]),
+            names[1]: np.array([p1_x, p1_y]),
+            names[2]: np.array([p2_x, p2_y]),
+            names[3]: np.array([p3_x, p3_y]),
+        }
 
     def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
         """Return the barbell position vector for a given joint configuration."""

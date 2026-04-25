@@ -69,10 +69,19 @@ def batch_coriolis_torques(
         Coriolis torque contribution, shape (N, 3).
     """
     n = qd.shape[0]
-    tau = np.zeros((n, 3))
-    tau[:, 0] = a01 * s01 * qd[:, 1] ** 2 + a02 * s02 * qd[:, 2] ** 2
-    tau[:, 1] = -a01 * s01 * qd[:, 0] ** 2 + a12 * s12 * qd[:, 2] ** 2
-    tau[:, 2] = -a02 * s02 * qd[:, 0] ** 2 - a12 * s12 * qd[:, 1] ** 2
+    # Performance optimization:
+    # 1. np.empty avoids zero-initialization overhead since array is fully overwritten.
+    # 2. Explicit multiplication (x * x) is significantly faster than exponentiation (x ** 2) in NumPy.
+    tau = np.empty((n, 3))
+    qd_0 = qd[:, 0]
+    qd_1 = qd[:, 1]
+    qd_2 = qd[:, 2]
+    qd2_0 = qd_0 * qd_0
+    qd2_1 = qd_1 * qd_1
+    qd2_2 = qd_2 * qd_2
+    tau[:, 0] = a01 * s01 * qd2_1 + a02 * s02 * qd2_2
+    tau[:, 1] = -a01 * s01 * qd2_0 + a12 * s12 * qd2_2
+    tau[:, 2] = -a02 * s02 * qd2_0 - a12 * s12 * qd2_1
     return tau
 
 
@@ -96,12 +105,9 @@ def batch_gravity_torques(
         Gravity torque contribution, shape (N, 3).
     """
     sq = np.cos(q) if supine else np.sin(q)
-    n = q.shape[0]
-    tau = np.zeros((n, 3))
-    tau[:, 0] = g0 * sq[:, 0]
-    tau[:, 1] = g1 * sq[:, 1]
-    tau[:, 2] = g2 * sq[:, 2]
-    return tau
+    # Performance optimization: Use NumPy array broadcasting instead of manually allocating
+    # and populating an intermediate output array via column assignment.
+    return sq * np.array([g0, g1, g2])
 
 
 def numpy_inverse_dynamics_batch(
@@ -153,9 +159,13 @@ def numpy_inverse_dynamics_batch(
     s02 = np.sin(d02)
     s12 = np.sin(d12)
 
-    qd2_0 = qd[:, 0] ** 2
-    qd2_1 = qd[:, 1] ** 2
-    qd2_2 = qd[:, 2] ** 2
+    # Performance optimization: Explicit array multiplication (x * x) is faster than exponentiation (x ** 2).
+    qd_0 = qd[:, 0]
+    qd_1 = qd[:, 1]
+    qd_2 = qd[:, 2]
+    qd2_0 = qd_0 * qd_0
+    qd2_1 = qd_1 * qd_1
+    qd2_2 = qd_2 * qd_2
 
     qdd_0 = qdd[:, 0]
     qdd_1 = qdd[:, 1]

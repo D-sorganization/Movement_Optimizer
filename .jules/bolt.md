@@ -20,3 +20,7 @@
 ## 2026-05-19 - Replacing Sequential Additions with Matrix Multiplication
 **Learning:** In hot loops like constraint evaluations or cost functions, computing weighted sums sequentially via explicit element-wise products and additions (e.g. `L[0]*sin(q[:,0]) + L[1]*sin(q[:,1]) + L[2]*sin(q[:,2])`) incurs substantial overhead from multiple intermediate array allocations and Python loop processing. Replacing these with Numpy's `@` operator for matrix-vector multiplication (e.g. `np.sin(q) @ L`) achieves the same result while offloading computation to highly optimized C/BLAS routines and minimizing intermediate arrays, yielding a 3-4x speedup.
 **Action:** Always prefer matrix multiplication (`@`) over explicit sequential addition of element-wise array operations when computing weighted sums or coordinates across multiple segments.
+
+## 2026-04-25 - NumPy Scalar Operations & Unrolling
+**Learning:** In NumPy, combining explicit Python lists into `np.array([a, b])` inside frequently called kinematic methods (like `forward_kinematics`) creates massive intermediate allocation overhead. Additionally, using `** 2` for array exponentiation is slower than explicit array multiplication `array * array`, and `np.empty()` is slightly faster than `np.zeros()` when overwriting all array values.
+**Action:** Unroll scalar components into simple python variables and only create the final arrays. Avoid `** 2` in favor of `a * a` in NumPy arrays.
