@@ -36,6 +36,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          sudo apt-get update && sudo apt-get install -y xvfb libegl1
           python -m venv .ci-venv
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
@@ -78,6 +79,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          sudo apt-get update && sudo apt-get install -y xvfb libegl1
           python -m venv .ci-venv
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
@@ -87,7 +89,7 @@ jobs:
       - name: Run Tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m pytest tests/ -v --tb=short --cov=movement_optimizer --cov-report=xml --cov-fail-under=53
+        run: xvfb-run -a python -m pytest tests/ -v --tb=short --cov=movement_optimizer --cov-report=xml --cov-fail-under=53
 
       - name: Upload Coverage
         if: matrix.python-version == '3.12'
