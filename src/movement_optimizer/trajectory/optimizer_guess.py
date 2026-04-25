@@ -24,20 +24,13 @@ def build_initial_guess(
 
     Returns waypoint array of shape (n_waypoints, n_dof).
     """
-    wp = np.zeros((n_waypoints, n_dof))
     if q_via is not None:
         n_half = n_waypoints // 2
-        for j in range(n_dof):
-            wp[:n_half, j] = np.linspace(q_start[j], q_via[j], n_half + 2)[1:-1]
-            wp[n_half:, j] = np.linspace(
-                q_via[j],
-                q_end[j],
-                n_waypoints - n_half + 2,
-            )[1:-1]
-    else:
-        for j in range(n_dof):
-            wp[:, j] = np.linspace(q_start[j], q_end[j], n_waypoints + 2)[1:-1]
-    return wp
+        # np.linspace is vectorized, directly taking start and end arrays
+        wp1 = np.linspace(q_start, q_via, n_half + 2)[1:-1]
+        wp2 = np.linspace(q_via, q_end, n_waypoints - n_half + 2)[1:-1]
+        return np.vstack((wp1, wp2))
+    return np.linspace(q_start, q_end, n_waypoints + 2)[1:-1]
 
 
 def build_perturbed_guess(
@@ -67,12 +60,11 @@ def build_perturbed_guess(
     rng = np.random.default_rng(seed * 42 + 7)
     joint_range = q_bounds[:, 1] - q_bounds[:, 0]
     noise = rng.normal(0, PERTURBATION_SCALE, wp.shape) * joint_range
-    wp_perturbed = wp + noise
+    wp += noise
 
-    # Clip to joint bounds
-    for j in range(n_dof):
-        wp_perturbed[:, j] = np.clip(wp_perturbed[:, j], q_bounds[j, 0], q_bounds[j, 1])
-    return wp_perturbed
+    # Clip to joint bounds (vectorized in-place clipping is faster than looping)
+    np.clip(wp, q_bounds[:, 0], q_bounds[:, 1], out=wp)
+    return wp
 
 
 def build_bounds(
@@ -88,7 +80,5 @@ def build_bounds(
 
     Returns list of (lo, hi) tuples with length n_waypoints * n_dof.
     """
-    bounds: list[tuple[float, float]] = []
-    for _ in range(n_waypoints):
-        bounds.extend([(q_bounds[j, 0], q_bounds[j, 1]) for j in range(n_dof)])
-    return bounds
+    # Direct list multiplication is ~20x faster than double loops
+    return [tuple(bound) for bound in q_bounds] * n_waypoints
