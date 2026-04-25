@@ -46,9 +46,12 @@ class PlaybackControls(QWidget):
             layout.addWidget(btn)
 
         layout.addSpacing(12)
-        layout.addWidget(QLabel("Speed:"))
+        speed_label_widget = QLabel("Speed:")
+        layout.addWidget(speed_label_widget)
 
         self.speed_slider = QSlider(Qt.Orientation.Horizontal)
+        self.speed_slider.setAccessibleName("Speed")
+        speed_label_widget.setBuddy(self.speed_slider)
         self.speed_slider.setRange(1, 30)
         self.speed_slider.setValue(10)
         self.speed_slider.setFixedWidth(100)
