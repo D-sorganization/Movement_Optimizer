@@ -9,3 +9,11 @@
 ## 2025-02-24 - Accessibility and Focus Routing in PyQt6
 **Learning:** PyQt6 components often lack explicit linkages for screen readers out of the box, functioning differently from HTML's `for` and `aria-label` attributes. Missing these leaves inputs disconnected from labels for assistive technologies.
 **Action:** Consistently extract implicit labels to explicitly associate them using `QLabel.setBuddy(input_widget)` (focus routing) and `input_widget.setAccessibleName("Label")` (screen readers).
+
+## 2025-02-26 - Dynamic Tooltips for Long-Running Processes
+**Learning:** Disabling primary action buttons (like 'Optimize') during a background process without updating their tooltips leaves users wondering if the app is frozen or why they can't interact.
+**Action:** Always dynamically update tooltips on buttons when their `setEnabled` state changes. Use `setToolTip("Process currently in progress. Please wait...")` when disabled, and restore the original tooltip when re-enabled.
+
+## 2025-02-26 - Contextual Tooltips for QTabWidget
+**Learning:** Tabs in `QTabWidget` can benefit from descriptive tooltips, especially when the tab labels are short or act as primary navigation.
+**Action:** Use `QTabWidget.setTabToolTip(index, "Description")` during UI construction to add helpful hover context to individual tabs.

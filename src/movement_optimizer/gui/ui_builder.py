@@ -38,9 +38,10 @@ def build_central_widget(
 
     tabs = QTabWidget()
     exercise_tabs: list[ExerciseTab] = []
-    for display_name, _ in exercise_configs:
+    for i, (display_name, _) in enumerate(exercise_configs):
         tab = ExerciseTab(display_name)
         tabs.addTab(tab, f"  {display_name}  ")
+        tabs.setTabToolTip(i, f"View and optimize {display_name} trajectory")
         exercise_tabs.append(tab)
     right_lay.addWidget(tabs)
 

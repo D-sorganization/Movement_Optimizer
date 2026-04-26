@@ -314,7 +314,9 @@ class ParameterSidebar(QScrollArea):
 
     def show_optimizing(self) -> None:
         self.opt_btn.setEnabled(False)
+        self.opt_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
         self.both_btn.setEnabled(False)
+        self.both_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
         self.cancel_btn.setVisible(True)
         self.stall_label.setVisible(False)
         self.stall_label.setText("")
@@ -323,7 +325,11 @@ class ParameterSidebar(QScrollArea):
 
     def show_idle(self) -> None:
         self.opt_btn.setEnabled(True)
+        self.opt_btn.setToolTip(
+            "Start trajectory optimization for the currently selected exercise tab"
+        )
         self.both_btn.setEnabled(True)
+        self.both_btn.setToolTip("Start trajectory optimization sequentially for all exercise tabs")
         self.cancel_btn.setVisible(False)
 
     def update_progress(self, report: ProgressReport) -> None:
