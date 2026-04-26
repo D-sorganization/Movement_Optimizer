@@ -24,3 +24,8 @@
 ## 2026-04-25 - NumPy Scalar Operations & Unrolling
 **Learning:** In NumPy, combining explicit Python lists into `np.array([a, b])` inside frequently called kinematic methods (like `forward_kinematics`) creates massive intermediate allocation overhead. Additionally, using `** 2` for array exponentiation is slower than explicit array multiplication `array * array`, and `np.empty()` is slightly faster than `np.zeros()` when overwriting all array values.
 **Action:** Unroll scalar components into simple python variables and only create the final arrays. Avoid `** 2` in favor of `a * a` in NumPy arrays.
+## 2024-04-26 - Unrolling scalar trig calculations in NumPy
+
+**Learning:** Fully unrolling scalar components and avoiding explicit intermediate array creation (like `np.array([np.sin(q), np.cos(q)])`) dramatically improves performance in iterative kinematic solvers in NumPy.
+
+**Action:** In highly called NumPy calculations, compute scalar components first and directly construct the final array, bypassing intermediary arrays.

@@ -80,8 +80,8 @@ class LagrangianKinematicsMixin:
         # Performance optimization: Fully unroll scalar components and only instantiate
         # the final return vectors to prevent massive memory allocation overhead from
         # intermediate np.array combinations.
-        sq0, sq1, sq2 = np.sin(q)
-        cq0, cq1, cq2 = np.cos(q)
+        sq0, sq1, sq2 = np.sin(q[:3])
+        cq0, cq1, cq2 = np.cos(q[:3])
 
         p1_x = L[0] * sq0
         p1_y = L[0] * cq0
@@ -135,13 +135,24 @@ class LagrangianKinematicsMixin:
         b = self.body  # type: ignore[attr-defined]
         L = self.L_eff  # type: ignore[attr-defined]
         d = self.d_eff  # type: ignore[attr-defined]
-        ankle = np.array([0.0, 0.0])
-        c1 = ankle + d[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        knee = ankle + L[0] * np.array([np.sin(q[0]), np.cos(q[0])])
-        c2 = knee + d[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        hip = knee + L[1] * np.array([np.sin(q[1]), np.cos(q[1])])
-        c3 = hip + d[2] * np.array([np.sin(q[2]), np.cos(q[2])])
-        shoulder = hip + L[2] * np.array([np.sin(q[2]), np.cos(q[2])])
+        # Performance optimization: Fully unroll scalar components to prevent
+        # intermediate np.array allocation overhead.
+        sq0, sq1, sq2 = np.sin(q[:3])
+        cq0, cq1, cq2 = np.cos(q[:3])
+
+        c1 = np.array([d[0] * sq0, d[0] * cq0])
+
+        knee_x = L[0] * sq0
+        knee_y = L[0] * cq0
+
+        c2 = np.array([knee_x + d[1] * sq1, knee_y + d[1] * cq1])
+
+        hip_x = knee_x + L[1] * sq1
+        hip_y = knee_y + L[1] * cq1
+
+        c3 = np.array([hip_x + d[2] * sq2, hip_y + d[2] * cq2])
+
+        shoulder = np.array([hip_x + L[2] * sq2, hip_y + L[2] * cq2])
 
         foot_com = np.array([b.foot_com_x, b.foot_com_y])
         total_mass = b.body_mass + bar_mass
