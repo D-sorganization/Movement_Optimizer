@@ -80,8 +80,8 @@ class LagrangianKinematicsMixin:
         # Performance optimization: Fully unroll scalar components and only instantiate
         # the final return vectors to prevent massive memory allocation overhead from
         # intermediate np.array combinations.
-        sq0, sq1, sq2 = np.sin(q[:3])
-        cq0, cq1, cq2 = np.cos(q[:3])
+        sq0, sq1, sq2 = np.sin(q)
+        cq0, cq1, cq2 = np.cos(q)
 
         p1_x = L[0] * sq0
         p1_y = L[0] * cq0
@@ -135,34 +135,39 @@ class LagrangianKinematicsMixin:
         b = self.body  # type: ignore[attr-defined]
         L = self.L_eff  # type: ignore[attr-defined]
         d = self.d_eff  # type: ignore[attr-defined]
-        # Performance optimization: Fully unroll scalar components to prevent
-        # intermediate np.array allocation overhead.
-        sq0, sq1, sq2 = np.sin(q[:3])
-        cq0, cq1, cq2 = np.cos(q[:3])
 
-        c1 = np.array([d[0] * sq0, d[0] * cq0])
+        # Performance optimization: Fully unroll scalar components to avoid intermediate array allocations
+        sq0, sq1, sq2 = np.sin(q)
+        cq0, cq1, cq2 = np.cos(q)
 
         knee_x = L[0] * sq0
         knee_y = L[0] * cq0
 
-        c2 = np.array([knee_x + d[1] * sq1, knee_y + d[1] * cq1])
-
         hip_x = knee_x + L[1] * sq1
         hip_y = knee_y + L[1] * cq1
 
-        c3 = np.array([hip_x + d[2] * sq2, hip_y + d[2] * cq2])
+        m0, m1, m2 = self.m  # type: ignore[attr-defined]
 
-        shoulder = np.array([hip_x + L[2] * sq2, hip_y + L[2] * cq2])
-
-        foot_com = np.array([b.foot_com_x, b.foot_com_y])
-        total_mass = b.body_mass + bar_mass
-
-        numerator = (
-            b.m_feet * foot_com
-            + self.m[0] * c1  # type: ignore[attr-defined]
-            + self.m[1] * c2  # type: ignore[attr-defined]
-            + self.m[2] * c3  # type: ignore[attr-defined]
+        num_x = (
+            b.m_feet * b.foot_com_x
+            + m0 * (d[0] * sq0)
+            + m1 * (knee_x + d[1] * sq1)
+            + m2 * (hip_x + d[2] * sq2)
         )
+
+        num_y = (
+            b.m_feet * b.foot_com_y
+            + m0 * (d[0] * cq0)
+            + m1 * (knee_y + d[1] * cq1)
+            + m2 * (hip_y + d[2] * cq2)
+        )
+
+        shoulder_x = hip_x + L[2] * sq2
+        shoulder_y = hip_y + L[2] * cq2
+        shoulder = np.array([shoulder_x, shoulder_y])
+
+        total_mass = b.body_mass + bar_mass
+        numerator = np.array([num_x, num_y])
 
         if exercise_type in ("squat", "full_squat"):
             numerator += bar_mass * self.bar_position(q, exercise_type)
