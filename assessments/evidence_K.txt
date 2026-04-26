@@ -1,0 +1,9 @@
+=== K: Maintainability ===
+TODO count:
+0
+FIXME count:
+0
+Type ignore:
+140
+Churn (last 30 days commits):
+53

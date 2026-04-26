@@ -1,0 +1,7 @@
+=== N: Legal ===
+LICENSE:
+YES
+Copyright headers:
+0
+DCO:
+NO
