@@ -153,7 +153,7 @@ class LagrangianKinematicsMixin:
         L = self.L_eff  # type: ignore[attr-defined]
         d = self.d_eff  # type: ignore[attr-defined]
 
-        # Performance optimization: Unroll scalar components to avoid multiple
+        # Performance optimization: Fully unroll scalar components to avoid multiple
         # intermediate array allocations and vector math overhead.
         sq0, sq1, sq2 = np.sin(q)
         cq0, cq1, cq2 = np.cos(q)
