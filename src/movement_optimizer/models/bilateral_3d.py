@@ -177,7 +177,10 @@ class Bilateral3DModel:
         Matches the 2D model's segment step exactly.  ``origin_xz`` is a
         2-vector in the (x, z) sagittal plane.
         """
-        return origin_xz + length * np.array([np.sin(angle), np.cos(angle)])
+        # Performance optimization: Skip intermediate array allocation
+        return np.array(
+            [origin_xz[0] + length * np.sin(angle), origin_xz[1] + length * np.cos(angle)]
+        )
 
     def forward_kinematics(self, pose: Bilateral3DPose) -> dict[str, NDArray]:
         """Return joint positions in the world frame as a ``{name: xyz}`` dict.
