@@ -101,27 +101,44 @@ class LagrangianKinematicsMixin:
 
     def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
         """Return the barbell position vector for a given joint configuration."""
-        fk = self.forward_kinematics(q)
-        s = fk["shoulder"]
+        L = self.L_eff  # type: ignore[attr-defined]
+
+        # Performance optimization: Calculate shoulder position directly and unroll scalar
+        # components for exercise-specific logic to avoid intermediate array allocations.
+        sq0, sq1, sq2 = np.sin(q)
+        cq0, cq1, cq2 = np.cos(q)
+
+        p1_x = L[0] * sq0
+        p1_y = L[0] * cq0
+
+        p2_x = p1_x + L[1] * sq1
+        p2_y = p1_y + L[1] * cq1
+
+        s_x = p2_x + L[2] * sq2
+        s_y = p2_y + L[2] * cq2
+
         if exercise_type in ("squat", "full_squat"):
             b = self.body  # type: ignore[attr-defined]
             if hasattr(b, "squat_bar_depth") and (
                 b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0
             ):
-                u_down = np.array([-np.sin(q[2]), -np.cos(q[2])])
-                u_back = np.array([-np.cos(q[2]), np.sin(q[2])])
-                return s + b.squat_bar_height * u_down + b.squat_bar_depth * u_back
-            return s.copy()
+                return np.array(
+                    [
+                        s_x - b.squat_bar_height * sq2 - b.squat_bar_depth * cq2,
+                        s_y - b.squat_bar_height * cq2 + b.squat_bar_depth * sq2,
+                    ]
+                )
+            return np.array([s_x, s_y])
         if exercise_type == "deadlift":
             # Bar hangs from hands: arm-length below shoulder
-            return np.array([s[0], s[1] - self.body.L_arm])  # type: ignore[attr-defined]
+            return np.array([s_x, s_y - self.body.L_arm])  # type: ignore[attr-defined]
         if exercise_type in ("clean", "clean_and_jerk"):
             # Front rack: bar sits at shoulder height
-            return s.copy()
+            return np.array([s_x, s_y])
         if exercise_type in ("snatch", "jerk"):
             # Overhead: bar is arm-length above shoulder
-            return np.array([s[0], s[1] + self.body.L_arm])  # type: ignore[attr-defined]
-        return s.copy()
+            return np.array([s_x, s_y + self.body.L_arm])  # type: ignore[attr-defined]
+        return np.array([s_x, s_y])
 
     def com_position(
         self,
@@ -136,7 +153,8 @@ class LagrangianKinematicsMixin:
         L = self.L_eff  # type: ignore[attr-defined]
         d = self.d_eff  # type: ignore[attr-defined]
 
-        # Performance optimization: Fully unroll scalar components to avoid intermediate array allocations
+        # Performance optimization: Fully unroll scalar components to avoid multiple
+        # intermediate array allocations and vector math overhead.
         sq0, sq1, sq2 = np.sin(q)
         cq0, cq1, cq2 = np.cos(q)
 
@@ -146,36 +164,45 @@ class LagrangianKinematicsMixin:
         hip_x = knee_x + L[1] * sq1
         hip_y = knee_y + L[1] * cq1
 
-        m0, m1, m2 = self.m  # type: ignore[attr-defined]
+        shoulder_x = hip_x + L[2] * sq2
+        shoulder_y = hip_y + L[2] * cq2
+
+        c1_x = d[0] * sq0
+        c1_y = d[0] * cq0
+
+        c2_x = knee_x + d[1] * sq1
+        c2_y = knee_y + d[1] * cq1
+
+        c3_x = hip_x + d[2] * sq2
+        c3_y = hip_y + d[2] * cq2
+
+        total_mass = b.body_mass + bar_mass
 
         num_x = (
             b.m_feet * b.foot_com_x
-            + m0 * (d[0] * sq0)
-            + m1 * (knee_x + d[1] * sq1)
-            + m2 * (hip_x + d[2] * sq2)
+            + self.m[0] * c1_x  # type: ignore[attr-defined]
+            + self.m[1] * c2_x  # type: ignore[attr-defined]
+            + self.m[2] * c3_x  # type: ignore[attr-defined]
         )
-
         num_y = (
             b.m_feet * b.foot_com_y
-            + m0 * (d[0] * cq0)
-            + m1 * (knee_y + d[1] * cq1)
-            + m2 * (hip_y + d[2] * cq2)
+            + self.m[0] * c1_y  # type: ignore[attr-defined]
+            + self.m[1] * c2_y  # type: ignore[attr-defined]
+            + self.m[2] * c3_y  # type: ignore[attr-defined]
         )
 
-        shoulder_x = hip_x + L[2] * sq2
-        shoulder_y = hip_y + L[2] * cq2
-        shoulder = np.array([shoulder_x, shoulder_y])
-
-        total_mass = b.body_mass + bar_mass
-        numerator = np.array([num_x, num_y])
-
         if exercise_type in ("squat", "full_squat"):
-            numerator += bar_mass * self.bar_position(q, exercise_type)
+            bar_pos = self.bar_position(q, exercise_type)
+            num_x += bar_mass * bar_pos[0]
+            num_y += bar_mass * bar_pos[1]
         else:
             bar_pos = self.bar_position(q, exercise_type)
             # Arm vector from shoulder to bar
-            arm_vec = bar_pos - shoulder
-            arm_com = shoulder + COM_FRAC["arm"] * arm_vec
-            numerator += b.m_arms * arm_com + bar_mass * bar_pos
+            arm_vec_x = bar_pos[0] - shoulder_x
+            arm_vec_y = bar_pos[1] - shoulder_y
+            arm_com_x = shoulder_x + COM_FRAC["arm"] * arm_vec_x
+            arm_com_y = shoulder_y + COM_FRAC["arm"] * arm_vec_y
+            num_x += b.m_arms * arm_com_x + bar_mass * bar_pos[0]
+            num_y += b.m_arms * arm_com_y + bar_mass * bar_pos[1]
 
-        return numerator / total_mass
+        return np.array([num_x / total_mass, num_y / total_mass])
