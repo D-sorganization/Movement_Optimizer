@@ -1,0 +1,17 @@
+services:
+  movement-optimizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: movement-optimizer:latest
+    container_name: movement-optimizer
+    volumes:
+      - ./data:/app/data:ro
+      - ./results:/app/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Override default entrypoint to keep container alive for exec
+    # or pass CLI arguments directly
+    # Example: docker compose run --rm movement-optimizer --input data/run.json
+    entrypoint: ["python3", "-m", "movement_optimizer.cli"]
+    command: ["--help"]
