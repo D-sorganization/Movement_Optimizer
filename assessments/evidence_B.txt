@@ -1,0 +1,12 @@
+=== B: Documentation ===
+README lines:
+175
+AGENTS.md lines:
+105
+CLAUDE.md lines:
+90
+CONTRIBUTING:
+YES
+ADRs:
+Docstrings ratio:
+122829

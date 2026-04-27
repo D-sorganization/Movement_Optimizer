@@ -1,0 +1,248 @@
+{
+  "repository": "Movement-Optimizer",
+  "date": "2026-04-26",
+  "assessor": "Cline",
+  "overall_score": 68.7,
+  "criteria": {
+    "A": {
+      "score": 8.0,
+      "weight": 0.05,
+      "weighted_score": 4.0,
+      "findings": [
+        {
+          "priority": "P2",
+          "title": "Mixed Python/Rust layout but tests separated",
+          "detail": "src/ and rust_core/ both present; ensure clear separation."
+        }
+      ]
+    },
+    "B": {
+      "score": 7.5,
+      "weight": 0.08,
+      "weighted_score": 6.0,
+      "findings": [
+        {
+          "priority": "P2",
+          "title": "AGENTS.md and CLAUDE.md present but low ADRs",
+          "detail": "No ADR files found in docs/."
+        }
+      ]
+    },
+    "C": {
+      "score": 6.5,
+      "weight": 0.12,
+      "weighted_score": 7.8,
+      "findings": [
+        {
+          "priority": "P1",
+          "title": "No .coverage file found",
+          "detail": "Coverage not tracked despite test files present."
+        },
+        {
+          "priority": "P2",
+          "title": "Property tests present but limited",
+          "detail": "Some hypothesis usage detected but needs expansion."
+        }
+      ]
+    },
+    "D": {
+      "score": 6.0,
+      "weight": 0.1,
+      "weighted_score": 6.0,
+      "findings": [
+        {
+          "priority": "P0",
+          "title": "Bare excepts found in codebase",
+          "detail": "Evidence_D shows bare except: usage."
+        },
+        {
+          "priority": "P1",
+          "title": "Silent failure risk in exception handling",
+          "detail": "Need explicit exception types."
+        }
+      ]
+    },
+    "E": {
+      "score": 5.5,
+      "weight": 0.07,
+      "weighted_score": 3.85,
+      "findings": [
+        {
+          "priority": "P1",
+          "title": "Benchmarks directory exists but minimal",
+          "detail": ".benchmarks/ present but may be stale."
+        },
+        {
+          "priority": "P2",
+          "title": "No Big-O annotations in algorithms",
+          "detail": "Complexity comments missing."
+        }
+      ]
+    },
+    "F": {
+      "score": 6.0,
+      "weight": 0.1,
+      "weighted_score": 6.0,
+      "findings": [
+        {
+          "priority": "P1",
+          "title": "Pre-commit configured but enforcement unclear",
+          "detail": ".pre-commit-config.yaml present."
+        },
+        {
+          "priority": "P2",
+          "title": "Magic numbers in Rust core",
+          "detail": "Evidence_F shows numeric literals."
+        }
+      ]
+    },
+    "G": {
+      "score": 5.5,
+      "weight": 0.08,
+      "weighted_score": 4.4,
+      "findings": [
+        {
+          "priority": "P1",
+          "title": "No lockfile for Python dependencies",
+          "detail": "No poetry.lock, uv.lock, or requirements.lock found."
+        },
+        {
+          "priority": "P2",
+          "title": "License present but no audit",
+          "detail": "MIT License found."
+        }
+      ]
+    },
+    "H": {
+      "score": 6.0,
+      "weight": 0.1,
+      "weighted_score": 6.0,
+      "findings": [
+        {
+          "priority": "P1",
+          "title": "No SAST scan artifacts",
+          "detail": "No bandit_output.json or similar."
+        },
+        {
+          "priority": "P2",
+          "title": "Subprocess shell usage detected",
+          "detail": "Evidence_H shows potential shell=True usage."
+        }
+      ]
+    },
+    "I": {
+      "score": 7.0,
+      "weight": 0.06,
+      "weighted_score": 4.2,
+      "findings": [
+        {
+          "priority": "P2",
+          "title": ".env.example present but no type-checked config",
+          "detail": "No pydantic or dataclass config found."
+        }
+      ]
+    },
+    "J": {
+      "score": 4.5,
+      "weight": 0.07,
+      "weighted_score": 3.15,
+      "findings": [
+        {
+          "priority": "P1",
+          "title": "Structured logging imports found but metrics absent",
+          "detail": "Evidence_J shows some logging."
+        },
+        {
+          "priority": "P2",
+          "title": "No health endpoint",
+          "detail": "No /ready or /alive endpoint found."
+        }
+      ]
+    },
+    "K": {
+      "score": 6.5,
+      "weight": 0.07,
+      "weighted_score": 4.55,
+      "findings": [
+        {
+          "priority": "P1",
+          "title": "TODO/FIXME count moderate",
+          "detail": "Evidence_K shows technical debt items."
+        },
+        {
+          "priority": "P2",
+          "title": "Type ignore suppressions present",
+          "detail": "Some # type: ignore found."
+        }
+      ]
+    },
+    "L": {
+      "score": 6.0,
+      "weight": 0.08,
+      "weighted_score": 4.8,
+      "findings": [
+        {
+          "priority": "P1",
+          "title": "GitHub workflows present but CI status unknown",
+          "detail": "Branch protection status unclear."
+        },
+        {
+          "priority": "P2",
+          "title": "PR check time not tracked",
+          "detail": "No evidence of PR duration monitoring."
+        }
+      ]
+    },
+    "M": {
+      "score": 6.5,
+      "weight": 0.05,
+      "weighted_score": 3.25,
+      "findings": [
+        {
+          "priority": "P2",
+          "title": "Dockerfile present but no docker-compose",
+          "detail": "Single container deployment only."
+        },
+        {
+          "priority": "P2",
+          "title": "CHANGELOG.md present but versioning sparse",
+          "detail": "CHANGELOG exists but may be stale."
+        }
+      ]
+    },
+    "N": {
+      "score": 6.0,
+      "weight": 0.04,
+      "weighted_score": 2.4,
+      "findings": [
+        {
+          "priority": "P2",
+          "title": "Copyright headers missing",
+          "detail": "No Copyright found in src/."
+        },
+        {
+          "priority": "P2",
+          "title": "No DCO enforcement",
+          "detail": "No DCO file found."
+        }
+      ]
+    },
+    "O": {
+      "score": 7.5,
+      "weight": 0.03,
+      "weighted_score": 2.25,
+      "findings": [
+        {
+          "priority": "P2",
+          "title": "CLAUDE.md and AGENTS.md present",
+          "detail": "Good agentic context."
+        },
+        {
+          "priority": "P2",
+          "title": "SPEC.md present (180 lines)",
+          "detail": "Specification adequate."
+        }
+      ]
+    }
+  }
+}

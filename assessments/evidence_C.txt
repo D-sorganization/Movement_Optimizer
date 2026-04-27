@@ -1,0 +1,11 @@
+=== C: Testing ===
+Test files:
+31
+Coverage file:
+NO
+Property tests (hypothesis):
+./.venv311/lib/python3.11/site-packages/numpy/lib/tests/test_function_base.py
+./.venv311/lib/python3.11/site-packages/numpy/conftest.py
+./.venv311/lib/python3.11/site-packages/numpy/_core/tests/test_scalarmath.py
+./.venv311/lib/python3.11/site-packages/numpy/_core/tests/test_arrayprint.py
+./.venv311/lib/python3.11/site-packages/numpy/_core/tests/test_nep50_promotions.py

@@ -1,0 +1,137 @@
+[
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/315",
+    "title": "[P2] [A] Mixed Python/Rust layout but tests separated",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/316",
+    "title": "[P2] [B] AGENTS.md and CLAUDE.md present but low ADRs",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/317",
+    "title": "[P1] [C] No .coverage file found",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/318",
+    "title": "[P2] [C] Property tests present but limited",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/319",
+    "title": "[P0] [D] Bare excepts found in codebase",
+    "priority": "P0"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/320",
+    "title": "[P1] [D] Silent failure risk in exception handling",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/321",
+    "title": "[P1] [E] Benchmarks directory exists but minimal",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/322",
+    "title": "[P2] [E] No Big-O annotations in algorithms",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/323",
+    "title": "[P1] [F] Pre-commit configured but enforcement unclear",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/324",
+    "title": "[P2] [F] Magic numbers in Rust core",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/325",
+    "title": "[P1] [G] No lockfile for Python dependencies",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/326",
+    "title": "[P2] [G] License present but no audit",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/327",
+    "title": "[P1] [H] No SAST scan artifacts",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/328",
+    "title": "[P2] [H] Subprocess shell usage detected",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/329",
+    "title": "[P2] [I] .env.example present but no type-checked config",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/330",
+    "title": "[P1] [J] Structured logging imports found but metrics absent",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/331",
+    "title": "[P2] [J] No health endpoint",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/332",
+    "title": "[P1] [K] TODO/FIXME count moderate",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/333",
+    "title": "[P2] [K] Type ignore suppressions present",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/334",
+    "title": "[P1] [L] GitHub workflows present but CI status unknown",
+    "priority": "P1"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/335",
+    "title": "[P2] [L] PR check time not tracked",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/336",
+    "title": "[P2] [M] Dockerfile present but no docker-compose",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/337",
+    "title": "[P2] [M] CHANGELOG.md present but versioning sparse",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/338",
+    "title": "[P2] [N] Copyright headers missing",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/339",
+    "title": "[P2] [N] No DCO enforcement",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/340",
+    "title": "[P2] [O] CLAUDE.md and AGENTS.md present",
+    "priority": "P2"
+  },
+  {
+    "url": "https://github.com/D-sorganization/Movement-Optimizer/issues/341",
+    "title": "[P2] [O] SPEC.md present (180 lines)",
+    "priority": "P2"
+  }
+]

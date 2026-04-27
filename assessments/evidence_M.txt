@@ -1,0 +1,11 @@
+=== M: Deployment ===
+Dockerfile:
+YES
+Docker compose:
+NO
+CHANGELOG:
+YES
+Versioning:
+pyproject.toml:7:version = "1.0.0"
+pyproject.toml:26:    "tomli>=2.0; python_version < '3.11'",
+pyproject.toml:41:target-version = "py310"
