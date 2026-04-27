@@ -122,7 +122,22 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage.xml
+          path: |
+            coverage.xml
+            .coverage
+
+      - name: Generate HTML Coverage Report
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m coverage html --directory=htmlcov
+          echo "HTML coverage report generated at htmlcov/index.html"
+
+      - name: Upload HTML Coverage Report
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-coverage-report
+          path: htmlcov/
 
   rust-quality-gate:
     runs-on: d-sorg-fleet
