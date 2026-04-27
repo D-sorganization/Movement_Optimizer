@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 from PyQt6.QtWidgets import (
     QComboBox,
     QGroupBox,
@@ -13,8 +15,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
 )
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 
 from ..constants import BAR_MASS_KG
 from ..rendering import Palette
@@ -56,13 +56,9 @@ def build_barbell(sidebar) -> None:
     lay.addWidget(hint)
     sidebar.bar_slider = LabelledSlider("Total Bar + Plates", 0, 300, 60, "kg", 0)
     lay.addWidget(sidebar.bar_slider)
-    sidebar.bar_depth_slider = LabelledSlider(
-        "Bar Back Offset", 0.0, 0.4, 0.0, "m", 2
-    )
+    sidebar.bar_depth_slider = LabelledSlider("Bar Back Offset", 0.0, 0.4, 0.0, "m", 2)
     lay.addWidget(sidebar.bar_depth_slider)
-    sidebar.bar_height_slider = LabelledSlider(
-        "Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2
-    )
+    sidebar.bar_height_slider = LabelledSlider("Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2)
     lay.addWidget(sidebar.bar_height_slider)
     sidebar.main_layout.addWidget(grp)
 
@@ -112,9 +108,7 @@ def build_buttons(sidebar) -> None:
     sidebar.main_layout.addWidget(sidebar.opt_btn)
 
     sidebar.both_btn = QPushButton("Optimize All Tabs")
-    sidebar.both_btn.setToolTip(
-        "Start trajectory optimization sequentially for all exercise tabs"
-    )
+    sidebar.both_btn.setToolTip("Start trajectory optimization sequentially for all exercise tabs")
     sidebar.both_btn.setAccessibleName("Optimize All Tabs")
     sidebar.both_btn.clicked.connect(sidebar.optimize_both.emit)
     sidebar.main_layout.addWidget(sidebar.both_btn)
@@ -197,9 +191,7 @@ def build_results(sidebar) -> None:
 
     sidebar.export_btn = QPushButton("Export CSV")
     sidebar.export_btn.setEnabled(False)
-    sidebar.export_btn.setToolTip(
-        "Run optimization first to enable exporting kinematics to CSV"
-    )
+    sidebar.export_btn.setToolTip("Run optimization first to enable exporting kinematics to CSV")
     sidebar.export_btn.setAccessibleName("Export CSV")
     sidebar.export_btn.clicked.connect(sidebar.export_requested.emit)
     sidebar.main_layout.addWidget(sidebar.export_btn)
@@ -220,9 +212,7 @@ def build_persistence_buttons(sidebar) -> None:
     lay = QVBoxLayout(grp)
     sidebar.save_btn = QPushButton("Save Solution")
     sidebar.save_btn.setEnabled(False)
-    sidebar.save_btn.setToolTip(
-        "Run optimization first to enable saving the trajectory solution"
-    )
+    sidebar.save_btn.setToolTip("Run optimization first to enable saving the trajectory solution")
     sidebar.save_btn.setAccessibleName("Save Solution")
     sidebar.save_btn.clicked.connect(sidebar.save_solution_requested.emit)
     lay.addWidget(sidebar.save_btn)
@@ -239,17 +229,13 @@ def build_export_buttons(sidebar) -> None:
     lay = QVBoxLayout(grp)
     sidebar.export_video_btn = QPushButton("Export Animation GIF")
     sidebar.export_video_btn.setEnabled(False)
-    sidebar.export_video_btn.setToolTip(
-        "Run optimization first to enable exporting animation GIF"
-    )
+    sidebar.export_video_btn.setToolTip("Run optimization first to enable exporting animation GIF")
     sidebar.export_video_btn.setAccessibleName("Export Animation GIF")
     sidebar.export_video_btn.clicked.connect(sidebar.export_video_requested.emit)
     lay.addWidget(sidebar.export_video_btn)
     sidebar.export_plots_btn = QPushButton("Export Plots (PNG/PDF)")
     sidebar.export_plots_btn.setEnabled(False)
-    sidebar.export_plots_btn.setToolTip(
-        "Run optimization first to enable exporting plots"
-    )
+    sidebar.export_plots_btn.setToolTip("Run optimization first to enable exporting plots")
     sidebar.export_plots_btn.setAccessibleName("Export Plots")
     sidebar.export_plots_btn.clicked.connect(sidebar.export_plots_requested.emit)
     lay.addWidget(sidebar.export_plots_btn)
@@ -261,9 +247,7 @@ def build_comparison_buttons(sidebar) -> None:
     lay = QVBoxLayout(grp)
     sidebar.add_compare_btn = QPushButton("Add to Comparison")
     sidebar.add_compare_btn.setEnabled(False)
-    sidebar.add_compare_btn.setToolTip(
-        "Run optimization first to add current trial to comparison"
-    )
+    sidebar.add_compare_btn.setToolTip("Run optimization first to add current trial to comparison")
     sidebar.add_compare_btn.setAccessibleName("Add to Comparison")
     sidebar.add_compare_btn.clicked.connect(sidebar.add_comparison_requested.emit)
     lay.addWidget(sidebar.add_compare_btn)
