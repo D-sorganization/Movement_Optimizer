@@ -1,5 +1,8 @@
 # Movement Optimizer
 
+[![CI](https://github.com/D-sorganization/Movement-Optimizer/actions/workflows/ci-standard.yml/badge.svg)](https://github.com/D-sorganization/Movement-Optimizer/actions/workflows/ci-standard.yml)
+[![DCO](https://github.com/D-sorganization/Movement-Optimizer/actions/workflows/dco.yml/badge.svg)](https://github.com/D-sorganization/Movement-Optimizer/actions/workflows/dco.yml)
+
 A biomechanics tool for optimizing barbell exercise trajectories using Lagrangian inverse dynamics. The body is modeled as a 3-link planar chain (shin, thigh, trunk) in the sagittal plane. An optional Rust-accelerated backend provides high-performance computation for the hot-path inverse dynamics.
 
 ## Features
