@@ -7,8 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
       - name: DCO Check
-        uses: actions-ecosystem/action-dco@v1
-        with:
-          setup_git: false
+        uses: tisonkun/actions-dco@v1.1.1
