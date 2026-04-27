@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   pick-runner:
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     timeout-minutes: 2
     outputs:
       runner: ${{ steps.check.outputs.runner }}
@@ -24,9 +24,9 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
-        run: "echo \"runner=ubuntu-latest\" >> $GITHUB_OUTPUT"
+        run: "echo \"runner=d-sorg-fleet\" >> $GITHUB_OUTPUT"
   quality-gate:
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -36,12 +36,20 @@ jobs:
 
       - name: Install System Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1 xvfb
+          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y libegl1 xvfb
+          else
+            echo "Using preinstalled deps on self-hosted runner"
+          fi
 
       - name: Install Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y libegl1
+          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+            sudo apt-get update && sudo apt-get install -y libegl1
+          else
+            echo "Using preinstalled deps on self-hosted runner"
+          fi
           python -m venv .ci-venv
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
@@ -72,7 +80,7 @@ jobs:
     needs:
       - pick-runner
       - quality-gate
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     strategy:
       matrix:
@@ -84,12 +92,20 @@ jobs:
 
       - name: Install System Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1 xvfb
+          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y libegl1 xvfb
+          else
+            echo "Using preinstalled deps on self-hosted runner"
+          fi
 
       - name: Install Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y libegl1
+          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+            sudo apt-get update && sudo apt-get install -y libegl1
+          else
+            echo "Using preinstalled deps on self-hosted runner"
+          fi
           python -m venv .ci-venv
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
@@ -109,7 +125,7 @@ jobs:
           path: coverage.xml
 
   rust-quality-gate:
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
