@@ -9,4 +9,4 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: DCO Check
-        uses: tisonkun/actions-dco@v1.1.1
+        uses: tisonkun/actions-dco@v1.1
