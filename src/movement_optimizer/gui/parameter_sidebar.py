@@ -4,9 +4,24 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
+
+if TYPE_CHECKING:
+    from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+    from matplotlib.figure import Figure
+
+    from .labelled_slider import LabelledSlider
 
 from . import _sidebar_builders as _sb
 from . import _sidebar_state as _st
@@ -29,6 +44,42 @@ class ParameterSidebar(QScrollArea):
     add_comparison_requested = pyqtSignal()
     compare_trials_requested = pyqtSignal()
     clear_comparison_requested = pyqtSignal()
+    
+    # Dynamically created widgets via _sidebar_builders
+    mass_slider: LabelledSlider
+    height_slider: LabelledSlider
+    ll_slider: LabelledSlider
+    ul_slider: LabelledSlider
+    to_slider: LabelledSlider
+    bar_slider: LabelledSlider
+    bar_depth_slider: LabelledSlider
+    bar_height_slider: LabelledSlider
+    model_combo: QComboBox
+    dur_slider: LabelledSlider
+    smooth_slider: LabelledSlider
+    opt_btn: QPushButton
+    both_btn: QPushButton
+    cancel_btn: QPushButton
+    progress: QProgressBar
+    prog_label: QLabel
+    iter_label: QLabel
+    cost_label: QLabel
+    improve_label: QLabel
+    elapsed_label: QLabel
+    stall_label: QLabel
+    conv_fig: Figure
+    conv_canvas: FigureCanvas
+    conv_ax: object  # matplotlib.axes.Axes
+    result_label: QLabel
+    export_btn: QPushButton
+    reset_btn: QPushButton
+    save_btn: QPushButton
+    load_btn: QPushButton
+    export_video_btn: QPushButton
+    export_plots_btn: QPushButton
+    add_compare_btn: QPushButton
+    compare_btn: QPushButton
+    clear_compare_btn: QPushButton
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
