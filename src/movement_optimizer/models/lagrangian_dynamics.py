@@ -219,40 +219,7 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         return G
 
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-        # Performance optimization:
-        # Fully unroll the inverse dynamics computation.
-        # This avoids instantiating intermediate 3x3 mass matrices and 3x1 vectors
-        # (Coriolis, Gravity) just to do an immediate dot product and sum.
-        # This yields a ~35% performance improvement on this hot path.
-        q0 = q[0]
-        q1 = q[1]
-        q2 = q[2]
-
-        qd0 = qd[0]
-        qd1 = qd[1]
-        qd2 = qd[2]
-
-        # Coupling coefficients * cosines
-        c01 = self._a01 * np.cos(q0 - q1)
-        c02 = self._a02 * np.cos(q0 - q2)
-        c12 = self._a12 * np.cos(q1 - q2)
-
-        # Coupling coefficients * sines
-        s01 = self._a01 * np.sin(q0 - q1)
-        s02 = self._a02 * np.sin(q0 - q2)
-        s12 = self._a12 * np.sin(q1 - q2)
-
-        qd0_2 = qd0 * qd0
-        qd1_2 = qd1 * qd1
-        qd2_2 = qd2 * qd2
-
-        trig = np.cos if self.supine else np.sin
-
-        return np.array([
-            self._M00 * qdd[0] + c01 * qdd[1] + c02 * qdd[2] + s01 * qd1_2 + s02 * qd2_2 + self._g0 * trig(q0),
-            c01 * qdd[0] + self._M11 * qdd[1] + c12 * qdd[2] - s01 * qd0_2 + s12 * qd2_2 + self._g1 * trig(q1),
-            c02 * qdd[0] + c12 * qdd[1] + self._M22 * qdd[2] - s02 * qd0_2 - s12 * qd1_2 + self._g2 * trig(q2)
-        ])
+        return self.mass_matrix(q) @ qdd + self._coriolis_vector(q, qd) + self._gravity_vector(q)
 
     def _batch_inertia_torques(
         self,

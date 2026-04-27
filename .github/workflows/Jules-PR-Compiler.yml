@@ -41,7 +41,7 @@ jobs:
     runs-on: self-hosted
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with: { fetch-depth: 0 }
 
       - name: Gather open Jules PRs
