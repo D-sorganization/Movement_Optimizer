@@ -44,7 +44,7 @@ class ParameterSidebar(QScrollArea):
     add_comparison_requested = pyqtSignal()
     compare_trials_requested = pyqtSignal()
     clear_comparison_requested = pyqtSignal()
-    
+
     # Dynamically created widgets via _sidebar_builders
     mass_slider: LabelledSlider
     height_slider: LabelledSlider
