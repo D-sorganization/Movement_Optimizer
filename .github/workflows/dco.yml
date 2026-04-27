@@ -2,6 +2,7 @@ name: DCO
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 jobs:
   dco:
     runs-on: ubuntu-latest
