@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Basic smoke tests for GUI widget classes.
 
 These tests verify that widget classes can be instantiated and have the

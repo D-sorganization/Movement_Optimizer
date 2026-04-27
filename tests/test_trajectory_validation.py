@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for trajectory validation concerns.
 
 Covers: solution cache, bar-knee clearance constraint activation,

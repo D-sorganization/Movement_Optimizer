@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Snatch exercise configuration.
 
 The snatch lifts the bar from the floor to overhead in one continuous

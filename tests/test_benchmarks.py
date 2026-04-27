@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Benchmarking suite for performance regression testing.
 
 These tests measure execution time of critical code paths and fail if

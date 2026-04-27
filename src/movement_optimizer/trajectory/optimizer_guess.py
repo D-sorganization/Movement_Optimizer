@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Initial guess generation strategies for multi-start trajectory optimisation."""
 
 from __future__ import annotations

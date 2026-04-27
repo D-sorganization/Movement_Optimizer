@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 # mypy: disable-error-code="misc,arg-type"
 # Mixin pattern: methods annotate self as MainWindow to access its attributes.
 """File I/O helpers extracted from MainWindow.

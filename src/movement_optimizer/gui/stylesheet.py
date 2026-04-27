@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Application stylesheet."""
 
 from ..rendering import Palette

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """ExerciseTab -- individual tab logic for movement visualizations."""
 
 from __future__ import annotations

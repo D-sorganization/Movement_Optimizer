@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Stall detection, solver callbacks, and single-start orchestration."""
 
 from __future__ import annotations

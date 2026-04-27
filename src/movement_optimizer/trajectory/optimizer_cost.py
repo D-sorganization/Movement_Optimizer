@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Pure cost-term functions for the trajectory optimiser.
 
 Each function computes one additive term of the total optimisation cost.

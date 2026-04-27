@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Entry point: ``python -m movement_optimizer``."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for gait and sit-to-stand exercise configurations."""
 
 from __future__ import annotations

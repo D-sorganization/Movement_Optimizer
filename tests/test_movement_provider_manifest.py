@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Regression tests for the shared Movement Optimizer provider manifest."""
 
 from __future__ import annotations

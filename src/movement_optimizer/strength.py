@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Joint strength models and load-capacity helpers."""
 
 from __future__ import annotations

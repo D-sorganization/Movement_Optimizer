@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """PyQt6 GUI for the Movement Optimizer.
 
 Layout:

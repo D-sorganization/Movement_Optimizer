@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Trial comparison storage and metrics computation.
 
 Allows users to store multiple optimization runs and compare them

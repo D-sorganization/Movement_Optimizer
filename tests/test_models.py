@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for body model and dynamics engine."""
 
 from __future__ import annotations

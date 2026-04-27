@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for trajectory generation concerns.
 
 Covers: optimizer construction and preconditions, spline construction,

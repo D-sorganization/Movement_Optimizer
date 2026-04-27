@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for main_window.py and optimization_mixin.py business logic.
 
 Uses fakes/mocks to avoid requiring a full Qt display or running optimizer.

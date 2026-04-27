@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Sit-to-stand exercise configuration.
 
 Phases: seated -> forward lean (momentum) -> seat-off -> rising -> standing.

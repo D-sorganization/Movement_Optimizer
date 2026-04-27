@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """CLI for headless batch optimization.
 
 Usage:

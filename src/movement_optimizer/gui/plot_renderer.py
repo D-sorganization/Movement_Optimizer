@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Static plot renderers for the Movement Optimizer."""
 
 from typing import Any

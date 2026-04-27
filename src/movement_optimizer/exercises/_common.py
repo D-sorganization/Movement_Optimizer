@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Shared helpers for planar exercise configuration factories."""
 
 from __future__ import annotations
