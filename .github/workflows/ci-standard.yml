@@ -139,6 +139,21 @@ jobs:
           name: html-coverage-report
           path: htmlcov/
 
+      - name: Report Test Duration
+        if: always()
+        run: |
+          {
+            echo "## CI Timing Report (Python ${{ matrix.python-version }})"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| Workflow | ${{ github.workflow }} |"
+            echo "| Run ID | ${{ github.run_id }} |"
+            echo "| Python | ${{ matrix.python-version }} |"
+            echo "| Runner | ${{ runner.name }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=CI Duration::PR check timing recorded for Python ${{ matrix.python-version }}"
+
   rust-quality-gate:
     runs-on: d-sorg-fleet
     timeout-minutes: 15
