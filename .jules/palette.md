@@ -17,3 +17,7 @@
 ## 2025-02-26 - Contextual Tooltips for QTabWidget
 **Learning:** Tabs in `QTabWidget` can benefit from descriptive tooltips, especially when the tab labels are short or act as primary navigation.
 **Action:** Use `QTabWidget.setTabToolTip(index, "Description")` during UI construction to add helpful hover context to individual tabs.
+
+## 2024-04-27 - Contextual Tooltips for Disabled States
+**Learning:** In PyQt6 UIs, disabling buttons during long-running tasks without explaining *why* they are disabled (or what state the system is currently in) creates user confusion. Standard tooltips describing the action often feel contradictory when the action is disabled.
+**Action:** Always dynamically update `setToolTip()` alongside `setEnabled()` state changes (e.g. on `cancel_btn` when cancellation is already in progress, or `clear_compare_btn` when there is nothing to clear).

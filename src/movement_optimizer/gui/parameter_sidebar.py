@@ -304,7 +304,8 @@ class ParameterSidebar(QScrollArea):
         self.compare_btn.clicked.connect(self.compare_trials_requested.emit)
         lay.addWidget(self.compare_btn)
         self.clear_compare_btn = QPushButton("Clear Comparison")
-        self.clear_compare_btn.setToolTip("Clear all trials currently saved for comparison")
+        self.clear_compare_btn.setEnabled(False)
+        self.clear_compare_btn.setToolTip("No trials currently saved to clear")
         self.clear_compare_btn.setAccessibleName("Clear Comparison")
         self.clear_compare_btn.clicked.connect(self.clear_comparison_requested.emit)
         lay.addWidget(self.clear_compare_btn)
@@ -330,6 +331,8 @@ class ParameterSidebar(QScrollArea):
         self.opt_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
         self.both_btn.setEnabled(False)
         self.both_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
+        self.cancel_btn.setEnabled(True)
+        self.cancel_btn.setToolTip("Cancel the currently running optimization")
         self.cancel_btn.setVisible(True)
         self.stall_label.setVisible(False)
         self.stall_label.setText("")
@@ -507,6 +510,18 @@ class ParameterSidebar(QScrollArea):
         else:
             self.compare_btn.setToolTip("Add multiple trials to comparison first")
 
+    def set_clear_comparison_available(self, available: bool) -> None:
+        """Enable or disable the clear comparison action."""
+        self.clear_compare_btn.setEnabled(available)
+        if available:
+            self.clear_compare_btn.setToolTip("Clear all trials currently saved for comparison")
+        else:
+            self.clear_compare_btn.setToolTip("No trials currently saved to clear")
+
     def set_cancellation_available(self, available: bool) -> None:
         """Enable or disable the cancellation action."""
         self.cancel_btn.setEnabled(available)
+        if not available:
+            self.cancel_btn.setToolTip("Cancellation already requested, shutting down safely...")
+        else:
+            self.cancel_btn.setToolTip("Cancel the currently running optimization")
