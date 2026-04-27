@@ -159,7 +159,7 @@ def build_result_object(
         elapsed >= 0
     """
     cost_val = float(res.fun)  # type: ignore[attr-defined]
-    com_h_range = (np.max(com_x) - np.min(com_x)) * 100.0
+    com_h_range = float((np.max(com_x) - np.min(com_x)) * 100.0)
     return OptimizationResult(
         t=t_eval,
         q=q,
