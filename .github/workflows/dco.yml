@@ -9,6 +9,4 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: DCO Check
-        uses: src-d/guide/dco@master
-        with:
-          setup_git: false
+        uses: DCO-Check/dco-check-action@v2
