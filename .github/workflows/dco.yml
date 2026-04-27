@@ -9,6 +9,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: DCO Check
-        uses: src-d-frontends/dco@v1.0.4
+        uses: src-d-frontends/dco-action@v1.0.4
         with:
           setup_git: false
