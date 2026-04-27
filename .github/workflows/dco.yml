@@ -9,6 +9,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: DCO Check
-        uses: proaction/dco@v1
+        uses: actions-ecosystem/action-dco@v1
         with:
           setup_git: false
