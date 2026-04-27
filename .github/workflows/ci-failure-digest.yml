@@ -26,7 +26,7 @@ jobs:
             echo "Self-hosted runner online — routing locally"
           else
             echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT
-            echo "No self-hosted runner — using GitHub-hosted"
+            echo "No self-hosted runner — using cloud runner (blocked)"
           fi
   failure-digest:
     needs: pick-runner
