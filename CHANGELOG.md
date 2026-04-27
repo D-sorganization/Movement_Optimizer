@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added MIT copyright headers to all `movement_optimizer` source files
   under `src/` with SPDX-License-Identifier (closes #338).
 - Added CI and DCO status badges to `README.md` (closes #334).
+- Added PR check timing report step to `ci-standard.yml` so each run
+  emits a markdown timing summary to `$GITHUB_STEP_SUMMARY` (closes #335).
+
+### Changed
+
+- **DbC**: Hardened `config.load_app_paths()` to validate that
+  `MOVEMENT_OPTIMIZER_STATE_DIR` is non-empty before creating the
+  `Path`, raising `ValueError` with a clear message instead of silently
+  accepting whitespace (closes #329).
 
 ## [1.2.0] - 2026-04-26
 
