@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """3D Bilateral forward-kinematics model.
 
 This module provides a minimal-but-correct 3D kinematic model of a human

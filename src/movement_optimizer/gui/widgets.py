@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Reusable GUI widgets.
 
 This module re-exports the three widget classes from their dedicated modules

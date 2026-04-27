@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Spline construction and trajectory evaluation helpers.
 
 Separating these from :class:`TrajectoryOptimizer` gives them a single

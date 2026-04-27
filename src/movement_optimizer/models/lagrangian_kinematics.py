@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Kinematic output methods for the Lagrangian planar-chain model.
 
 ``LagrangianKinematicsMixin`` provides forward kinematics, bar-position

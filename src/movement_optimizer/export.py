@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Export helpers for animation GIFs and plot images.
 
 Design Principles:

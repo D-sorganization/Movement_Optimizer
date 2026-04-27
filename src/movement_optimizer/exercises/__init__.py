@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Exercise configuration factories."""
 
 from .clean import make_clean_config as make_clean_config

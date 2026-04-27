@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for persistence module -- save/load solutions and app state."""
 
 from __future__ import annotations

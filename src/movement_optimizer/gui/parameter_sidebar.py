@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """ParameterSidebar: left-hand parameter panel for the main window."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Thread-safe cache for optimisation solutions."""
 
 from __future__ import annotations

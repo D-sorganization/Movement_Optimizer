@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Data structures for optimisation results."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for GUI session-state helpers without requiring Qt widgets."""
 
 from __future__ import annotations

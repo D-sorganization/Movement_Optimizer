@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 import pytest
 from PyQt6.QtWidgets import QApplication, QLabel, QTabWidget, QWidget
 

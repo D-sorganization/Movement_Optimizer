@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for comparison module -- trial storage and metrics."""
 
 from __future__ import annotations

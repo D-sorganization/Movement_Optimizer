@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Body model and Lagrangian dynamics engine.
 
 This package contains the anthropometric body model and the analytical

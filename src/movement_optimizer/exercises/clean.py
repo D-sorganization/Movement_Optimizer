@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Clean exercise configuration.
 
 The clean lifts the bar from the floor to front rack (shoulder height).

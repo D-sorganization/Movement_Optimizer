@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Result-packaging helpers for the trajectory optimiser.
 
 These free functions handle the post-solve steps: expanding the solver's
