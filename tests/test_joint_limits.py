@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for joint angle limits, Hill torque model, bench press, and max load.
 
 Covers: joint clamping, limit checking, Hill torque-angle-velocity,

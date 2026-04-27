@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Smoke tests for the 3D Bilateral renderer (issue #225)."""
 
 from __future__ import annotations

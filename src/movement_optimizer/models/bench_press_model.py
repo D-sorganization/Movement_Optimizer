@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Bench press anthropometric model and exercise configuration factory.
 
 Contains ``BenchPressModel`` and ``make_bench_press_config``.

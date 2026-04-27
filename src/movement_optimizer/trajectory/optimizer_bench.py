@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Bench-press-specific helpers for the trajectory optimiser."""
 
 from __future__ import annotations

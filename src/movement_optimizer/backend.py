@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Abstract physics backend interface.
 
 Provides a clean abstraction layer so the optimizer can work with

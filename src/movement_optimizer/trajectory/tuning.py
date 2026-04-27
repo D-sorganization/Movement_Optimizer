@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tuning parameters for the trajectory optimiser.
 
 All weights below are **tuning parameters** chosen empirically to balance

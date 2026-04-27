@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Anthropometric body model and related utilities.
 
 Contains ``BodyModel``, ``ChainGeometry``, and joint-angle helper functions.

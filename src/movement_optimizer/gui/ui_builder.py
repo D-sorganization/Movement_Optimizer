@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """UI construction helpers for the main window."""
 
 from PyQt6.QtCore import Qt

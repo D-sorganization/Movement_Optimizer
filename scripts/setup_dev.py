@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 #!/usr/bin/env python3
 """setup_dev.py — One-command developer environment bootstrapper."""
 

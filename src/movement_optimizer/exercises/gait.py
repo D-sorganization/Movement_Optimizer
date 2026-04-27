@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Gait (walking) exercise configuration and analysis.
 
 Defines a full gait cycle from right heel strike to next right heel strike.

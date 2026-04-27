@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for export module -- GIF, PNG, PDF export."""
 
 from __future__ import annotations

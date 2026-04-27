@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for issue #217: decomposed helpers from oversized functions.
 
 Covers new helpers extracted to bring each target function to <= 30 LOC:

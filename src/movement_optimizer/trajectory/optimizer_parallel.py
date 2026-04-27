@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Parallel multi-start driver for the trajectory optimiser.
 
 These free functions handle the concurrent execution of multiple SLSQP

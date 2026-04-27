@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Helpers for collecting and restoring GUI session state."""
 
 from __future__ import annotations

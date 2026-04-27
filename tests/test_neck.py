@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for neck rendering constants and visual properties."""
 
 from __future__ import annotations

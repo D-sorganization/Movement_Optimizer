@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Mixin for optimization controller logic in the Movement Optimizer GUI."""
 
 from __future__ import annotations

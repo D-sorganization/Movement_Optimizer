@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """ComparisonDialog -- display side-by-side metrics."""
 
 from __future__ import annotations

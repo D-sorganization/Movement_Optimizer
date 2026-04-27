@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Progress reporting and state tracking for the trajectory optimiser."""
 
 from __future__ import annotations

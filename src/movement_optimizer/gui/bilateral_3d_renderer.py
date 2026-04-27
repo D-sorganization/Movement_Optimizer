@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """3D Bilateral rendering for the animation canvas.
 
 Renders a :class:`~movement_optimizer.models.Bilateral3DModel` pose onto

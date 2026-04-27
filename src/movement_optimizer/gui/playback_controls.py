@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """PlaybackControls: transport bar widget for animation playback."""
 
 from __future__ import annotations

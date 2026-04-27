@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Validation helpers for the Movement Optimizer provider manifest."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Jerk exercise configuration.
 
 The jerk drives the bar from front rack (shoulders) to overhead lockout.

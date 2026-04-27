@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Parallel multi-start trajectory optimiser engine."""
 
 from __future__ import annotations

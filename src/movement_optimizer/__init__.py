@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Movement Optimizer.
 
 A biomechanics tool for optimising exercise movement trajectories

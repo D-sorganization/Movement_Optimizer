@@ -1,3 +1,4 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Animation/kinematic frame rendering for the Movement Optimizer."""
 
 from typing import Any
