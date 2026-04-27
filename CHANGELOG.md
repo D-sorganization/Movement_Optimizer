@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added MIT copyright headers to all `movement_optimizer` source files
+  under `src/` with SPDX-License-Identifier (closes #338).
+- Added CI and DCO status badges to `README.md` (closes #334).
+
 ## [1.2.0] - 2026-04-26
 
 ### Changed
