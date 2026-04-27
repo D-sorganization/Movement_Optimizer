@@ -12,7 +12,7 @@ jobs:
         shell: bash
         run: |
           git fetch origin main --depth=100
-          for commit in $(git rev-list origin/main..HEAD); do
+          for commit in $(git rev-list --no-merges origin/main..HEAD); do
             if ! git log -1 --format='%B' "$commit" | grep -iq "Signed-off-by:"; then
               echo "Error: Commit $commit is missing Signed-off-by line."
               exit 1
