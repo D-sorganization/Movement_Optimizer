@@ -1,0 +1,117 @@
+=== D: Reliability ===
+Bare excepts:
+111
+Bare excepts detail:
+./.venv311/lib/python3.11/site-packages/numpy/distutils/cpuinfo.py:485:            #XXX: Bad style to use so long `try:...except:...`. Fix it!
+./.venv311/lib/python3.11/site-packages/scipy/optimize/_linprog_ip.py:160:    As defined in [4], except:
+./.venv311/lib/python3.11/site-packages/scipy/optimize/cython_optimize/__init__.py:58:       cdef double f(double x, void *args) noexcept:
+./.venv311/lib/python3.11/site-packages/scipy/_lib/array_api_compat/torch/_info.py:312:            except:
+./.venv311/lib/python3.11/site-packages/scipy/_lib/array_api_compat/torch/_info.py:365:                except:
+./.venv311/lib/python3.11/site-packages/scipy/fft/_basic_backend.py:41:            except: # backends may require complex input  # noqa: E722
+./.venv311/lib/python3.11/site-packages/scipy/fft/_basic_backend.py:66:            except: # backends may require complex input  # noqa: E722
+./.venv311/lib/python3.11/site-packages/dateutil/tz/win.py:119:        except:
+./.venv311/lib/python3.11/site-packages/sortedcontainers/sortedlist.py:1672:        except:
+./.venv311/lib/python3.11/site-packages/sortedcontainers/sortedlist.py:2630:        except:
+./.venv311/lib/python3.11/site-packages/PyQt6/uic/compile_ui.py:136:    except:
+./.venv311/lib/python3.11/site-packages/PyQt6/uic/objcreator.py:68:            except:
+./.venv311/lib/python3.11/site-packages/PyQt6/lupdate/pylupdate.py:65:    except:
+./.venv311/lib/python3.11/site-packages/fontTools/mtiLib/__init__.py:1210:        except:
+./.venv311/lib/python3.11/site-packages/fontTools/misc/psLib.py:215:        except:
+./.venv311/lib/python3.11/site-packages/fontTools/misc/psOperators.py:251:                    except:
+./.venv311/lib/python3.11/site-packages/fontTools/ttx.py:473:    except:
+./.venv311/lib/python3.11/site-packages/fontTools/cffLib/__init__.py:1255:    except:
+./.venv311/lib/python3.11/site-packages/fontTools/cffLib/__init__.py:2632:            except:
+./.venv311/lib/python3.11/site-packages/fontTools/ttLib/tables/V_O_R_G_.py:93:            except:
+./.venv311/lib/python3.11/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:628:                        except:
+./.venv311/lib/python3.11/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:981:                            except:
+./.venv311/lib/python3.11/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:1229:                        except:
+./.venv311/lib/python3.11/site-packages/fontTools/ttLib/tables/otTables.py:1151:        except:  # https://github.com/fonttools/fonttools/commit/21cbab8ce9ded3356fef3745122da64dcaf314e9#commitcomment-27649836
+./.venv311/lib/python3.11/site-packages/fontTools/ttLib/tables/ttProgram.py:257:            except:
+./.venv311/lib/python3.11/site-packages/fontTools/ttLib/woff2.py:820:        except:
+./.venv311/lib/python3.11/site-packages/fontTools/ufoLib/__init__.py:171:        unpredictable and/or too large to list, so, a blind try: except:
+./.venv311/lib/python3.11/site-packages/fontTools/ufoLib/__init__.py:199:        unpredictable and/or too large to list, so, a blind try: except: is done.
+./.venv311/lib/python3.11/site-packages/coverage/collector.py:323:        except:
+./.venv311/lib/python3.11/site-packages/coverage/pth_file.py:13:    except:  # pylint: disable=bare-except
+./.venv311/lib/python3.11/site-packages/mypy/checker.py:5592:            # Treat this 'with' block in the same way we'd treat a 'try: BODY; except: pass'
+./.venv311/lib/python3.11/site-packages/mypy/nodes.py:1868:    # Plain 'except:' also possible
+./.venv311/lib/python3.11/site-packages/mypy/partially_defined.py:523:            except:
+./.venv311/lib/python3.11/site-packages/mypy/messages.py:1084:        exception variable outside the local except: blocks.
+./.venv311/lib/python3.11/site-packages/mypy/messages.py:1090:        self.fail(f"Assignment to variable{s} outside except: block", context)
+./.venv/lib/python3.12/site-packages/scipy/optimize/_linprog_ip.py:160:    As defined in [4], except:
+./.venv/lib/python3.12/site-packages/scipy/optimize/cython_optimize/__init__.py:58:       cdef double f(double x, void *args) noexcept:
+./.venv/lib/python3.12/site-packages/scipy/_lib/array_api_compat/torch/_info.py:312:            except:
+./.venv/lib/python3.12/site-packages/scipy/_lib/array_api_compat/torch/_info.py:365:                except:
+./.venv/lib/python3.12/site-packages/scipy/fft/_basic_backend.py:41:            except: # backends may require complex input  # noqa: E722
+./.venv/lib/python3.12/site-packages/scipy/fft/_basic_backend.py:66:            except: # backends may require complex input  # noqa: E722
+./.venv/lib/python3.12/site-packages/dateutil/tz/win.py:119:        except:
+./.venv/lib/python3.12/site-packages/sortedcontainers/sortedlist.py:1672:        except:
+./.venv/lib/python3.12/site-packages/sortedcontainers/sortedlist.py:2630:        except:
+./.venv/lib/python3.12/site-packages/PyQt6/uic/compile_ui.py:136:    except:
+./.venv/lib/python3.12/site-packages/PyQt6/uic/objcreator.py:68:            except:
+./.venv/lib/python3.12/site-packages/PyQt6/lupdate/pylupdate.py:65:    except:
+./.venv/lib/python3.12/site-packages/fontTools/mtiLib/__init__.py:1210:        except:
+./.venv/lib/python3.12/site-packages/fontTools/misc/psLib.py:215:        except:
+./.venv/lib/python3.12/site-packages/fontTools/misc/psOperators.py:251:                    except:
+./.venv/lib/python3.12/site-packages/fontTools/ttx.py:473:    except:
+./.venv/lib/python3.12/site-packages/fontTools/cffLib/__init__.py:1255:    except:
+./.venv/lib/python3.12/site-packages/fontTools/cffLib/__init__.py:2632:            except:
+./.venv/lib/python3.12/site-packages/fontTools/ttLib/tables/V_O_R_G_.py:93:            except:
+./.venv/lib/python3.12/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:628:                        except:
+./.venv/lib/python3.12/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:981:                            except:
+./.venv/lib/python3.12/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:1229:                        except:
+./.venv/lib/python3.12/site-packages/fontTools/ttLib/tables/otTables.py:1151:        except:  # https://github.com/fonttools/fonttools/commit/21cbab8ce9ded3356fef3745122da64dcaf314e9#commitcomment-27649836
+./.venv/lib/python3.12/site-packages/fontTools/ttLib/tables/ttProgram.py:257:            except:
+./.venv/lib/python3.12/site-packages/fontTools/ttLib/woff2.py:820:        except:
+./.venv/lib/python3.12/site-packages/fontTools/ufoLib/__init__.py:171:        unpredictable and/or too large to list, so, a blind try: except:
+./.venv/lib/python3.12/site-packages/fontTools/ufoLib/__init__.py:199:        unpredictable and/or too large to list, so, a blind try: except: is done.
+./.venv/lib/python3.12/site-packages/coverage/collector.py:323:        except:
+./.venv/lib/python3.12/site-packages/coverage/pth_file.py:13:    except:  # pylint: disable=bare-except
+./.venv/lib/python3.12/site-packages/mypy/checker.py:5592:            # Treat this 'with' block in the same way we'd treat a 'try: BODY; except: pass'
+./.venv/lib/python3.12/site-packages/mypy/nodes.py:1868:    # Plain 'except:' also possible
+./.venv/lib/python3.12/site-packages/mypy/partially_defined.py:523:            except:
+./.venv/lib/python3.12/site-packages/mypy/messages.py:1084:        exception variable outside the local except: blocks.
+./.venv/lib/python3.12/site-packages/mypy/messages.py:1090:        self.fail(f"Assignment to variable{s} outside except: block", context)
+./.venv/lib/python3.12/site-packages/yaml/scanner.py:741:        # A plain scalar may start with any non-space character except:
+./.venv/lib/python3.12/site-packages/rich/logging.py:290:        except:
+./.venv/lib/python3.12/site-packages/rich/traceback.py:319:                    "Value for 'trace' required if not called in except: block"
+./.venv/lib/python3.12/site-packages/bandit/plugins/try_except_pass.py:61:    4    except:
+./.venv/lib/python3.12/site-packages/bandit/plugins/try_except_continue.py:63:    5        except:
+./.venv310/lib/python3.10/site-packages/numpy/distutils/cpuinfo.py:485:            #XXX: Bad style to use so long `try:...except:...`. Fix it!
+./.venv310/lib/python3.10/site-packages/scipy/optimize/_linprog_ip.py:145:    As defined in [4], except:
+./.venv310/lib/python3.10/site-packages/scipy/optimize/cython_optimize/__init__.py:58:       cdef double f(double x, void *args) noexcept:
+./.venv310/lib/python3.10/site-packages/scipy/special/__init__.py:804:        except:  # noqa: E722
+./.venv310/lib/python3.10/site-packages/scipy/_lib/array_api_compat/torch/_info.py:302:            except:
+./.venv310/lib/python3.10/site-packages/scipy/_lib/array_api_compat/torch/_info.py:354:                except:
+./.venv310/lib/python3.10/site-packages/scipy/_lib/decorator.py:167:        except:  # noqa: E722
+./.venv310/lib/python3.10/site-packages/scipy/fft/_basic_backend.py:41:            except: # backends may require complex input  # noqa: E722
+./.venv310/lib/python3.10/site-packages/scipy/fft/_basic_backend.py:66:            except: # backends may require complex input  # noqa: E722
+./.venv310/lib/python3.10/site-packages/dateutil/tz/win.py:119:        except:
+./.venv310/lib/python3.10/site-packages/sortedcontainers/sortedlist.py:1672:        except:
+./.venv310/lib/python3.10/site-packages/sortedcontainers/sortedlist.py:2630:        except:
+./.venv310/lib/python3.10/site-packages/PyQt6/uic/compile_ui.py:136:    except:
+./.venv310/lib/python3.10/site-packages/PyQt6/uic/objcreator.py:68:            except:
+./.venv310/lib/python3.10/site-packages/PyQt6/lupdate/pylupdate.py:65:    except:
+./.venv310/lib/python3.10/site-packages/fontTools/mtiLib/__init__.py:1210:        except:
+./.venv310/lib/python3.10/site-packages/fontTools/misc/psLib.py:215:        except:
+./.venv310/lib/python3.10/site-packages/fontTools/misc/psOperators.py:251:                    except:
+./.venv310/lib/python3.10/site-packages/fontTools/ttx.py:473:    except:
+./.venv310/lib/python3.10/site-packages/fontTools/cffLib/__init__.py:1255:    except:
+./.venv310/lib/python3.10/site-packages/fontTools/cffLib/__init__.py:2632:            except:
+./.venv310/lib/python3.10/site-packages/fontTools/ttLib/tables/V_O_R_G_.py:93:            except:
+./.venv310/lib/python3.10/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:628:                        except:
+./.venv310/lib/python3.10/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:981:                            except:
+./.venv310/lib/python3.10/site-packages/fontTools/ttLib/tables/_c_m_a_p.py:1229:                        except:
+./.venv310/lib/python3.10/site-packages/fontTools/ttLib/tables/otTables.py:1151:        except:  # https://github.com/fonttools/fonttools/commit/21cbab8ce9ded3356fef3745122da64dcaf314e9#commitcomment-27649836
+./.venv310/lib/python3.10/site-packages/fontTools/ttLib/tables/ttProgram.py:257:            except:
+./.venv310/lib/python3.10/site-packages/fontTools/ttLib/woff2.py:820:        except:
+./.venv310/lib/python3.10/site-packages/fontTools/ufoLib/__init__.py:171:        unpredictable and/or too large to list, so, a blind try: except:
+./.venv310/lib/python3.10/site-packages/fontTools/ufoLib/__init__.py:199:        unpredictable and/or too large to list, so, a blind try: except: is done.
+./.venv310/lib/python3.10/site-packages/coverage/collector.py:323:        except:
+./.venv310/lib/python3.10/site-packages/coverage/pth_file.py:13:    except:  # pylint: disable=bare-except
+./.venv310/lib/python3.10/site-packages/mypy/checker.py:5592:            # Treat this 'with' block in the same way we'd treat a 'try: BODY; except: pass'
+./.venv310/lib/python3.10/site-packages/mypy/nodes.py:1868:    # Plain 'except:' also possible
+./.venv310/lib/python3.10/site-packages/mypy/partially_defined.py:523:            except:
+./.venv310/lib/python3.10/site-packages/mypy/messages.py:1084:        exception variable outside the local except: blocks.
+./.venv310/lib/python3.10/site-packages/mypy/messages.py:1090:        self.fail(f"Assignment to variable{s} outside except: block", context)
+TODO/FIXME:
+3886

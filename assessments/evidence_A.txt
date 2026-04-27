@@ -1,0 +1,34 @@
+=== A: Project Organization ===
+Top-level files:
+AGENTS.md
+CHANGELOG.md
+CLAUDE.md
+CONTRIBUTING.md
+Dockerfile
+LICENSE
+Launch-Movement-Optimizer.bat
+README.md
+SPEC.md
+assessments
+assets
+docs
+launch-movement-optimizer.sh
+model_pack.yaml
+pyproject.toml
+run.py
+rust_core
+scripts
+src
+tests
+Manifests:
+./pyproject.toml
+Src dirs:
+./src
+./.venv311/lib
+./.venv/lib
+./rust_core/src
+./.venv310/lib
+Test dirs:
+./tests
+.gitignore:
+22

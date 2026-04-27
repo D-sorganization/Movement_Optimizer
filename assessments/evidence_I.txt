@@ -1,0 +1,9 @@
+=== I: Configuration ===
+.env.example:
+YES
+Dockerfile:
+YES
+Docker compose:
+NO
+Type-checked config:
+13
