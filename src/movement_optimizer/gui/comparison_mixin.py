@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 # mypy: disable-error-code="misc,has-type"
 # Mixin pattern: methods annotate self as MainWindow to access its attributes,
 # but mypy cannot verify this pattern without the concrete class in scope.

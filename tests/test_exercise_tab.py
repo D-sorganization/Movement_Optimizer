@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Tests for exercise_tab.py business logic.
 
 Uses QT_QPA_PLATFORM=offscreen to avoid requiring a display.  All rendering

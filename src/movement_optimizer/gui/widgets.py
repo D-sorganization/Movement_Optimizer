@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Reusable GUI widgets.
 
 This module re-exports the three widget classes from their dedicated modules

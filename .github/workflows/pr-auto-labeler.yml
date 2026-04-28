@@ -4,7 +4,6 @@ on:
     types: [opened, synchronize]
 
 jobs:
-
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
   pick-runner:
     runs-on: self-hosted
@@ -14,6 +13,7 @@ jobs:
     steps:
       - name: Check for self-hosted runner
         id: check
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
         run: |

@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Runtime configuration and filesystem paths for Movement Optimizer.
 
 Configuration is intentionally lightweight and environment-driven so local
@@ -43,9 +44,7 @@ def load_app_paths() -> AppPaths:
     if configured is not None:
         configured = configured.strip()
         if not configured:
-            raise ValueError(
-                f"{_STATE_DIR_ENV} must be a non-empty path string"
-            )
+            raise ValueError(f"{_STATE_DIR_ENV} must be a non-empty path string")
         state_dir = Path(configured).expanduser()
     else:
         state_dir = Path.home() / ".movement_optimizer"

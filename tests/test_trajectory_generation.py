@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Tests for trajectory generation concerns.
 
 Covers: optimizer construction and preconditions, spline construction,
