@@ -125,8 +125,8 @@
         },
         {
           "priority": "P2",
-          "title": "Subprocess shell usage detected",
-          "detail": "Evidence_H shows potential shell=True usage."
+          "title": "Subprocess shell usage checked",
+          "detail": "No tracked Python subprocess calls use shell=True; regression coverage now enforces list-form subprocess calls."
         }
       ]
     },

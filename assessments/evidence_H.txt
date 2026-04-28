@@ -6,4 +6,4 @@ Hardcoded secrets:
 SQL injection risk:
 10
 Subprocess shell:
-59
+0
