@@ -14,6 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  local-only-workflows:
+    name: Reject hosted runner routing
+    runs-on: d-sorg-fleet
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run local-only workflow guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check_local_only_workflows.py
+
   pick-runner:
     runs-on: d-sorg-fleet
     timeout-minutes: 2
@@ -24,15 +35,15 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
-        run: "echo \"runner=d-sorg-fleet\" >> $GITHUB_OUTPUT"
+        run: 'echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT'
   quality-gate:
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
+        with: { fetch-depth: 0 }
       - uses: actions/setup-python@v5
-        with: {python-version: "3.12"}
+        with: { python-version: "3.12" }
 
       - name: Install System Dependencies
         run: |
@@ -54,8 +65,11 @@ jobs:
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-          python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7
+          python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7 pre-commit
           echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
 
       - name: Lint (Ruff)
         run: ruff check src/ tests/
@@ -88,7 +102,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: {python-version: "${{ matrix.python-version }}"}
+        with: { python-version: "${{ matrix.python-version }}" }
 
       - name: Install System Dependencies
         run: |
@@ -172,7 +186,7 @@ jobs:
       - name: Install Rust toolchain
         if: steps.rust-changes.outputs.has_rust == 'true'
         uses: dtolnay/rust-toolchain@stable
-        with: {components: "rustfmt, clippy"}
+        with: { components: "rustfmt, clippy" }
 
       - name: Cache Cargo
         if: steps.rust-changes.outputs.has_rust == 'true'

@@ -4,7 +4,6 @@ on:
     types: [opened, synchronize]
 
 jobs:
-
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
   pick-runner:
     runs-on: self-hosted

@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Gait (walking) exercise configuration and analysis.
 
 Defines a full gait cycle from right heel strike to next right heel strike.

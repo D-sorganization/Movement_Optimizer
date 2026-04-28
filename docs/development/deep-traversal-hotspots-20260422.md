@@ -11,13 +11,13 @@ facade methods on those widgets and routes the mixins through those facades.
 
 ## Changes
 
-| Area | Resolution |
-| --- | --- |
-| `animation_control.py` playback label and speed access | Replaced direct child-widget access with `PlaybackControls.set_frame_position()`, `speed_multiplier()`, and `set_speed_multiplier_text()`. |
-| `comparison_mixin.py` sidebar slider and button access | Replaced direct slider/button access with `ParameterSidebar.get_comparison_context()` and `set_comparison_available()`. |
-| `main_window.py` cancel button access | Replaced direct cancel button access with `ParameterSidebar.set_cancellation_available()`. |
-| `main_window.py` signal connection lists | Moved repeated signal wiring behind `connect_action_handlers()` methods on `ParameterSidebar` and `PlaybackControls`. |
-| `main_window.py` animation timer connection | Justified as an owned `QTimer` connecting its `timeout` signal to the main window's animation step. |
+| Area                                                                       | Resolution                                                                                                                                                        |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `animation_control.py` playback label and speed access                     | Replaced direct child-widget access with `PlaybackControls.set_frame_position()`, `speed_multiplier()`, and `set_speed_multiplier_text()`.                        |
+| `comparison_mixin.py` sidebar slider and button access                     | Replaced direct slider/button access with `ParameterSidebar.get_comparison_context()` and `set_comparison_available()`.                                           |
+| `main_window.py` cancel button access                                      | Replaced direct cancel button access with `ParameterSidebar.set_cancellation_available()`.                                                                        |
+| `main_window.py` signal connection lists                                   | Moved repeated signal wiring behind `connect_action_handlers()` methods on `ParameterSidebar` and `PlaybackControls`.                                             |
+| `main_window.py` animation timer connection                                | Justified as an owned `QTimer` connecting its `timeout` signal to the main window's animation step.                                                               |
 | `__init__.py`, `file_operations.py`, `optimization_mixin.py`, `widgets.py` | Review found no new issue-specific code changes needed. Existing facade methods already protect the relevant boundaries or the file is a compatibility re-export. |
 
 ## Boundary Decision
