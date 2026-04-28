@@ -1,12 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
-"""Runtime configuration and filesystem paths for Movement Optimizer.
-
-Configuration is intentionally lightweight and environment-driven so local
-development, CI, and packaged usage can all override the same locations
-without editing code.
-"""
-
+"""Centralized application configuration helpers."""
 from __future__ import annotations
 
 import os
@@ -18,7 +10,7 @@ _STATE_DIR_ENV = "MOVEMENT_OPTIMIZER_STATE_DIR"
 
 @dataclass(frozen=True)
 class AppPaths:
-    """Resolved application paths derived from environment variables."""
+    """Encapsulates Movement Optimizer runtime paths."""
 
     state_dir: Path
 
