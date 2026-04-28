@@ -80,16 +80,24 @@ jobs:
       - name: Type Check (Mypy)
         run: mypy --ignore-missing-imports src/movement_optimizer/
 
-      - name: Security Scan (bandit)
+      - name: Generate Bandit SAST reports
         run: |
-          python -m bandit -r src/movement_optimizer/ -ll -ii -f json -o bandit_output.json || true
-          python -m bandit -r src/movement_optimizer/ -ll -ii
+          mkdir -p reports/security
+          python -m bandit -r src/movement_optimizer/ -ll -ii -f json -o reports/security/bandit_output.json || true
+          python -m bandit -r src/movement_optimizer/ -ll -ii -f txt -o reports/security/bandit_output.txt || true
 
-      - name: Upload SAST artifact
+      - name: Upload SAST artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bandit-report
-          path: bandit_output.json
+          name: bandit-sast-report
+          path: reports/security/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce Bandit policy
+        run: |
+          python -m bandit -r src/movement_optimizer/ -ll -ii
 
       - name: Security Audit (pip-audit)
         run: |
@@ -185,7 +193,13 @@ jobs:
       - name: Check for Rust changes
         id: rust-changes
         run: |
-          if [ -f "rust_core/Cargo.toml" ]; then
+          if [ ! -f "rust_core/Cargo.toml" ]; then
+            echo "has_rust=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_rust_files="$(git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^rust_core/' || true)"
+          if [ -n "$changed_rust_files" ]; then
             echo "has_rust=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_rust=false" >> "$GITHUB_OUTPUT"
