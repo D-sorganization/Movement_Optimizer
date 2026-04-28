@@ -55,6 +55,12 @@ class TrajectoryOptimizer:
     Enforces COM within the inner 60% of the foot via hard inequality constraints.
     Multiple starts run concurrently; the best solution is returned.
 
+    Complexity:
+        Let ``S`` be ``n_starts``, ``I`` the SLSQP iterations per start, ``N``
+        ``n_eval``, and ``W`` ``n_waypoints``.  Total optimizer work is
+        O(S * I * (W + N)) for the fixed 3-DOF model, with approximate wall-time
+        O(ceil(S / workers) * I * (W + N)) when parallel starts are enabled.
+
     Preconditions: q_start/q_end length-3; q_bounds (3,2); n_waypoints >= 4.
     """
 
@@ -119,6 +125,10 @@ class TrajectoryOptimizer:
         """Build cubic splines from the flat optimisation vector *x*.
 
         Delegates to :func:`optimizer_spline.build_splines`.
+
+        Complexity:
+            O(W * D) time and memory for ``W`` waypoint controls and ``D``
+            degrees of freedom.
         """
         return _build_splines_fn(
             x,
@@ -134,11 +144,21 @@ class TrajectoryOptimizer:
         """Evaluate position, velocity, acceleration, jerk at eval grid.
 
         Delegates to :func:`optimizer_spline.eval_trajectory`.
+
+        Complexity:
+            O(N * D) time and memory for ``N`` evaluation samples and ``D``
+            degrees of freedom.
         """
         return _eval_trajectory_fn(splines, self.t_eval)
 
     def _compute_cost(self, x: NDArray) -> float:
-        """Compute total cost without mutating instance state."""
+        """Compute total cost without mutating instance state.
+
+        Complexity:
+            O(W * D + N * D) time and O(N * D) memory, dominated by spline
+            evaluation and batched inverse dynamics.  ``D`` is fixed at 3 for
+            the current planar-chain model.
+        """
         if self.cancel_event.is_set():
             return float("inf")
 
@@ -239,7 +259,14 @@ class TrajectoryOptimizer:
         )
 
     def optimize(self) -> OptimizationResult:
-        """Run parallel multi-start SLSQP and return best result."""
+        """Run parallel multi-start SLSQP and return best result.
+
+        Complexity:
+            O(S * I * (W + N)) total work for fixed 3-DOF trajectories, where
+            ``S`` is starts, ``I`` is optimizer iterations per start, ``W`` is
+            waypoints, and ``N`` is evaluation samples.  Parallel mode reduces
+            wall time by up to ``n_workers`` but not total work.
+        """
         self._progress.reset()
 
         n_workers = min(self.n_starts, os.cpu_count() or 4)
@@ -340,7 +367,12 @@ class TrajectoryOptimizer:
     def _package_results(
         self, res: object, elapsed: float = 0.0, n_evals: int = 0
     ) -> OptimizationResult:
-        """Evaluate trajectories, assess feasibility, and build the result."""
+        """Evaluate trajectories, assess feasibility, and build the result.
+
+        Complexity:
+            O(N * D) time and memory to evaluate kinematics, dynamics, COM, and
+            result arrays for ``N`` samples and ``D`` degrees of freedom.
+        """
         q, qd, qdd, torques, power, com_traj, bar_traj, com_x = evaluate_solution(
             res,
             self.dynamics,
