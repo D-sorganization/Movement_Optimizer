@@ -17,3 +17,6 @@
 ## 2025-02-26 - Contextual Tooltips for QTabWidget
 **Learning:** Tabs in `QTabWidget` can benefit from descriptive tooltips, especially when the tab labels are short or act as primary navigation.
 **Action:** Use `QTabWidget.setTabToolTip(index, "Description")` during UI construction to add helpful hover context to individual tabs.
+## 2025-02-28 - Keyboard Shortcuts for Playback Controls
+**Learning:** Adding keyboard shortcuts (Space, Home, Comma, Period) to frequently used media playback controls significantly improves accessibility and workflow for keyboard-centric users.
+**Action:** Always include standard keyboard shortcuts for playback and navigation controls in PyQt applications.
