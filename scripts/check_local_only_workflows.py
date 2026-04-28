@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
 """Fail when GitHub Actions workflows can route to hosted runners."""
+
 from __future__ import annotations
+
 from pathlib import Path
 
 WORKFLOW_DIR = Path(".github") / "workflows"
 BANNED = (
-    "ubuntu-latest", "windows-latest", "macos-latest",
-    "force_cloud", "mode=cloud",
-    "Routing to GitHub-hosted", "using GitHub-hosted",
-    "runner=ubuntu-latest", "runner=windows-latest", "runner=macos-latest",
+    "ubuntu-latest",
+    "windows-latest",
+    "macos-latest",
+    "force_cloud",
+    "mode=cloud",
+    "Routing to GitHub-hosted",
+    "using GitHub-hosted",
+    "runner=ubuntu-latest",
+    "runner=windows-latest",
+    "runner=macos-latest",
 )
+
 
 def main() -> int:
     failures: list[str] = []
@@ -33,6 +42,6 @@ def main() -> int:
     print("Workflow runner routing is local-only.")
     return 0
 
+
 if __name__ == "__main__":
     raise SystemExit(main())
-

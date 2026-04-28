@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """PlaybackControls: transport bar widget for animation playback."""
 
 from __future__ import annotations
@@ -22,21 +23,25 @@ class PlaybackControls(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
 
         self.btn_rewind = QPushButton("\u23ee")
-        self.btn_rewind.setToolTip("Rewind to beginning")
+        self.btn_rewind.setToolTip("Rewind to beginning (Home)")
         self.btn_rewind.setAccessibleName("Rewind to beginning")
+        self.btn_rewind.setShortcut("Home")
 
         self.btn_back = QPushButton("\u25c0")
-        self.btn_back.setToolTip("Step backward one frame")
+        self.btn_back.setToolTip("Step backward one frame (,)")
         self.btn_back.setAccessibleName("Step backward one frame")
+        self.btn_back.setShortcut(",")
 
         self.btn_play = QPushButton("\u25b6 Play")
         self.btn_play.setProperty("class", "primary")
-        self.btn_play.setToolTip("Play or pause animation")
+        self.btn_play.setToolTip("Play or pause animation (Space)")
         self.btn_play.setAccessibleName("Play or pause animation")
+        self.btn_play.setShortcut("Space")
 
         self.btn_fwd = QPushButton("\u25b6")
-        self.btn_fwd.setToolTip("Step forward one frame")
+        self.btn_fwd.setToolTip("Step forward one frame (.)")
         self.btn_fwd.setAccessibleName("Step forward one frame")
+        self.btn_fwd.setShortcut(".")
 
         self.btn_rewind.clicked.connect(self.rewind.emit)
         self.btn_back.clicked.connect(self.step_back.emit)
@@ -78,11 +83,11 @@ class PlaybackControls(QWidget):
     def set_playing(self, playing: bool) -> None:
         if playing:
             self.btn_play.setText("\u23f8 Pause")
-            self.btn_play.setToolTip("Pause animation")
+            self.btn_play.setToolTip("Pause animation (Space)")
             self.btn_play.setAccessibleName("Pause animation")
         else:
             self.btn_play.setText("\u25b6 Play")
-            self.btn_play.setToolTip("Play animation")
+            self.btn_play.setToolTip("Play animation (Space)")
             self.btn_play.setAccessibleName("Play animation")
 
     def set_frame_position(self, current_frame: int, total_frames: int) -> None:

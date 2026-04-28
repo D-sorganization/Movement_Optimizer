@@ -1,11 +1,10 @@
 name: CI Failure Digest
 on:
   schedule:
-    - cron: "0 9 * * 1"   # Monday 9am UTC
+    - cron: "0 9 * * 1" # Monday 9am UTC
   workflow_dispatch:
 
 jobs:
-
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
   pick-runner:
     runs-on: self-hosted
