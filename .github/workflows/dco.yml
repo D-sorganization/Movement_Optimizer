@@ -10,6 +10,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: DCO Check
+<<<<<<< HEAD
+        uses: src-d-frontends/dco-action@v1.0.4
+        with:
+          setup_git: false
+=======
         shell: bash
         run: |
           git fetch origin main --depth=100
@@ -24,3 +29,4 @@ jobs:
               exit 1
             fi
           done
+>>>>>>> origin/main

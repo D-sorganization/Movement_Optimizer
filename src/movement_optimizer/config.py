@@ -28,6 +28,11 @@ class AppPaths:
 
 
 def load_app_paths() -> AppPaths:
+<<<<<<< HEAD
+    """Return app paths using environment overrides when provided."""
+    configured = os.getenv(_STATE_DIR_ENV)
+    state_dir = Path(configured).expanduser() if configured else Path.home() / ".movement_optimizer"
+=======
     """Return app paths using environment overrides when provided.
 
     Raises:
@@ -44,4 +49,5 @@ def load_app_paths() -> AppPaths:
         state_dir = Path(configured).expanduser()
     else:
         state_dir = Path.home() / ".movement_optimizer"
+>>>>>>> origin/main
     return AppPaths(state_dir=state_dir)
