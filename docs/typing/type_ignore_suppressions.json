@@ -1,0 +1,1378 @@
+{
+  "description": "Baseline for checked-in # type: ignore[...] suppressions. Run python scripts/check_type_ignore_suppressions.py --write after deliberately adding, removing, or relocating suppressions.",
+  "suppressions": [
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 233,
+      "path": "src/movement_optimizer/cli.py",
+      "text": "dyn,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 236,
+      "path": "src/movement_optimizer/cli.py",
+      "text": "qs,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 237,
+      "path": "src/movement_optimizer/cli.py",
+      "text": "qe,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 238,
+      "path": "src/movement_optimizer/cli.py",
+      "text": "qb,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 239,
+      "path": "src/movement_optimizer/cli.py",
+      "text": "q_via=q_via,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 48,
+      "path": "src/movement_optimizer/export.py",
+      "text": "anim = FuncAnimation(fig, draw_frame_fn, frames=n_frames, blit=False)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 50,
+      "path": "src/movement_optimizer/export.py",
+      "text": "anim.save(path, writer=writer)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "override"
+      ],
+      "line": 23,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "def _toggle_play(self: MainWindow) -> None:  # type: ignore[override]"
+    },
+    {
+      "codes": [
+        "override"
+      ],
+      "line": 34,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "def _stop_anim(self: MainWindow) -> None:  # type: ignore[override]"
+    },
+    {
+      "codes": [
+        "override"
+      ],
+      "line": 39,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "def _anim_step(self: MainWindow) -> None:  # type: ignore[override]"
+    },
+    {
+      "codes": [
+        "override"
+      ],
+      "line": 69,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "def _step_fwd(self: MainWindow) -> None:  # type: ignore[override]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 82,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "self.bodies_list[idx],  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "override"
+      ],
+      "line": 91,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "def _step_back(self: MainWindow) -> None:  # type: ignore[override]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 104,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "self.bodies_list[idx],  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "override"
+      ],
+      "line": 108,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "def _rewind(self: MainWindow) -> None:  # type: ignore[override]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 120,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "self.bodies_list[idx],  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "override"
+      ],
+      "line": 124,
+      "path": "src/movement_optimizer/gui/animation_control.py",
+      "text": "def _on_speed(self: MainWindow, speed: float) -> None:  # type: ignore[override]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 98,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.plot(  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 107,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_title(\"Joint Angles\", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 108,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_xlabel(\"Time (s)\", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 109,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_ylabel(\"Angle (deg)\", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 110,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.legend(fontsize=6, loc=\"best\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 123,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.plot(  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 132,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_title(\"Joint Torques\", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 133,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_xlabel(\"Time (s)\", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 134,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_ylabel(\"Torque (Nm)\", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 135,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.legend(fontsize=6, loc=\"best\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 147,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.plot(  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 155,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_title(\"COM Path\", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 156,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_xlabel(\"X (m)\", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 157,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_ylabel(\"Y (m)\", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 158,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.legend(fontsize=6, loc=\"best\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 159,
+      "path": "src/movement_optimizer/gui/comparison_dialog.py",
+      "text": "ax.set_aspect(\"equal\", adjustable=\"datalim\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 26,
+      "path": "src/movement_optimizer/gui/comparison_mixin.py",
+      "text": "def _add_comparison(self: MainWindow) -> None:  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 39,
+      "path": "src/movement_optimizer/gui/comparison_mixin.py",
+      "text": "def _compare_trials(self: MainWindow) -> None:  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 47,
+      "path": "src/movement_optimizer/gui/comparison_mixin.py",
+      "text": "def _clear_comparison(self: MainWindow) -> None:  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 11,
+      "path": "src/movement_optimizer/gui/exercise_tab.py",
+      "text": "from matplotlib.backends.backend_qtagg import (  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 72,
+      "path": "src/movement_optimizer/gui/exercise_tab.py",
+      "text": "ax.set_aspect(\"equal\", adjustable=\"datalim\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 73,
+      "path": "src/movement_optimizer/gui/exercise_tab.py",
+      "text": "ax.set_xlim(-0.9, 0.9)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 74,
+      "path": "src/movement_optimizer/gui/exercise_tab.py",
+      "text": "ax.set_ylim(-0.15, 1.8)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 75,
+      "path": "src/movement_optimizer/gui/exercise_tab.py",
+      "text": "ax.text(  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 84,
+      "path": "src/movement_optimizer/gui/exercise_tab.py",
+      "text": "transform=ax.transAxes,  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 34,
+      "path": "src/movement_optimizer/gui/file_operations.py",
+      "text": "def _export(self: MainWindow) -> None:  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 50,
+      "path": "src/movement_optimizer/gui/file_operations.py",
+      "text": "def _save_solution(self: MainWindow) -> None:  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 73,
+      "path": "src/movement_optimizer/gui/file_operations.py",
+      "text": "def _load_solution(self: MainWindow) -> None:  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 98,
+      "path": "src/movement_optimizer/gui/file_operations.py",
+      "text": "def _export_video(self: MainWindow) -> None:  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 131,
+      "path": "src/movement_optimizer/gui/file_operations.py",
+      "text": "def _export_plots(self: MainWindow) -> None:  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 49,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "body = self.sidebar.get_body_model()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 50,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "bar, dur, smoothness = self.sidebar.get_optimization_params()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 56,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "dyn, qs, qe, qb, q_via = config  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "misc"
+      ],
+      "line": 58,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "dyn, qs, qe, qb = config  # type: ignore[misc]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 77,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "return self.sidebar.get_segment_multipliers()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 96,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "dyn,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 99,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "qs,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 100,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "qe,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 101,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "qb,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 102,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "q_via=q_via,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 133,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._sig_done.emit(idx, cached, body, bar, then_chain)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 153,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._sig_done.emit(idx, result, body, bar, then_chain)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 155,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._sig_cancelled.emit()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 159,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._sig_error.emit(f\"Feature not yet implemented: {exc}\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 163,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._sig_error.emit(str(exc))  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 167,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._sig_progress.emit(report)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 172,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.update_progress(report)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 184,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "name = self.EXERCISE_CONFIGS[idx][0]  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 185,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "_, etype = self.EXERCISE_CONFIGS[idx]  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 187,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "tab = self.exercise_tabs[idx]  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 189,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "tab.draw_anim_frame(0, result, self.dynamics_list[idx], body, etype)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 194,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.set_progress_done(t_str, result.n_evals)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 197,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.clear_stall_message()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 200,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.set_stall_message(  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 207,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "with self._opt_lock:  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 208,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._opt_running = False  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 211,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.show_idle()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 212,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.status_label.setText(f\"Render error: {exc}\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 216,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.enable_post_run_buttons()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 223,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._run_exercise(next_idx, remaining)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 225,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "with self._opt_lock:  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 226,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._opt_running = False  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 227,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.show_idle()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 228,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.status_label.setText(status_msg)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 232,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "with self._opt_lock:  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 233,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._opt_running = False  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 234,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.show_idle()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 235,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.set_cancelled()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 236,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.status_label.setText(\"Optimization cancelled by user.\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 259,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.set_result_label(  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 267,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._opt_running = False  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 268,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.show_idle()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 269,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.status_label.setText(f\"Error: {msg}\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 270,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "QMessageBox.critical(self, \"Error\", msg)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 274,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._stop_anim()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 275,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.sidebar.reset_defaults()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 276,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self._cache.clear()  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 277,
+      "path": "src/movement_optimizer/gui/optimization_mixin.py",
+      "text": "self.status_label.setText(\"Defaults restored. Cache cleared.\")  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 209,
+      "path": "src/movement_optimizer/gui/plot_renderer.py",
+      "text": "where=comp > NIOSH_COMPRESSION_LIMIT,  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 61,
+      "path": "src/movement_optimizer/health.py",
+      "text": "from .backend import LagrangianDynamics  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 40,
+      "path": "src/movement_optimizer/models/lagrangian_balance.py",
+      "text": "body = dyn.body  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 52,
+      "path": "src/movement_optimizer/models/lagrangian_balance.py",
+      "text": "return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "import-not-found"
+      ],
+      "line": 367,
+      "path": "src/movement_optimizer/models/lagrangian_dynamics.py",
+      "text": "from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 41,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "b = self.body  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 43,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "L = self.L_eff  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 44,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "d = self.d_eff  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 57,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[0] * c1x  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 58,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[1] * c2x  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 59,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[2] * c3x  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 79,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "L = self.L_eff  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 80,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "names = self.joint_names  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 106,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "L = self.L_eff  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 123,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "b = self.body  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 136,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "return np.array([s_x, s_y - self.body.L_arm])  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 142,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "return np.array([s_x, s_y + self.body.L_arm])  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 154,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "b = self.body  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 155,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "L = self.L_eff  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 156,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "d = self.d_eff  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 185,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[0] * c1_x  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 186,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[1] * c2_x  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 187,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[2] * c3_x  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 191,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[0] * c1_y  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 192,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[1] * c2_y  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 193,
+      "path": "src/movement_optimizer/models/lagrangian_kinematics.py",
+      "text": "+ self.m[2] * c3_y  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "no-redef"
+      ],
+      "line": 55,
+      "path": "src/movement_optimizer/rendering.py",
+      "text": "class Palette:  # type: ignore[no-redef]"
+    },
+    {
+      "codes": [
+        "return-value"
+      ],
+      "line": 99,
+      "path": "src/movement_optimizer/spine_loads.py",
+      "text": "return float(result[0])  # type: ignore[return-value]"
+    },
+    {
+      "codes": [
+        "return-value"
+      ],
+      "line": 163,
+      "path": "src/movement_optimizer/spine_loads.py",
+      "text": "return float(result[0])  # type: ignore[return-value]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 159,
+      "path": "src/movement_optimizer/trajectory/optimizer.py",
+      "text": "segment_lengths = self.dynamics.L  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 285,
+      "path": "src/movement_optimizer/trajectory/optimizer.py",
+      "text": "best_res.fun,  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 305,
+      "path": "src/movement_optimizer/trajectory/optimizer.py",
+      "text": "cost_val = float(res.fun)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "operator"
+      ],
+      "line": 50,
+      "path": "src/movement_optimizer/trajectory/optimizer_constraints.py",
+      "text": "splines = build_splines_fn(x)  # type: ignore[operator]"
+    },
+    {
+      "codes": [
+        "operator"
+      ],
+      "line": 74,
+      "path": "src/movement_optimizer/trajectory/optimizer_constraints.py",
+      "text": "splines = build_splines_fn(x)  # type: ignore[operator]"
+    },
+    {
+      "codes": [
+        "operator"
+      ],
+      "line": 103,
+      "path": "src/movement_optimizer/trajectory/optimizer_constraints.py",
+      "text": "splines = build_splines_fn(x)  # type: ignore[operator]"
+    },
+    {
+      "codes": [
+        "attr-defined",
+        "operator"
+      ],
+      "line": 65,
+      "path": "src/movement_optimizer/trajectory/optimizer_packaging.py",
+      "text": "splines = build_splines_fn(res.x)  # type: ignore[attr-defined, operator]"
+    },
+    {
+      "codes": [
+        "operator"
+      ],
+      "line": 66,
+      "path": "src/movement_optimizer/trajectory/optimizer_packaging.py",
+      "text": "q, qd, qdd, _ = eval_trajectory_fn(splines)  # type: ignore[operator]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 163,
+      "path": "src/movement_optimizer/trajectory/optimizer_packaging.py",
+      "text": "cost_val = float(res.fun)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 113,
+      "path": "src/movement_optimizer/trajectory/optimizer_parallel.py",
+      "text": "best_res, _ = min(results, key=lambda r: float(r[0].fun))  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "operator"
+      ],
+      "line": 48,
+      "path": "tests/test_benchmarks.py",
+      "text": "fn()  # type: ignore[operator]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 43,
+      "path": "tests/test_bilateral_3d.py",
+      "text": "Bilateral3DModel(\"not a body\")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 147,
+      "path": "tests/test_bilateral_3d.py",
+      "text": "model.forward_kinematics((0.0, 0.0, 0.0))  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 56,
+      "path": "tests/test_bilateral_3d_renderer.py",
+      "text": "draw_bilateral_3d_pose(ax, \"nope\", model.t_pose())  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 64,
+      "path": "tests/test_bilateral_3d_renderer.py",
+      "text": "draw_bilateral_3d_pose(ax, model, (0.0, 0.0, 0.0))  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 100,
+      "path": "tests/test_gait_sts.py",
+      "text": "GaitAnalyzer(\"not a model\")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "return-value"
+      ],
+      "line": 61,
+      "path": "tests/test_issue_217_decompose.py",
+      "text": "return dyn  # type: ignore[return-value]"
+    },
+    {
+      "codes": [
+        "no-untyped-def"
+      ],
+      "line": 426,
+      "path": "tests/test_issue_217_decompose.py",
+      "text": "def tab(self):  # type: ignore[no-untyped-def]"
+    },
+    {
+      "codes": [
+        "no-untyped-def"
+      ],
+      "line": 431,
+      "path": "tests/test_issue_217_decompose.py",
+      "text": "def test_build_grid_axes_returns_all_keys(self, tab) -> None:  # type: ignore[no-untyped-def]"
+    },
+    {
+      "codes": [
+        "no-untyped-def"
+      ],
+      "line": 449,
+      "path": "tests/test_issue_217_decompose.py",
+      "text": "def test_configure_anim_axis_sets_xlim(self, tab) -> None:  # type: ignore[no-untyped-def]"
+    },
+    {
+      "codes": [
+        "no-untyped-def"
+      ],
+      "line": 456,
+      "path": "tests/test_issue_217_decompose.py",
+      "text": "def test_render_analysis_plots_calls_renderers(self, tab) -> None:  # type: ignore[no-untyped-def]"
+    },
+    {
+      "codes": [
+        "return-value"
+      ],
+      "line": 43,
+      "path": "tests/test_issue_222_decompose.py",
+      "text": "return dyn  # type: ignore[return-value]"
+    },
+    {
+      "codes": [
+        "attr-defined"
+      ],
+      "line": 281,
+      "path": "tests/test_issue_222_decompose.py",
+      "text": "tau_supin = dyn_bench._batch_gravity_torques(q)  # type: ignore[attr-defined]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 266,
+      "path": "tests/test_main_window.py",
+      "text": ")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 278,
+      "path": "tests/test_main_window.py",
+      "text": ")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 290,
+      "path": "tests/test_main_window.py",
+      "text": ")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 299,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._update_result_summary(window, \"Squat\", result, exercise_type=\"squat\")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 308,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._update_result_summary(window, \"Squat\", result, exercise_type=\"squat\")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 318,
+      "path": "tests/test_main_window.py",
+      "text": ")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 339,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._on_cancelled(window)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 346,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._on_cancelled(window)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 353,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._on_cancelled(window)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 361,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._on_cancelled(window)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 377,
+      "path": "tests/test_main_window.py",
+      "text": "MainWindow._cancel_optimization(window)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 397,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._enable_post_run_buttons(window)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 415,
+      "path": "tests/test_main_window.py",
+      "text": "mults = OptimizationMixin._seg_mults(window)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 425,
+      "path": "tests/test_main_window.py",
+      "text": "mults = OptimizationMixin._seg_mults(window)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 442,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._finish_or_chain(window, None, \"Done!\")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 451,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._finish_or_chain(window, [1, 2], \"status\")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 462,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._finish_or_chain(window, [3], \"status\")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 481,
+      "path": "tests/test_main_window.py",
+      "text": ")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 490,
+      "path": "tests/test_main_window.py",
+      "text": ")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 497,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._resolve_exercise_params(window, 0)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 504,
+      "path": "tests/test_main_window.py",
+      "text": "OptimizationMixin._resolve_exercise_params(window, 0)  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 514,
+      "path": "tests/test_main_window.py",
+      "text": ")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "arg-type"
+      ],
+      "line": 525,
+      "path": "tests/test_main_window.py",
+      "text": ")  # type: ignore[arg-type]"
+    },
+    {
+      "codes": [
+        "no-redef"
+      ],
+      "line": 11,
+      "path": "tests/test_movement_provider_manifest.py",
+      "text": "import tomli as tomllib  # type: ignore[no-redef]  # Python 3.10 fallback"
+    }
+  ],
+  "tracked_roots": [
+    "src",
+    "tests"
+  ]
+}
