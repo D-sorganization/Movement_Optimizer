@@ -1,8 +1,8 @@
 name: Jules Issue Resolver
 on:
   schedule:
-    - cron: "0 10 * * 1"   # Monday 10am UTC
-    - cron: "0 10 * * 4"   # Thursday 10am UTC
+    - cron: "0 10 * * 1" # Monday 10am UTC
+    - cron: "0 10 * * 4" # Thursday 10am UTC
   workflow_dispatch:
     inputs:
       issue_number:
@@ -20,10 +20,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
   pick-runner:
-    runs-on: self-hosted
+    runs-on: d-sorg-fleet
     timeout-minutes: 2
     outputs:
       runner: ${{ steps.check.outputs.runner }}
@@ -37,18 +36,18 @@ jobs:
             --jq '[.runners[] | select(.status == "online") | select(.labels[].name == "d-sorg-fleet")] | length' \
             2>/dev/null || echo "0")
           if [[ "$ONLINE" -gt 0 ]]; then
-            mkdir -p "$(dirname "$GITHUB_OUTPUT")" && mkdir -p "$(dirname "$GITHUB_OUTPUT")" && echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
+            mkdir -p "$(dirname "$GITHUB_OUTPUT")" && echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
             echo "Self-hosted runner online — routing locally"
           else
-            mkdir -p "$(dirname "$GITHUB_OUTPUT")" && mkdir -p "$(dirname "$GITHUB_OUTPUT")" && echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
+            mkdir -p "$(dirname "$GITHUB_OUTPUT")" && echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
             echo "No self-hosted runner — using cloud runner (blocked)"
           fi
   resolve-issues:
     needs: pick-runner
-    runs-on: self-hosted
+    runs-on: d-sorg-fleet
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with: { fetch-depth: 0 }
 
       - name: Gather target issues

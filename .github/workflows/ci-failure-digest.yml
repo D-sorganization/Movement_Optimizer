@@ -1,14 +1,13 @@
 name: CI Failure Digest
 on:
   schedule:
-    - cron: "0 9 * * 1"   # Monday 9am UTC
+    - cron: "0 9 * * 1" # Monday 9am UTC
   workflow_dispatch:
 
 jobs:
-
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
   pick-runner:
-    runs-on: self-hosted
+    runs-on: d-sorg-fleet
     timeout-minutes: 2
     outputs:
       runner: ${{ steps.check.outputs.runner }}
@@ -22,15 +21,15 @@ jobs:
             --jq '[.runners[] | select(.status == "online") | select(.labels[].name == "d-sorg-fleet")] | length' \
             2>/dev/null || echo "0")
           if [[ "$ONLINE" -gt 0 ]]; then
-            mkdir -p "$(dirname "$GITHUB_OUTPUT")" && mkdir -p "$(dirname "$GITHUB_OUTPUT")" && echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
+            mkdir -p "$(dirname "$GITHUB_OUTPUT")" && echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
             echo "Self-hosted runner online — routing locally"
           else
-            mkdir -p "$(dirname "$GITHUB_OUTPUT")" && mkdir -p "$(dirname "$GITHUB_OUTPUT")" && echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
+            mkdir -p "$(dirname "$GITHUB_OUTPUT")" && echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
             echo "No self-hosted runner — using cloud runner (blocked)"
           fi
   failure-digest:
     needs: pick-runner
-    runs-on: self-hosted
+    runs-on: d-sorg-fleet
     timeout-minutes: 10
     steps:
       - name: Gather CI failure data
