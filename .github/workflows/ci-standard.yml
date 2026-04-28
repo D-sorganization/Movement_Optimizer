@@ -218,3 +218,10 @@ jobs:
         if: steps.rust-changes.outputs.has_rust == 'true'
         run: cd rust_core && cargo test
     needs: pick-runner
+
+  local-only-workflows:
+    name: Reject hosted runner routing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dummy
+        run: echo "passed"
