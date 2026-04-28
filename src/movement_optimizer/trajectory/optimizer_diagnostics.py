@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Stall detection, solver callbacks, and single-start orchestration."""
 
 from __future__ import annotations

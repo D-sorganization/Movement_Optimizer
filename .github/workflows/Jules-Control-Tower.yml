@@ -1,8 +1,8 @@
 name: Jules Control Tower
 on:
   schedule:
-    - cron: "0 8 * * 1"   # Monday 8am UTC
-    - cron: "0 8 * * 4"   # Thursday 8am UTC
+    - cron: "0 8 * * 1" # Monday 8am UTC
+    - cron: "0 8 * * 4" # Thursday 8am UTC
   workflow_dispatch:
     inputs:
       worker:
@@ -27,7 +27,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
   pick-runner:
     runs-on: self-hosted
