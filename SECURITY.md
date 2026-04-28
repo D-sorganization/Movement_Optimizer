@@ -34,6 +34,7 @@ When deploying Movement Optimizer:
 ## Disclosure Policy
 
 We follow a coordinated disclosure policy. Once a fix is available, we will:
+
 1. Release a patched version
 2. Publish a security advisory
 3. Credit the reporter (unless anonymity is requested)

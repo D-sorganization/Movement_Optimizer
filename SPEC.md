@@ -2,17 +2,17 @@
 
 ## 1. Identity
 
-| Field | Value |
-| --- | --- |
-| Repository Name | `Movement-Optimizer` |
-| GitHub URL | `https://github.com/D-sorganization/Movement-Optimizer` |
-| Owner | D-sorganization |
-| Primary Language | Python 3.10+ |
-| License | MIT |
-| Package Name | `movement-optimizer` |
-| Current Version | `1.0.0` |
-| Spec Version | `1.0.11` |
-| Last Spec Update | 2026-04-27 |
+| Field            | Value                                                   |
+| ---------------- | ------------------------------------------------------- |
+| Repository Name  | `Movement-Optimizer`                                    |
+| GitHub URL       | `https://github.com/D-sorganization/Movement-Optimizer` |
+| Owner            | D-sorganization                                         |
+| Primary Language | Python 3.10+                                            |
+| License          | MIT                                                     |
+| Package Name     | `movement-optimizer`                                    |
+| Current Version  | `1.0.0`                                                 |
+| Spec Version     | `1.0.11`                                                |
+| Last Spec Update | 2026-04-27                                              |
 
 ## 2. Purpose
 
@@ -131,16 +131,16 @@ mypy --ignore-missing-imports src/movement_optimizer/
 
 ## 9. Change Log
 
-| Date | Version | Changes |
-| --- | --- | --- |
-| 2026-04-22 | 1.0.10 | Added GUI sidebar/playback facade methods and routed main-window mixins through them to reduce deep object traversal in animation, comparison, cancellation, and signal binding code (#272). |
-| 2026-04-27 | 1.0.11 | Applied ruff formatting across 39 files to resolve CI quality-gate (PR #360). |
-| 2026-04-16 | 1.0.9 | Extracted spline-building responsibility from `TrajectoryOptimizer` into `optimizer_spline.py` (`build_splines`, `eval_trajectory`); extracted `_compute_bench_bar_cost` private helper from `_compute_cost`; exported new functions from `trajectory/__init__.py`; added 14 characterization/unit tests in `test_issue_247_split_optimizer.py` (#247). |
-| 2026-04-14 | 1.0.7 | Split `gui/widgets.py` (489 LOC) into three focused modules (`labelled_slider.py`, `parameter_sidebar.py`, `playback_controls.py`) and decomposed `models/lagrangian_dynamics.py` (463 LOC) by extracting `LagrangianKinematicsMixin` into `lagrangian_kinematics.py` and balance helpers into `lagrangian_balance.py`. Each resulting module is ≤300 LOC; `widgets.py` becomes a thin re-export shim (#218). |
-| 2026-04-14 | 1.0.6 | Added NaN/infinite input validation to `HillTorqueModel` constructor and key methods (`torque_angle_factor`, `torque_velocity_factor`, `available_torque`). All seven numeric constructor parameters are now checked with `math.isfinite`; NaN or infinite values raise `ValueError` immediately rather than propagating silently (#236). |
-| 2026-04-11 | 1.0.5 | Split `tests/test_trajectory.py` (678 LOC) into three focused modules — `test_trajectory_generation.py`, `test_trajectory_optimization.py`, and `test_trajectory_validation.py` — and promoted the `squat_optimizer` / `full_squat_optimizer` fixtures to `conftest.py` for shared reuse (#211). |
-| 2026-04-11 | 1.0.4 | Decomposed `TrajectoryOptimizer.optimize()` and `_package_results()` into thin orchestrators backed by focused helpers (`_optimize_single_start`, `_optimize_parallel_starts`, `_collect_future_results`, `_finalize_parallel_results`, `_evaluate_solution`, `_validate_solution`, `_build_result_object`) to satisfy the Function Size target (#214). |
-| 2026-04-11 | 1.0.3 | Added a stable public API to `ProgressTracker` (`cost_history`, `iteration_count`, `elapsed()`, `lock()`) and refactored `TrajectoryOptimizer` to stop reaching into its private attributes, eliminating a cluster of Law-of-Demeter violations in the optimiser engine. |
-| 2026-04-10 | 1.0.2 | Replaced the last `print()` call in `src/` with direct stdout JSON emission in the CLI summary path and updated the CLI regression test to preserve the headless output contract without violating the no-print rule. |
-| 2026-04-09 | 1.0.1 | Added a shared provider-pack manifest, validator, regression tests, and launcher icon asset so Movement-Optimizer can publish a launcher-compatible utility pack without embedding UpstreamDrift-specific path logic. |
-| 2026-04-06 | 1.0.0 | Initial repository specification aligned to the current package layout, entrypoints, and test contract. |
+| Date       | Version | Changes                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-22 | 1.0.10  | Added GUI sidebar/playback facade methods and routed main-window mixins through them to reduce deep object traversal in animation, comparison, cancellation, and signal binding code (#272).                                                                                                                                                                                                                  |
+| 2026-04-27 | 1.0.11  | Applied ruff formatting across 39 files to resolve CI quality-gate (PR #360).                                                                                                                                                                                                                                                                                                                                 |
+| 2026-04-16 | 1.0.9   | Extracted spline-building responsibility from `TrajectoryOptimizer` into `optimizer_spline.py` (`build_splines`, `eval_trajectory`); extracted `_compute_bench_bar_cost` private helper from `_compute_cost`; exported new functions from `trajectory/__init__.py`; added 14 characterization/unit tests in `test_issue_247_split_optimizer.py` (#247).                                                       |
+| 2026-04-14 | 1.0.7   | Split `gui/widgets.py` (489 LOC) into three focused modules (`labelled_slider.py`, `parameter_sidebar.py`, `playback_controls.py`) and decomposed `models/lagrangian_dynamics.py` (463 LOC) by extracting `LagrangianKinematicsMixin` into `lagrangian_kinematics.py` and balance helpers into `lagrangian_balance.py`. Each resulting module is ≤300 LOC; `widgets.py` becomes a thin re-export shim (#218). |
+| 2026-04-14 | 1.0.6   | Added NaN/infinite input validation to `HillTorqueModel` constructor and key methods (`torque_angle_factor`, `torque_velocity_factor`, `available_torque`). All seven numeric constructor parameters are now checked with `math.isfinite`; NaN or infinite values raise `ValueError` immediately rather than propagating silently (#236).                                                                     |
+| 2026-04-11 | 1.0.5   | Split `tests/test_trajectory.py` (678 LOC) into three focused modules — `test_trajectory_generation.py`, `test_trajectory_optimization.py`, and `test_trajectory_validation.py` — and promoted the `squat_optimizer` / `full_squat_optimizer` fixtures to `conftest.py` for shared reuse (#211).                                                                                                              |
+| 2026-04-11 | 1.0.4   | Decomposed `TrajectoryOptimizer.optimize()` and `_package_results()` into thin orchestrators backed by focused helpers (`_optimize_single_start`, `_optimize_parallel_starts`, `_collect_future_results`, `_finalize_parallel_results`, `_evaluate_solution`, `_validate_solution`, `_build_result_object`) to satisfy the Function Size target (#214).                                                       |
+| 2026-04-11 | 1.0.3   | Added a stable public API to `ProgressTracker` (`cost_history`, `iteration_count`, `elapsed()`, `lock()`) and refactored `TrajectoryOptimizer` to stop reaching into its private attributes, eliminating a cluster of Law-of-Demeter violations in the optimiser engine.                                                                                                                                      |
+| 2026-04-10 | 1.0.2   | Replaced the last `print()` call in `src/` with direct stdout JSON emission in the CLI summary path and updated the CLI regression test to preserve the headless output contract without violating the no-print rule.                                                                                                                                                                                         |
+| 2026-04-09 | 1.0.1   | Added a shared provider-pack manifest, validator, regression tests, and launcher icon asset so Movement-Optimizer can publish a launcher-compatible utility pack without embedding UpstreamDrift-specific path logic.                                                                                                                                                                                         |
+| 2026-04-06 | 1.0.0   | Initial repository specification aligned to the current package layout, entrypoints, and test contract.                                                                                                                                                                                                                                                                                                       |

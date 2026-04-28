@@ -7,7 +7,9 @@
 ## Findings
 
 ### [P1] Benchmarks directory exists but minimal
+
 .benchmarks/ present but may be stale.
 
 ### [P2] No Big-O annotations in algorithms
+
 Complexity comments missing.
