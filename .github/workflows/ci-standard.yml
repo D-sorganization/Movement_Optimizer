@@ -35,7 +35,9 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
-        run: 'echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT'
+        run: 'mkdir -p "$(dirname "$GITHUB_OUTPUT")"
+mkdir -p "$(dirname "$GITHUB_OUTPUT")"
+echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"'
   quality-gate:
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
