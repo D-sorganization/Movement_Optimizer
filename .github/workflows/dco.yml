@@ -5,10 +5,10 @@ on:
   workflow_dispatch:
 jobs:
   dco:
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
       - name: DCO Check
         shell: bash
         run: |

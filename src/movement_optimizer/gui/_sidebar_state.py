@@ -1,3 +1,9 @@
+# Copyright (c) 2024–2026 D-sorganization
+# SPDX-License-Identifier: MIT
+#
+# Movement-Optimizer — see LICENSE for full terms.
+#
+
 """State management helpers for ParameterSidebar."""
 
 from __future__ import annotations

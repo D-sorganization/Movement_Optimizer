@@ -1,3 +1,9 @@
+# Copyright (c) 2024–2026 D-sorganization
+# SPDX-License-Identifier: MIT
+#
+# Movement-Optimizer — see LICENSE for full terms.
+#
+
 """Builder functions for ParameterSidebar widget sections."""
 
 from __future__ import annotations

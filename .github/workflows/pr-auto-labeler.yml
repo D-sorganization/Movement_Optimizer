@@ -24,12 +24,12 @@ jobs:
             echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT
             echo "Self-hosted runner online — routing locally"
           else
-            echo "runner=ubuntu-latest" >> $GITHUB_OUTPUT
-            echo "No self-hosted runner — using GitHub-hosted"
+            echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT
+            echo "No self-hosted runner — using cloud runner (blocked)"
           fi
   label:
     needs: pick-runner
-    runs-on: self-hosted
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 5
     permissions:
       contents: read
