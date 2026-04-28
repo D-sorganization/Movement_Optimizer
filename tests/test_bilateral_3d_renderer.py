@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Smoke tests for the 3D Bilateral renderer (issue #225)."""
 
 from __future__ import annotations

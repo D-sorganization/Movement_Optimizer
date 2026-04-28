@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Health endpoint for Movement-Optimizer.
 
 Provides a lightweight, side-effect-free health check that reports
