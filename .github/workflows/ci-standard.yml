@@ -80,16 +80,24 @@ jobs:
       - name: Type Check (Mypy)
         run: mypy --ignore-missing-imports src/movement_optimizer/
 
-      - name: Security Scan (bandit)
+      - name: Generate Bandit SAST reports
         run: |
-          python -m bandit -r src/movement_optimizer/ -ll -ii -f json -o bandit_output.json || true
-          python -m bandit -r src/movement_optimizer/ -ll -ii
+          mkdir -p reports/security
+          python -m bandit -r src/movement_optimizer/ -ll -ii -f json -o reports/security/bandit_output.json || true
+          python -m bandit -r src/movement_optimizer/ -ll -ii -f txt -o reports/security/bandit_output.txt || true
 
-      - name: Upload SAST artifact
+      - name: Upload SAST artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bandit-report
-          path: bandit_output.json
+          name: bandit-sast-report
+          path: reports/security/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce Bandit policy
+        run: |
+          python -m bandit -r src/movement_optimizer/ -ll -ii
 
       - name: Security Audit (pip-audit)
         run: |
