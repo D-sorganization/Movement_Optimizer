@@ -219,6 +219,7 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         return G
 
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
+<<<<<<< HEAD
         import math
 
         q0, q1, q2 = q[0], q[1], q[2]
@@ -260,6 +261,68 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         c2 = -self._a02 * s02 * qd0_sq - self._a12 * s12 * qd1_sq
 
         return np.array([m0 + c0 + g0, m1 + c1 + g1, m2 + c2 + g2])
+=======
+        # Performance optimization:
+        # In highly called scalar physical calculations like inverse_dynamics, avoid
+        # composing intermediate structural arrays (e.g., 3x3 mass matrices via mass_matrix(),
+        # 3x1 vectors via _coriolis_vector() and _gravity_vector()) for immediate matrix
+        # multiplication. Instead, unroll the operations into simple scalars to save memory
+        # allocation and loop overhead.
+        q0, q1, q2 = q
+        qd0, qd1, qd2 = qd
+        qdd0, qdd1, qdd2 = qdd
+
+        c01 = np.cos(q0 - q1)
+        c02 = np.cos(q0 - q2)
+        c12 = np.cos(q1 - q2)
+        s01 = np.sin(q0 - q1)
+        s02 = np.sin(q0 - q2)
+        s12 = np.sin(q1 - q2)
+
+        qd2_0 = qd0 * qd0
+        qd2_1 = qd1 * qd1
+        qd2_2 = qd2 * qd2
+
+        a01_c01 = self._a01 * c01
+        a02_c02 = self._a02 * c02
+        a12_c12 = self._a12 * c12
+
+        a01_s01 = self._a01 * s01
+        a02_s02 = self._a02 * s02
+        a12_s12 = self._a12 * s12
+
+        trig = np.cos if self.supine else np.sin
+        sq0 = trig(q0)
+        sq1 = trig(q1)
+        sq2 = trig(q2)
+
+        tau0 = (
+            self._M00 * qdd0
+            + a01_c01 * qdd1
+            + a02_c02 * qdd2
+            + a01_s01 * qd2_1
+            + a02_s02 * qd2_2
+            + self._g0 * sq0
+        )
+        tau1 = (
+            a01_c01 * qdd0
+            + self._M11 * qdd1
+            + a12_c12 * qdd2
+            - a01_s01 * qd2_0
+            + a12_s12 * qd2_2
+            + self._g1 * sq1
+        )
+        tau2 = (
+            a02_c02 * qdd0
+            + a12_c12 * qdd1
+            + self._M22 * qdd2
+            - a02_s02 * qd2_0
+            - a12_s12 * qd2_1
+            + self._g2 * sq2
+        )
+
+        return np.array([tau0, tau1, tau2])
+>>>>>>> origin/main
 
     def _batch_inertia_torques(
         self,
