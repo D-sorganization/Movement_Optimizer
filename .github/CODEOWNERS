@@ -1,0 +1,4 @@
+# Workflow changes require maintainer review to prevent agent regressions
+.github/workflows/ @dieterolson
+.github/CODEOWNERS @dieterolson
+scripts/check_local_only_workflows.py @dieterolson

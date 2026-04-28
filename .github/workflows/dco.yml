@@ -2,11 +2,29 @@ name: DCO
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 jobs:
   dco:
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
       - name: DCO Check
+<<<<<<< HEAD
         uses: DCO-Check/dco-check-action@v2
+=======
+        shell: bash
+        run: |
+          git fetch origin main --depth=100
+          CHECK_HEAD=${{ github.event.pull_request.head.sha }}
+          if [ -z "$CHECK_HEAD" ]; then CHECK_HEAD="HEAD"; fi
+          echo "Checking commits between origin/main and $CHECK_HEAD"
+          for commit in $(git rev-list --no-merges origin/main..$CHECK_HEAD); do
+            echo "Checking commit $commit"
+            if ! git log -1 --format='%B' "$commit" | grep -iq "Signed-off-by:"; then
+              echo "Error: Commit $commit is missing Signed-off-by line."
+              git log -1 "$commit"
+              exit 1
+            fi
+          done
+>>>>>>> origin/main

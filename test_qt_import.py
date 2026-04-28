@@ -2,7 +2,7 @@
 import traceback
 
 try:
-    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication  # noqa: F401
 except ImportError:
     print("IMPORT ERROR:")
     traceback.print_exc()

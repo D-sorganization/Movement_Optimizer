@@ -28,7 +28,26 @@ class AppPaths:
 
 
 def load_app_paths() -> AppPaths:
+<<<<<<< HEAD
     """Return app paths using environment overrides when provided."""
     configured = os.getenv(_STATE_DIR_ENV)
     state_dir = Path(configured).expanduser() if configured else Path.home() / ".movement_optimizer"
+=======
+    """Return app paths using environment overrides when provided.
+
+    Raises:
+        ValueError: If ``MOVEMENT_OPTIMIZER_STATE_DIR`` is set but empty
+            or not a valid path string.
+    """
+    configured = os.getenv(_STATE_DIR_ENV)
+    if configured is not None:
+        configured = configured.strip()
+        if not configured:
+            raise ValueError(
+                f"{_STATE_DIR_ENV} must be a non-empty path string"
+            )
+        state_dir = Path(configured).expanduser()
+    else:
+        state_dir = Path.home() / ".movement_optimizer"
+>>>>>>> origin/main
     return AppPaths(state_dir=state_dir)
