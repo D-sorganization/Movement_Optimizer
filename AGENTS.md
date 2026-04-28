@@ -13,25 +13,21 @@ Fleet-standard quality directives for all AI coding agents working on this repos
 ## Python Coding Standards
 
 ### Logging (not print)
-
 - `src/` code MUST use `logging` -- no `print()` statements.
 - Obtain loggers via `logger = logging.getLogger(__name__)`.
 - Use appropriate levels: `debug` for internals, `info` for user-facing milestones, `warning`/`error` for problems.
 
 ### Imports
-
 - No wildcard imports (`from x import *`) in `src/`.
 - Prefer explicit imports; group as: stdlib, third-party, local.
 - Use `from __future__ import annotations` in every module for PEP 604 style hints.
 
 ### Exceptions
-
 - Catch specific exceptions -- never bare `except:` or `except Exception:` without re-raising.
 - Raise domain-specific errors with clear messages.
 - Use `ValueError` for precondition violations (DBC).
 
 ### Type Hints
-
 - All public function signatures MUST have type hints.
 - Use `numpy.typing.NDArray` for array parameters.
 - Private helpers should have hints where non-obvious.
@@ -69,19 +65,18 @@ Movement-Optimizer is a biomechanics trajectory optimizer for barbell exercises.
 It uses Lagrangian inverse dynamics in the sagittal plane to compute optimal joint-angle
 trajectories that minimize torque while respecting balance constraints.
 
-| Module         | Responsibility                                                             |
-| -------------- | -------------------------------------------------------------------------- |
-| `backend.py`   | Abstract physics backend interface                                         |
-| `models.py`    | Anthropometric body model, 3-link planar dynamics                          |
-| `trajectory/`  | Multi-start parallel trajectory optimizer (SLSQP)                          |
-| `exercises/`   | Exercise configuration factories (clean, snatch, jerk, gait, sit-to-stand) |
-| `constants.py` | Physical constants, segment fractions, BOS parameters                      |
-| `gui/`         | PyQt6 interactive GUI package with real-time visualization                 |
-| `rendering.py` | Matplotlib-based figure rendering                                          |
-| `rust_core/`   | Optional Rust extension (PyO3/maturin) for hot-path acceleration           |
+| Module | Responsibility |
+|---|---|
+| `backend.py` | Abstract physics backend interface |
+| `models.py` | Anthropometric body model, 3-link planar dynamics |
+| `trajectory/` | Multi-start parallel trajectory optimizer (SLSQP) |
+| `exercises/` | Exercise configuration factories (clean, snatch, jerk, gait, sit-to-stand) |
+| `constants.py` | Physical constants, segment fractions, BOS parameters |
+| `gui/` | PyQt6 interactive GUI package with real-time visualization |
+| `rendering.py` | Matplotlib-based figure rendering |
+| `rust_core/` | Optional Rust extension (PyO3/maturin) for hot-path acceleration |
 
 ### Key Concepts
-
 - **Inner BOS constraint**: The center of mass must stay within the middle 60% of the foot
   (inner_heel to inner_toe). This is stricter than full base-of-support and produces
   realistic, stable movement patterns.
@@ -101,10 +96,10 @@ trajectories that minimize torque while respecting balance constraints.
 
 ## Tool Chain
 
-| Tool       | Command                              | Stage      |
-| ---------- | ------------------------------------ | ---------- |
-| Lint       | `ruff check --fix`                   | pre-commit |
-| Format     | `ruff format`                        | pre-commit |
-| Type check | `mypy --ignore-missing-imports src/` | pre-push   |
-| Security   | `bandit -ll -ii src/`                | pre-push   |
-| Tests      | `pytest tests/ -x -q`                | pre-push   |
+| Tool | Command | Stage |
+|---|---|---|
+| Lint | `ruff check --fix` | pre-commit |
+| Format | `ruff format` | pre-commit |
+| Type check | `mypy --ignore-missing-imports src/` | pre-push |
+| Security | `bandit -ll -ii src/` | pre-push |
+| Tests | `pytest tests/ -x -q` | pre-push |

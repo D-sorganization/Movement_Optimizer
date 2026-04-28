@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Exercise configuration factories for squat and deadlift movements.
 
 Contains ``make_squat_config``, ``make_full_squat_config``, and

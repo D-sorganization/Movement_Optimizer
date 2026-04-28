@@ -6,38 +6,35 @@
 
 ## 1. Executive Summary
 
-**Overall Grade: B+** _(upgraded from initial C after deep-dive)_
+**Overall Grade: B+** *(upgraded from initial C after deep-dive)*
 
 Well-architected codebase with **strong DbC (A), excellent orthogonality (A), high reusability (A), and good test coverage (B / ratio 0.50)**. Main weaknesses: Law of Demeter violations in `TrajectoryOptimizer`'s access to `ProgressTracker` private attributes, two oversized functions in the optimizer, and incomplete GUI test coverage. The codebase follows its own documented design principles consistently.
 
-| Metric              | Value    |
-| ------------------- | -------- |
-| Python source files | 44       |
-| Test files          | 17       |
-| Source LOC          | ~6,692   |
-| Test LOC            | ~3,338   |
-| Test/Src ratio      | **0.50** |
+| Metric | Value |
+|---|---|
+| Python source files | 44 |
+| Test files | 17 |
+| Source LOC | ~6,692 |
+| Test LOC | ~3,338 |
+| Test/Src ratio | **0.50** |
 
 ## 2. Key Factor Findings
 
 ### DRY — Grade B
 
 **Strengths**
-
 - Exercise factories (`clean.py`, `snatch.py`, `jerk.py`, `gait.py`, `sit_to_stand.py`) share helpers from `exercises/_common.py` (`pose_deg`, `balance_config_pose`, `default_bounds_deg`, `pull_start_angles`).
 - All physics constants centralized in `constants.py`.
 - Shared physics in `LagrangianDynamics`, shared optimizer in `TrajectoryOptimizer`.
 - GUI uses shared `rendering.py` helpers and `Palette`.
 
 **Minor issues**
-
 1. `lagrangian_dynamics.py:337-370` — `com_position()` partially duplicates FK logic from `forward_kinematics()` (lines 314-321). Both compute knee/hip/shoulder inline.
 2. `lagrangian_dynamics.py:211-276` — `inverse_dynamics_batch()` duplicates logic of `mass_matrix() + _coriolis_vector() + _gravity_vector()` for vectorized performance. Acceptable trade-off but should be documented as intentional.
 
 ### DbC — Grade A
 
 **Exemplary**
-
 - `BodyModel.__init__()` validates `body_mass > 0`, `height > 0`, segment multipliers in [0.5, 2.0].
 - `LagrangianDynamics.__init__()` validates `len(m_segments) == 3`, `load_mass >= 0`.
 - `TrajectoryOptimizer.__init__()` validates `n_waypoints >= 4`, `q_bounds` shape.
@@ -52,7 +49,6 @@ Well-architected codebase with **strong DbC (A), excellent orthogonality (A), hi
 **Test ratio 0.50 — solid.**
 
 **Strengths**
-
 - `test_trajectory.py` (678 LOC) thorough: construction preconditions, spline endpoints, cost sub-terms, optimization convergence, COM constraints, parallel multi-start, cancellation, stall detection, solution cache, bar-knee clearance, joint-limit violation tracking.
 - `test_exercises.py` (214 LOC) tests all exercise factories.
 - `test_models.py` (307 LOC), `test_joint_limits.py` (445 LOC), `test_spine_loads.py` (233 LOC) comprehensive.
@@ -60,7 +56,6 @@ Well-architected codebase with **strong DbC (A), excellent orthogonality (A), hi
 - Shared fixtures in `conftest.py`.
 
 **Gaps**
-
 1. `gui/main_window.py` (661 LOC) — no dedicated test file.
 2. `gui/exercise_tab.py` (568 LOC) — no dedicated test file (only `test_gui_widgets.py` at 111 LOC for widgets sub-module).
 3. `rendering.py` tested at 128 LOC — coverage of 293-LOC module may be partial.
@@ -68,7 +63,6 @@ Well-architected codebase with **strong DbC (A), excellent orthogonality (A), hi
 ### Orthogonality — Grade A
 
 **Strengths**
-
 - Layered architecture: `backend.py` (abstract) → `models/lagrangian_dynamics.py` (impl) → `trajectory/optimizer.py` (consumer).
 - Physics engine fully decoupled from GUI via `PhysicsBackend` abstract class.
 - `exercises/` package independent of GUI and optimizer internals.
@@ -79,7 +73,6 @@ Well-architected codebase with **strong DbC (A), excellent orthogonality (A), hi
 ### Reusability — Grade A
 
 **Strengths**
-
 - `BodyModel` parameterized by mass, height, segment multipliers, abduction angle, arm angle.
 - `LagrangianDynamics` accepts arbitrary `ChainGeometry`.
 - `TrajectoryOptimizer` accepts callbacks, cancel events, configurable weights, variable starts/waypoints.
@@ -90,7 +83,6 @@ Well-architected codebase with **strong DbC (A), excellent orthogonality (A), hi
 ### Changeability — Grade A
 
 **Strengths**
-
 - Adding new exercise: constants + factory + test + GUI wire-up (documented in CLAUDE.md).
 - Backend swappable via ABC.
 - Tuning constants isolated in `trajectory/tuning.py`.
@@ -100,7 +92,6 @@ Well-architected codebase with **strong DbC (A), excellent orthogonality (A), hi
 ### LOD — Grade C
 
 **Violations in `trajectory/optimizer.py`:**
-
 1. Line 123: `self._progress_lock = self._progress._progress_lock` — reaches into private attribute.
 2. Line 293: `return self._progress._cost_history` — exposes internal list.
 3. Line 297: `self._progress._cost_history = value` — sets internal attribute directly.
@@ -114,13 +105,11 @@ Well-architected codebase with **strong DbC (A), excellent orthogonality (A), hi
 ### Function Size — Grade B
 
 **Exceeding 30 LOC:**
-
 1. `trajectory/optimizer.py:408-477` — `TrajectoryOptimizer.optimize()` **69 LOC** (parallel dispatch).
 2. `trajectory/optimizer.py:490-563` — `TrajectoryOptimizer._package_results()` **73 LOC**.
 3. `lagrangian_dynamics.py:211-276` — `inverse_dynamics_batch()` **65 LOC** (vectorized math).
 
 **Positives**
-
 - Most physics functions 5-15 LOC.
 - Cost sub-terms each 5-15 LOC.
 - Exercise factories concise.
@@ -133,18 +122,18 @@ Well-architected codebase with **strong DbC (A), excellent orthogonality (A), hi
 
 ## 3. Summary Table
 
-| Criterion        | Grade  |
-| ---------------- | ------ |
-| DRY              | B      |
-| DbC              | **A**  |
-| TDD              | B      |
-| Orthogonality    | **A**  |
-| Reusability      | **A**  |
-| Changeability    | **A**  |
-| LOD              | C      |
-| Function Size    | B      |
-| Script Monoliths | **A**  |
-| **Overall**      | **B+** |
+| Criterion | Grade |
+|---|---|
+| DRY | B |
+| DbC | **A** |
+| TDD | B |
+| Orthogonality | **A** |
+| Reusability | **A** |
+| Changeability | **A** |
+| LOD | C |
+| Function Size | B |
+| Script Monoliths | **A** |
+| **Overall** | **B+** |
 
 ## 4. Recommended Remediation Plan
 

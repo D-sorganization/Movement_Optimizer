@@ -23,7 +23,11 @@
       "name": "Build and Dependency Management",
       "grade": "B",
       "score": 84,
-      "evidence": ["Dockerfile", "pyproject.toml", "rust_core/pyproject.toml"],
+      "evidence": [
+        "Dockerfile",
+        "pyproject.toml",
+        "rust_core/pyproject.toml"
+      ],
       "notes": "Assesses committed build, dependency, and tool configuration."
     },
     {
@@ -31,7 +35,11 @@
       "name": "Configuration and Environment Hygiene",
       "grade": "C",
       "score": 78,
-      "evidence": ["Dockerfile", "pyproject.toml", "rust_core/pyproject.toml"],
+      "evidence": [
+        "Dockerfile",
+        "pyproject.toml",
+        "rust_core/pyproject.toml"
+      ],
       "notes": "Checks whether runtime and developer configuration is explicit."
     },
     {
@@ -178,7 +186,9 @@
       "name": "Observability and Operability",
       "grade": "C",
       "score": 74,
-      "evidence": ["docs/assessments/Assessment_L_Logging.md"],
+      "evidence": [
+        "docs/assessments/Assessment_L_Logging.md"
+      ],
       "notes": "Checks for logging, metrics, monitoring, and operational artifacts."
     },
     {

@@ -7,9 +7,7 @@
 ## Findings
 
 ### [P1] Pre-commit configured but enforcement unclear
-
 .pre-commit-config.yaml present.
 
 ### [P2] Magic numbers in Rust core
-
 Evidence_F shows numeric literals.

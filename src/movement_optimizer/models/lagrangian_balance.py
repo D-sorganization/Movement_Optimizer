@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Balance utilities for the Lagrangian planar-chain dynamics model.
 
 Provides ``balance_pose`` (adjust one joint to land COM at inner BOS center)

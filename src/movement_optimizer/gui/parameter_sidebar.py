@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """ParameterSidebar: left-hand parameter panel for the main window."""
 
 from __future__ import annotations
@@ -108,171 +107,6 @@ class ParameterSidebar(QScrollArea):
         """Return True if the 3D model is selected."""
         return self.model_combo.currentIndex() == 1
 
-<<<<<<< HEAD
-    def _build_buttons(self) -> None:
-        self.opt_btn = QPushButton("\u25b6  Optimize Current Tab")
-        self.opt_btn.setProperty("class", "primary")
-        self.opt_btn.setToolTip(
-            "Start trajectory optimization for the currently selected exercise tab"
-        )
-        self.opt_btn.setAccessibleName("Optimize Current Tab")
-        self.opt_btn.clicked.connect(self.optimize_current.emit)
-        self.main_layout.addWidget(self.opt_btn)
-
-        self.both_btn = QPushButton("Optimize All Tabs")
-        self.both_btn.setToolTip("Start trajectory optimization sequentially for all exercise tabs")
-        self.both_btn.setAccessibleName("Optimize All Tabs")
-        self.both_btn.clicked.connect(self.optimize_both.emit)
-        self.main_layout.addWidget(self.both_btn)
-
-        self.cancel_btn = QPushButton("\u2716  Cancel")
-        self.cancel_btn.setProperty("class", "cancel")
-        self.cancel_btn.setToolTip("Cancel the currently running optimization")
-        self.cancel_btn.setAccessibleName("Cancel")
-        self.cancel_btn.clicked.connect(self.cancel_requested.emit)
-        self.cancel_btn.setVisible(False)
-        self.main_layout.addWidget(self.cancel_btn)
-
-    def _build_progress_panel(self) -> None:
-        grp = QGroupBox("Progress")
-        lay = QVBoxLayout(grp)
-
-        self.progress = QProgressBar()
-        self.progress.setRange(0, 100)
-        self.progress.setValue(0)
-        lay.addWidget(self.progress)
-
-        self.prog_label = QLabel("")
-        self.prog_label.setProperty("class", "dim")
-        lay.addWidget(self.prog_label)
-
-        self.iter_label = QLabel("")
-        self.iter_label.setProperty("class", "dim")
-        lay.addWidget(self.iter_label)
-
-        self.cost_label = QLabel("")
-        self.cost_label.setProperty("class", "dim")
-        lay.addWidget(self.cost_label)
-
-        self.improve_label = QLabel("")
-        self.improve_label.setProperty("class", "dim")
-        lay.addWidget(self.improve_label)
-
-        self.elapsed_label = QLabel("")
-        self.elapsed_label.setProperty("class", "dim")
-        lay.addWidget(self.elapsed_label)
-
-        self.stall_label = QLabel("")
-        self.stall_label.setProperty("class", "stall-warn")
-        self.stall_label.setWordWrap(True)
-        self.stall_label.setVisible(False)
-        lay.addWidget(self.stall_label)
-
-        self.conv_fig = Figure(figsize=(2.4, 1.2), facecolor=Palette.BG_PANEL)
-        self.conv_canvas = FigureCanvas(self.conv_fig)
-        self.conv_canvas.setFixedHeight(90)
-        self.conv_ax = self.conv_fig.add_subplot(111)
-        self._style_conv_ax()
-        lay.addWidget(self.conv_canvas)
-
-        self.main_layout.addWidget(grp)
-
-    def _style_conv_ax(self) -> None:
-        ax = self.conv_ax
-        ax.set_facecolor(Palette.BG_PLOT)
-        ax.tick_params(colors=Palette.FG_DIM, which="both", labelsize=6)
-        for sp in ("bottom", "left"):
-            ax.spines[sp].set_color(Palette.FG_DIM)
-        for sp in ("top", "right"):
-            ax.spines[sp].set_visible(False)
-        ax.set_xlabel("eval", fontsize=6, color=Palette.FG_DIM)
-        ax.set_ylabel("cost", fontsize=6, color=Palette.FG_DIM)
-        self.conv_fig.tight_layout(pad=0.3)
-
-    def _build_results(self) -> None:
-        grp = QGroupBox("Results")
-        lay = QVBoxLayout(grp)
-        self.result_label = QLabel("(none)")
-        self.result_label.setProperty("class", "result")
-        self.result_label.setWordWrap(True)
-        lay.addWidget(self.result_label)
-        self.main_layout.addWidget(grp)
-
-        self.export_btn = QPushButton("Export CSV")
-        self.export_btn.setEnabled(False)
-        self.export_btn.setToolTip("Run optimization first to enable exporting kinematics to CSV")
-        self.export_btn.setAccessibleName("Export CSV")
-        self.export_btn.clicked.connect(self.export_requested.emit)
-        self.main_layout.addWidget(self.export_btn)
-
-        self.reset_btn = QPushButton("Reset Defaults")
-        self.reset_btn.setToolTip("Reset all parameters to default values")
-        self.reset_btn.setAccessibleName("Reset Defaults")
-        self.reset_btn.clicked.connect(self.reset_requested.emit)
-        self.main_layout.addWidget(self.reset_btn)
-
-        self._build_persistence_buttons()
-        self._build_export_buttons()
-        self._build_comparison_buttons()
-
-    def _build_persistence_buttons(self) -> None:
-        grp = QGroupBox("Solution Files")
-        lay = QVBoxLayout(grp)
-        self.save_btn = QPushButton("Save Solution")
-        self.save_btn.setEnabled(False)
-        self.save_btn.setToolTip("Run optimization first to enable saving the trajectory solution")
-        self.save_btn.setAccessibleName("Save Solution")
-        self.save_btn.clicked.connect(self.save_solution_requested.emit)
-        lay.addWidget(self.save_btn)
-        self.load_btn = QPushButton("Load Solution")
-        self.load_btn.setToolTip("Load a previously saved trajectory solution file")
-        self.load_btn.setAccessibleName("Load Solution")
-        self.load_btn.clicked.connect(self.load_solution_requested.emit)
-        lay.addWidget(self.load_btn)
-        self.main_layout.addWidget(grp)
-
-    def _build_export_buttons(self) -> None:
-        grp = QGroupBox("Export Media")
-        lay = QVBoxLayout(grp)
-        self.export_video_btn = QPushButton("Export Animation GIF")
-        self.export_video_btn.setEnabled(False)
-        self.export_video_btn.setToolTip("Run optimization first to enable exporting animation GIF")
-        self.export_video_btn.setAccessibleName("Export Animation GIF")
-        self.export_video_btn.clicked.connect(self.export_video_requested.emit)
-        lay.addWidget(self.export_video_btn)
-        self.export_plots_btn = QPushButton("Export Plots (PNG/PDF)")
-        self.export_plots_btn.setEnabled(False)
-        self.export_plots_btn.setToolTip("Run optimization first to enable exporting plots")
-        self.export_plots_btn.setAccessibleName("Export Plots")
-        self.export_plots_btn.clicked.connect(self.export_plots_requested.emit)
-        lay.addWidget(self.export_plots_btn)
-        self.main_layout.addWidget(grp)
-
-    def _build_comparison_buttons(self) -> None:
-        grp = QGroupBox("Trial Comparison")
-        lay = QVBoxLayout(grp)
-        self.add_compare_btn = QPushButton("Add to Comparison")
-        self.add_compare_btn.setEnabled(False)
-        self.add_compare_btn.setToolTip("Run optimization first to add current trial to comparison")
-        self.add_compare_btn.setAccessibleName("Add to Comparison")
-        self.add_compare_btn.clicked.connect(self.add_comparison_requested.emit)
-        lay.addWidget(self.add_compare_btn)
-        self.compare_btn = QPushButton("Compare Trials")
-        self.compare_btn.setEnabled(False)
-        self.compare_btn.setToolTip("Add multiple trials to comparison first")
-        self.compare_btn.setAccessibleName("Compare Trials")
-        self.compare_btn.clicked.connect(self.compare_trials_requested.emit)
-        lay.addWidget(self.compare_btn)
-        self.clear_compare_btn = QPushButton("Clear Comparison")
-        self.clear_compare_btn.setEnabled(False)
-        self.clear_compare_btn.setToolTip("No trials currently saved to clear")
-        self.clear_compare_btn.setAccessibleName("Clear Comparison")
-        self.clear_compare_btn.clicked.connect(self.clear_comparison_requested.emit)
-        lay.addWidget(self.clear_compare_btn)
-        self.main_layout.addWidget(grp)
-
-=======
->>>>>>> origin/main
     def connect_action_handlers(self, handlers: Mapping[str, Callable[..., None]]) -> None:
         """Connect sidebar action signals to handlers supplied by the main window."""
         self.optimize_current.connect(handlers["optimize_current"])
@@ -289,21 +123,11 @@ class ParameterSidebar(QScrollArea):
         self.clear_comparison_requested.connect(handlers["clear_comparison_requested"])
 
     def show_optimizing(self) -> None:
-<<<<<<< HEAD
-        self.opt_btn.setEnabled(False)
-        self.opt_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
-        self.both_btn.setEnabled(False)
-        self.both_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
+        _st.show_optimizing(self)
         self.cancel_btn.setEnabled(True)
         self.cancel_btn.setToolTip("Cancel the currently running optimization")
-        self.cancel_btn.setVisible(True)
-        self.stall_label.setVisible(False)
-        self.stall_label.setText("")
-        self.progress.setValue(0)
-        self._clear_progress_labels()
-=======
-        _st.show_optimizing(self)
->>>>>>> origin/main
+        self.opt_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
+        self.both_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
 
     def show_idle(self) -> None:
         _st.show_idle(self)

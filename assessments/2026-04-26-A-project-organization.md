@@ -7,5 +7,4 @@
 ## Findings
 
 ### [P2] Mixed Python/Rust layout but tests separated
-
 src/ and rust_core/ both present; ensure clear separation.
