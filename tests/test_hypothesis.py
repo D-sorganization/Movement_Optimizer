@@ -18,6 +18,42 @@ from movement_optimizer.models import (
     LagrangianDynamics,
     clamp_joint_angles,
 )
+from movement_optimizer.trajectory import (
+    build_initial_guess,
+    build_perturbed_guess,
+    build_splines,
+    eval_trajectory,
+)
+from movement_optimizer.trajectory.optimizer_constraints import joint_limit_constraint_values
+from movement_optimizer.trajectory.optimizer_cost import (
+    compute_torque_cost,
+    compute_torque_rate_cost,
+)
+
+finite_angle = st.floats(
+    min_value=-1.5,
+    max_value=1.5,
+    allow_nan=False,
+    allow_infinity=False,
+)
+
+
+def angle_vector() -> st.SearchStrategy[np.ndarray]:
+    return st.builds(
+        lambda q0, q1, q2: np.array([q0, q1, q2], dtype=float),
+        finite_angle,
+        finite_angle,
+        finite_angle,
+    )
+
+
+def bounded_angle_vector() -> st.SearchStrategy[np.ndarray]:
+    return st.builds(
+        lambda q0, q1, q2: np.array([q0, q1, q2], dtype=float),
+        st.floats(min_value=-0.9, max_value=0.9, allow_nan=False, allow_infinity=False),
+        st.floats(min_value=-0.8, max_value=0.8, allow_nan=False, allow_infinity=False),
+        st.floats(min_value=-0.7, max_value=0.7, allow_nan=False, allow_infinity=False),
+    )
 
 
 class TestBodyModelProperties:
@@ -103,6 +139,145 @@ class TestClampJointAnglesProperties:
             lo, hi = JOINT_LIMITS[name]
             assert clamped[i] >= lo - 1e-10
             assert clamped[i] <= hi + 1e-10
+
+
+class TestTrajectoryHelperProperties:
+    @given(
+        q_start=angle_vector(),
+        q_end=angle_vector(),
+        n_waypoints=st.integers(min_value=1, max_value=12),
+    )
+    @settings(max_examples=75)
+    def test_initial_guess_is_deterministic_linear_interpolation(
+        self,
+        q_start: np.ndarray,
+        q_end: np.ndarray,
+        n_waypoints: int,
+    ) -> None:
+        """Initial guesses should be deterministic interior points on the endpoint line."""
+        guess = build_initial_guess(q_start, q_end, n_waypoints, 3)
+
+        assert guess.shape == (n_waypoints, 3)
+        for idx, waypoint in enumerate(guess, start=1):
+            alpha = idx / (n_waypoints + 1)
+            expected = q_start + alpha * (q_end - q_start)
+            np.testing.assert_allclose(waypoint, expected, rtol=1e-12, atol=1e-12)
+
+    @given(
+        q_start=bounded_angle_vector(),
+        q_end=bounded_angle_vector(),
+        seed=st.integers(min_value=0, max_value=100_000),
+    )
+    @settings(max_examples=75)
+    def test_perturbed_guess_is_seed_deterministic_and_clipped(
+        self,
+        q_start: np.ndarray,
+        q_end: np.ndarray,
+        seed: int,
+    ) -> None:
+        """Seeded multi-start guesses should be reproducible and stay within joint bounds."""
+        q_bounds = np.array([[-1.0, 1.0], [-0.9, 0.9], [-0.8, 0.8]], dtype=float)
+
+        first = build_perturbed_guess(q_start, q_end, q_bounds, 6, 3, seed)
+        second = build_perturbed_guess(q_start, q_end, q_bounds, 6, 3, seed)
+
+        np.testing.assert_array_equal(first, second)
+        assert np.all(first >= q_bounds[:, 0])
+        assert np.all(first <= q_bounds[:, 1])
+
+    @given(q=angle_vector(), duration=st.floats(min_value=0.5, max_value=5.0))
+    @settings(max_examples=75, deadline=None)
+    def test_constant_spline_has_no_motion_derivatives(
+        self,
+        q: np.ndarray,
+        duration: float,
+    ) -> None:
+        """A no-movement spline should evaluate to constant pose with zero derivatives."""
+        n_waypoints = 5
+        t_ctrl = np.linspace(0.0, duration, n_waypoints + 2)
+        x = np.tile(q, n_waypoints)
+        splines = build_splines(x, q, q, None, t_ctrl, n_waypoints, 3)
+        t_eval = np.linspace(0.0, duration, 11)
+
+        q_eval, qd, qdd, qddd = eval_trajectory(splines, t_eval)
+
+        np.testing.assert_allclose(q_eval, np.tile(q, (len(t_eval), 1)), atol=1e-10)
+        np.testing.assert_allclose(qd, 0.0, atol=1e-10)
+        np.testing.assert_allclose(qdd, 0.0, atol=1e-10)
+        np.testing.assert_allclose(qddd, 0.0, atol=1e-10)
+
+    @given(q=bounded_angle_vector())
+    @settings(max_examples=75, deadline=None)
+    def test_constant_in_bounds_spline_satisfies_joint_constraints(
+        self,
+        q: np.ndarray,
+    ) -> None:
+        """Joint-limit constraints should be non-negative for an in-bounds trajectory."""
+        n_waypoints = 4
+        q_bounds = np.array([[-1.0, 1.0], [-0.9, 0.9], [-0.8, 0.8]], dtype=float)
+        t_ctrl = np.linspace(0.0, 1.0, n_waypoints + 2)
+        t_eval = np.linspace(0.0, 1.0, 9)
+        x = np.tile(q, n_waypoints)
+
+        def build_splines_fn(flat_x: np.ndarray):
+            return build_splines(flat_x, q, q, None, t_ctrl, n_waypoints, 3)
+
+        constraints = joint_limit_constraint_values(x, build_splines_fn, t_eval, q_bounds)
+
+        assert constraints.shape == (2 * len(t_eval) * 3,)
+        assert np.all(constraints >= -1e-10)
+
+
+class TestOptimizationCostProperties:
+    @given(
+        values=st.lists(
+            st.floats(min_value=-200.0, max_value=200.0, allow_nan=False, allow_infinity=False),
+            min_size=6,
+            max_size=30,
+        ),
+        dt=st.floats(min_value=0.01, max_value=1.0, allow_nan=False, allow_infinity=False),
+        scale=st.floats(min_value=0.0, max_value=5.0, allow_nan=False, allow_infinity=False),
+    )
+    @settings(max_examples=75)
+    def test_torque_cost_scales_quadratically(
+        self,
+        values: list[float],
+        dt: float,
+        scale: float,
+    ) -> None:
+        """Torque objective should be deterministic and homogeneous of degree two."""
+        usable = values[: len(values) - (len(values) % 3)]
+        torques = np.array(usable, dtype=float).reshape(-1, 3)
+
+        base_cost = compute_torque_cost(torques, dt)
+        scaled_cost = compute_torque_cost(scale * torques, dt)
+
+        np.testing.assert_allclose(scaled_cost, scale**2 * base_cost, rtol=1e-12, atol=1e-9)
+
+    @given(
+        row=st.tuples(
+            st.floats(min_value=-200.0, max_value=200.0, allow_nan=False, allow_infinity=False),
+            st.floats(min_value=-200.0, max_value=200.0, allow_nan=False, allow_infinity=False),
+            st.floats(min_value=-200.0, max_value=200.0, allow_nan=False, allow_infinity=False),
+        ),
+        n_eval=st.integers(min_value=2, max_value=20),
+        dt=st.floats(min_value=0.01, max_value=1.0, allow_nan=False, allow_infinity=False),
+        weight=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+    )
+    @settings(max_examples=75)
+    def test_torque_rate_cost_zero_for_constant_torque(
+        self,
+        row: tuple[float, float, float],
+        n_eval: int,
+        dt: float,
+        weight: float,
+    ) -> None:
+        """A constant torque trajectory has no rate-change penalty."""
+        torques = np.tile(np.array(row, dtype=float), (n_eval, 1))
+
+        cost = compute_torque_rate_cost(torques, dt, weight)
+
+        assert cost == 0.0
 
 
 class TestInverseDynamicsProperties:

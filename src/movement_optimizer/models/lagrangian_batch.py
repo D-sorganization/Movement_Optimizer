@@ -38,6 +38,9 @@ def batch_inertia_torques(
 
     Returns:
         Inertia torque contribution, shape (N, 3).
+
+    Complexity:
+        O(N) time and O(N) output memory for ``N`` trajectory samples.
     """
     n = qdd.shape[0]
     tau = np.empty((n, 3))
@@ -68,6 +71,9 @@ def batch_coriolis_torques(
 
     Returns:
         Coriolis torque contribution, shape (N, 3).
+
+    Complexity:
+        O(N) time and O(N) output memory for ``N`` trajectory samples.
     """
     n = qd.shape[0]
     # Performance optimization:
@@ -104,6 +110,9 @@ def batch_gravity_torques(
 
     Returns:
         Gravity torque contribution, shape (N, 3).
+
+    Complexity:
+        O(N) time and O(N) output memory for ``N`` trajectory samples.
     """
     sq = np.cos(q) if supine else np.sin(q)
     # Performance optimization: Use NumPy array broadcasting instead of manually allocating
@@ -141,6 +150,11 @@ def numpy_inverse_dynamics_batch(
 
     Returns:
         torques: shape (N, 3).
+
+    Complexity:
+        O(N) time and O(N) output memory for ``N`` trajectory samples.  The
+        chain has a fixed 3 DOF, so vectorized column operations scale linearly
+        with sample count.
     """
     q0 = q[:, 0]
     q1 = q[:, 1]

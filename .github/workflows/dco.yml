@@ -10,9 +10,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: DCO Check
-<<<<<<< HEAD
-        uses: tisonkun/actions-dco@v1.1
-=======
         shell: bash
         run: |
           git fetch origin main --depth=100
@@ -27,4 +24,3 @@ jobs:
               exit 1
             fi
           done
->>>>>>> origin/main
