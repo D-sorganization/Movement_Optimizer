@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Property-based tests using Hypothesis.
 
 These tests fuzz the core models with randomly generated inputs to

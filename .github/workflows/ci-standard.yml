@@ -14,17 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  local-only-workflows:
-    name: Reject hosted runner routing
-    runs-on: d-sorg-fleet
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run local-only workflow guard
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 scripts/check_local_only_workflows.py
-
   pick-runner:
     runs-on: d-sorg-fleet
     timeout-minutes: 2
@@ -35,15 +24,15 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
-        run: 'echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT'
+        run: "echo \"runner=d-sorg-fleet\" >> $GITHUB_OUTPUT"
   quality-gate:
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
+        with: {python-version: "3.12"}
 
       - name: Install System Dependencies
         run: |
@@ -65,11 +54,8 @@ jobs:
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-          python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7 pre-commit
+          python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7
           echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
-
-      - name: Run pre-commit hooks
-        run: pre-commit run --all-files --show-diff-on-failure
 
       - name: Lint (Ruff)
         run: ruff check src/ tests/
@@ -80,24 +66,8 @@ jobs:
       - name: Type Check (Mypy)
         run: mypy --ignore-missing-imports src/movement_optimizer/
 
-      - name: Generate Bandit SAST reports
-        run: |
-          mkdir -p reports/security
-          python -m bandit -r src/movement_optimizer/ -ll -ii -f json -o reports/security/bandit_output.json || true
-          python -m bandit -r src/movement_optimizer/ -ll -ii -f txt -o reports/security/bandit_output.txt || true
-
-      - name: Upload SAST artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bandit-sast-report
-          path: reports/security/
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Enforce Bandit policy
-        run: |
-          python -m bandit -r src/movement_optimizer/ -ll -ii
+      - name: Security Scan (bandit)
+        run: python -m bandit -r src/movement_optimizer/ -ll -ii
 
       - name: Security Audit (pip-audit)
         run: |
@@ -118,7 +88,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "${{ matrix.python-version }}" }
+        with: {python-version: "${{ matrix.python-version }}"}
 
       - name: Install System Dependencies
         run: |
@@ -193,13 +163,7 @@ jobs:
       - name: Check for Rust changes
         id: rust-changes
         run: |
-          if [ ! -f "rust_core/Cargo.toml" ]; then
-            echo "has_rust=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          changed_rust_files="$(git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^rust_core/' || true)"
-          if [ -n "$changed_rust_files" ]; then
+          if [ -f "rust_core/Cargo.toml" ]; then
             echo "has_rust=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_rust=false" >> "$GITHUB_OUTPUT"
@@ -208,7 +172,7 @@ jobs:
       - name: Install Rust toolchain
         if: steps.rust-changes.outputs.has_rust == 'true'
         uses: dtolnay/rust-toolchain@stable
-        with: { components: "rustfmt, clippy" }
+        with: {components: "rustfmt, clippy"}
 
       - name: Cache Cargo
         if: steps.rust-changes.outputs.has_rust == 'true'

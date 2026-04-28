@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Lagrangian inverse dynamics for a 3-link planar chain.
 
 Contains ``LagrangianDynamics``.  Balance utilities (``balance_pose``,
@@ -10,7 +9,6 @@ here for backward compatibility.
 from __future__ import annotations
 
 import logging
-import math
 
 import numpy as np
 from numpy.typing import NDArray
@@ -195,23 +193,14 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         relative to centrifugal and gravitational terms.  A full
         Christoffel-symbol formulation would be needed for fast movements.
         """
-        # Performance optimization: Convert to float and use math.sin
-        # for unrolled scalar ops, avoiding np.zeros allocation overhead.
-        q0, q1, q2 = float(q[0]), float(q[1]), float(q[2])
-        qd0, qd1, qd2 = float(qd[0]), float(qd[1]), float(qd[2])
-        s01 = math.sin(q0 - q1)
-        s02 = math.sin(q0 - q2)
-        s12 = math.sin(q1 - q2)
-        qd0_sq = qd0 * qd0
-        qd1_sq = qd1 * qd1
-        qd2_sq = qd2 * qd2
-        return np.array(
-            [
-                self._a01 * s01 * qd1_sq + self._a02 * s02 * qd2_sq,
-                -self._a01 * s01 * qd0_sq + self._a12 * s12 * qd2_sq,
-                -self._a02 * s02 * qd0_sq - self._a12 * s12 * qd1_sq,
-            ]
-        )
+        s01 = np.sin(q[0] - q[1])
+        s02 = np.sin(q[0] - q[2])
+        s12 = np.sin(q[1] - q[2])
+        C = np.zeros(3)
+        C[0] = self._a01 * s01 * qd[1] ** 2 + self._a02 * s02 * qd[2] ** 2
+        C[1] = -self._a01 * s01 * qd[0] ** 2 + self._a12 * s12 * qd[2] ** 2
+        C[2] = -self._a02 * s02 * qd[0] ** 2 - self._a12 * s12 * qd[1] ** 2
+        return C
 
     def _gravity_vector(self, q: NDArray) -> NDArray:
         """Compute the gravity loading vector G(q).
@@ -236,19 +225,16 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         # 3x1 vectors via _coriolis_vector() and _gravity_vector()) for immediate matrix
         # multiplication. Instead, unroll the operations into simple scalars to save memory
         # allocation and loop overhead.
-        # Furthermore, Python's built-in `math` module (e.g., `math.cos`, `math.sin`)
-        # is faster than NumPy's scalar equivalents for unrolled scalar operations due
-        # to reduced function call overhead.
         q0, q1, q2 = q
         qd0, qd1, qd2 = qd
         qdd0, qdd1, qdd2 = qdd
 
-        c01 = math.cos(q0 - q1)
-        c02 = math.cos(q0 - q2)
-        c12 = math.cos(q1 - q2)
-        s01 = math.sin(q0 - q1)
-        s02 = math.sin(q0 - q2)
-        s12 = math.sin(q1 - q2)
+        c01 = np.cos(q0 - q1)
+        c02 = np.cos(q0 - q2)
+        c12 = np.cos(q1 - q2)
+        s01 = np.sin(q0 - q1)
+        s02 = np.sin(q0 - q2)
+        s12 = np.sin(q1 - q2)
 
         qd2_0 = qd0 * qd0
         qd2_1 = qd1 * qd1
@@ -262,7 +248,7 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         a02_s02 = self._a02 * s02
         a12_s12 = self._a12 * s12
 
-        trig = math.cos if self.supine else math.sin
+        trig = np.cos if self.supine else np.sin
         sq0 = trig(q0)
         sq1 = trig(q1)
         sq2 = trig(q2)

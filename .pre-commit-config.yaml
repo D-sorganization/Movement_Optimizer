@@ -1,7 +1,3 @@
-# Pre-commit hooks are enforced in CI via `.github/workflows/ci-standard.yml`
-# Run locally: `pre-commit run --all-files`
-# Install hooks: `pre-commit install`
-
 repos:
   # Ruff - Fast Python linter with auto-fix
   - repo: https://github.com/astral-sh/ruff-pre-commit

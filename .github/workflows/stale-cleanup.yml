@@ -1,10 +1,11 @@
 name: Stale Cleanup
 on:
   schedule:
-    - cron: "0 6 * * 1" # Monday 6am UTC
+    - cron: "0 6 * * 1"   # Monday 6am UTC
   workflow_dispatch:
 
 jobs:
+
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
   pick-runner:
     runs-on: self-hosted

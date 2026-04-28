@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Vectorised (batch) inverse-dynamics helpers for the 3-link Lagrangian chain.
 
 These are pure NumPy functions that accept the pre-computed scalar coefficients

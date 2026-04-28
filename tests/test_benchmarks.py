@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Benchmarking suite for performance regression testing.
 
 These tests measure execution time of critical code paths and fail if

@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """ParameterSidebar: left-hand parameter panel for the main window."""
 
 from __future__ import annotations
@@ -125,6 +124,10 @@ class ParameterSidebar(QScrollArea):
 
     def show_optimizing(self) -> None:
         _st.show_optimizing(self)
+        self.cancel_btn.setEnabled(True)
+        self.cancel_btn.setToolTip("Cancel the currently running optimization")
+        self.opt_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
+        self.both_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
 
     def show_idle(self) -> None:
         _st.show_idle(self)
@@ -221,6 +224,18 @@ class ParameterSidebar(QScrollArea):
         else:
             self.compare_btn.setToolTip("Add multiple trials to comparison first")
 
+    def set_clear_comparison_available(self, available: bool) -> None:
+        """Enable or disable the clear comparison action."""
+        self.clear_compare_btn.setEnabled(available)
+        if available:
+            self.clear_compare_btn.setToolTip("Clear all trials currently saved for comparison")
+        else:
+            self.clear_compare_btn.setToolTip("No trials currently saved to clear")
+
     def set_cancellation_available(self, available: bool) -> None:
         """Enable or disable the cancellation action."""
         self.cancel_btn.setEnabled(available)
+        if not available:
+            self.cancel_btn.setToolTip("Cancellation already requested, shutting down safely...")
+        else:
+            self.cancel_btn.setToolTip("Cancel the currently running optimization")

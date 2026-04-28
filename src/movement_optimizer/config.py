@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Runtime configuration and filesystem paths for Movement Optimizer.
 
 Configuration is intentionally lightweight and environment-driven so local
