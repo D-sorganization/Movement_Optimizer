@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """PlaybackControls: transport bar widget for animation playback."""
 
 from __future__ import annotations
