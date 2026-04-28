@@ -1,4 +1,4 @@
-# Copyright (c) 2024–2026 D-sorganization
+# Copyright (c) 2024-2026 D-sorganization
 # SPDX-License-Identifier: MIT
 #
 # Movement-Optimizer — see LICENSE for full terms.
