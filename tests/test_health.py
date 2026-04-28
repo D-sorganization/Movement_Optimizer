@@ -2,14 +2,14 @@
 
 import json
 
-from movement_optimizer.health import HealthStatus, health_check
+from movement_optimizer.health import health_check
 
 
 def test_health_returns_ok() -> None:
     """Health check should report ok when deps are present."""
     result = health_check()
     assert result.status == "ok"
-    assert result.version == "0.0.0.dev0"  # not installed as package in dev
+    assert result.version == "1.0.0"
     assert result.checks["numpy"] == "ok"
     assert result.checks["physics_backend"] == "ok"
 
