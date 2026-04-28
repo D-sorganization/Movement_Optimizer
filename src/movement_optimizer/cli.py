@@ -316,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.health:
         from .health import health_check
+
         print(health_check().to_json())
         return 0
     _validate_cli_args(parser, args)

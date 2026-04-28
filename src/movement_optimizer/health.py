@@ -7,6 +7,7 @@ physics-solver sanity check.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.metadata
 import json
 import sys
@@ -41,10 +42,8 @@ def health_check() -> HealthStatus:
         Returns HealthStatus with status == "ok" iff all checks pass.
     """
     version = "unknown"
-    try:
+    with contextlib.suppress(importlib.metadata.PackageNotFoundError):
         version = importlib.metadata.version("movement-optimizer")
-    except importlib.metadata.PackageNotFoundError:
-        pass
 
     checks: dict[str, Any] = {}
 
@@ -62,7 +61,7 @@ def health_check() -> HealthStatus:
 
         _ = LagrangianDynamics()
         checks["physics_backend"] = "ok"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         checks["physics_backend"] = f"error: {exc}"
 
     status = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
