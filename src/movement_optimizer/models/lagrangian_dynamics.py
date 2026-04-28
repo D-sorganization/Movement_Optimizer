@@ -10,6 +10,7 @@ here for backward compatibility.
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 from numpy.typing import NDArray
@@ -194,14 +195,23 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         relative to centrifugal and gravitational terms.  A full
         Christoffel-symbol formulation would be needed for fast movements.
         """
-        s01 = np.sin(q[0] - q[1])
-        s02 = np.sin(q[0] - q[2])
-        s12 = np.sin(q[1] - q[2])
-        C = np.zeros(3)
-        C[0] = self._a01 * s01 * qd[1] ** 2 + self._a02 * s02 * qd[2] ** 2
-        C[1] = -self._a01 * s01 * qd[0] ** 2 + self._a12 * s12 * qd[2] ** 2
-        C[2] = -self._a02 * s02 * qd[0] ** 2 - self._a12 * s12 * qd[1] ** 2
-        return C
+        # Performance optimization: Convert to float and use math.sin
+        # for unrolled scalar ops, avoiding np.zeros allocation overhead.
+        q0, q1, q2 = float(q[0]), float(q[1]), float(q[2])
+        qd0, qd1, qd2 = float(qd[0]), float(qd[1]), float(qd[2])
+        s01 = math.sin(q0 - q1)
+        s02 = math.sin(q0 - q2)
+        s12 = math.sin(q1 - q2)
+        qd0_sq = qd0 * qd0
+        qd1_sq = qd1 * qd1
+        qd2_sq = qd2 * qd2
+        return np.array(
+            [
+                self._a01 * s01 * qd1_sq + self._a02 * s02 * qd2_sq,
+                -self._a01 * s01 * qd0_sq + self._a12 * s12 * qd2_sq,
+                -self._a02 * s02 * qd0_sq - self._a12 * s12 * qd1_sq,
+            ]
+        )
 
     def _gravity_vector(self, q: NDArray) -> NDArray:
         """Compute the gravity loading vector G(q).
