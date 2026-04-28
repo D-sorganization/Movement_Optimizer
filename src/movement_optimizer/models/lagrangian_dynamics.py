@@ -220,49 +220,6 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         return G
 
     def inverse_dynamics(self, q: NDArray, qd: NDArray, qdd: NDArray) -> NDArray:
-<<<<<<< HEAD
-        import math
-
-        q0, q1, q2 = q[0], q[1], q[2]
-        qd0, qd1, qd2 = qd[0], qd[1], qd[2]
-        qdd0, qdd1, qdd2 = qdd[0], qdd[1], qdd[2]
-
-        c01 = math.cos(q0 - q1)
-        c02 = math.cos(q0 - q2)
-        c12 = math.cos(q1 - q2)
-        s01 = math.sin(q0 - q1)
-        s02 = math.sin(q0 - q2)
-        s12 = math.sin(q1 - q2)
-
-        qd0_sq = qd0 * qd0
-        qd1_sq = qd1 * qd1
-        qd2_sq = qd2 * qd2
-
-        if self.supine:
-            g0 = self._g0 * math.cos(q0)
-            g1 = self._g1 * math.cos(q1)
-            g2 = self._g2 * math.cos(q2)
-        else:
-            g0 = self._g0 * math.sin(q0)
-            g1 = self._g1 * math.sin(q1)
-            g2 = self._g2 * math.sin(q2)
-
-        # Performance optimization: Unroll the matrix operations into simple scalars to avoid composing
-        # intermediate structural arrays (e.g., 3x3 mass matrices or 3x1 vectors) which saves
-        # significant memory allocation and loop overhead during inverse dynamics calculation.
-
-        # Mass matrix * qdd
-        m0 = self._M00 * qdd0 + (self._a01 * c01) * qdd1 + (self._a02 * c02) * qdd2
-        m1 = (self._a01 * c01) * qdd0 + self._M11 * qdd1 + (self._a12 * c12) * qdd2
-        m2 = (self._a02 * c02) * qdd0 + (self._a12 * c12) * qdd1 + self._M22 * qdd2
-
-        # Coriolis vector
-        c0 = self._a01 * s01 * qd1_sq + self._a02 * s02 * qd2_sq
-        c1 = -self._a01 * s01 * qd0_sq + self._a12 * s12 * qd2_sq
-        c2 = -self._a02 * s02 * qd0_sq - self._a12 * s12 * qd1_sq
-
-        return np.array([m0 + c0 + g0, m1 + c1 + g1, m2 + c2 + g2])
-=======
         # Performance optimization:
         # In highly called scalar physical calculations like inverse_dynamics, avoid
         # composing intermediate structural arrays (e.g., 3x3 mass matrices via mass_matrix(),
@@ -323,7 +280,6 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         )
 
         return np.array([tau0, tau1, tau2])
->>>>>>> origin/main
 
     def _batch_inertia_torques(
         self,
