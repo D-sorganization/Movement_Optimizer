@@ -120,6 +120,7 @@ tests/                   # pytest test suite
 
 ### Key Design Decisions
 
+- **Architecture Decision Records**: Durable architecture decisions are indexed in [docs/adr/README.md](docs/adr/README.md)
 - **Inner BOS constraint**: The optimizer enforces that the whole-body COM stays within the inner 60% of the base of support for realistic balance
 - **No Black**: Formatting is handled exclusively by `ruff format`
 - **DBC (Design by Contract)**: Public methods check preconditions and raise `ValueError`/`TypeError` on violation
