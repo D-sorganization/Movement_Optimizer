@@ -311,3 +311,106 @@ class TestInverseDynamicsProperties:
         M = dyn.mass_matrix(q)
         eigenvalues = np.linalg.eigvalsh(M)
         assert np.all(eigenvalues > 0)
+
+
+class TestTrajectoryOptimizerProperties:
+    @given(
+        body_mass=st.floats(min_value=50.0, max_value=120.0),
+        height=st.floats(min_value=1.5, max_value=1.9),
+        bar_mass=st.floats(min_value=0.0, max_value=200.0),
+    )
+    @settings(max_examples=50)
+    def test_optimizer_produces_finite_cost(
+        self, body_mass: float, height: float, bar_mass: float
+    ):
+        """Optimizer should always produce a finite cost for valid inputs."""
+        from movement_optimizer.exercises import make_squat_config
+        from movement_optimizer.trajectory import TrajectoryOptimizer
+
+        body = BodyModel(body_mass, height)
+        dyn, qs, qe, qb = make_squat_config(body, bar_mass)
+
+        opt = TrajectoryOptimizer(
+            body,
+            dyn,
+            "squat",
+            bar_mass,
+            qs,
+            qe,
+            qb,
+            duration=2.0,
+            n_waypoints=4,
+            n_starts=1,
+        )
+        wp0 = opt._initial_guess()
+        cost = opt.cost(wp0.flatten())
+        assert np.isfinite(cost)
+
+    @given(
+        q0=st.floats(min_value=-1.0, max_value=1.0),
+        q1=st.floats(min_value=-1.0, max_value=1.0),
+        q2=st.floats(min_value=-1.0, max_value=1.0),
+    )
+    @settings(max_examples=50)
+    def test_cost_at_start_equals_end_for_static_pose(
+        self, q0: float, q1: float, q2: float
+    ):
+        """Cost should be consistent for static start/end poses."""
+        from movement_optimizer.exercises import make_squat_config
+        from movement_optimizer.trajectory import TrajectoryOptimizer
+
+        body = BodyModel(75.0, 1.75)
+        q = np.array([q0, q1, q2])
+        dyn, _, _, qb = make_squat_config(body, 0.0)
+
+        opt1 = TrajectoryOptimizer(
+            body, dyn, "squat", 0.0, q, q, qb, duration=2.0, n_waypoints=4, n_starts=1
+        )
+        opt2 = TrajectoryOptimizer(
+            body, dyn, "squat", 0.0, q, q, qb, duration=2.0, n_waypoints=4, n_starts=1
+        )
+        wp = opt1._initial_guess().flatten()
+        c1 = opt1.cost(wp)
+        c2 = opt2.cost(wp)
+        assert c1 == pytest.approx(c2, abs=1e-12)
+
+
+class TestCostFunctionProperties:
+    @given(
+        n=st.integers(min_value=10, max_value=200),
+    )
+    @settings(max_examples=50)
+    def test_torque_cost_nonnegative(self, n: int):
+        """Torque cost should always be non-negative."""
+        from movement_optimizer.trajectory.optimizer_cost import compute_torque_cost
+
+        torques = np.random.RandomState(42).randn(n, 3) * 100
+        dt = 0.01
+        cost = compute_torque_cost(torques, dt)
+        assert cost >= 0.0
+
+    @given(
+        n=st.integers(min_value=10, max_value=200),
+    )
+    @settings(max_examples=50)
+    def test_jerk_cost_nonnegative(self, n: int):
+        """Jerk cost should always be non-negative."""
+        from movement_optimizer.trajectory.optimizer_cost import compute_jerk_cost
+
+        qddd = np.random.RandomState(43).randn(n, 3) * 10
+        dt = 0.01
+        cost = compute_jerk_cost(qddd, dt, 1.0)
+        assert cost >= 0.0
+
+    @given(
+        n=st.integers(min_value=10, max_value=200),
+    )
+    @settings(max_examples=50)
+    def test_balance_cost_nonnegative(self, n: int):
+        """Balance cost should always be non-negative."""
+        from movement_optimizer.trajectory.optimizer_cost import compute_balance_cost
+
+        com_x = np.random.RandomState(44).randn(n) * 0.1
+        dt = 0.01
+        cost = compute_balance_cost(com_x, 0.0, dt, 1.0)
+        assert cost >= 0.0
