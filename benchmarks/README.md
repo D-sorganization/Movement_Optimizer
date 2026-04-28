@@ -1,6 +1,4 @@
 # Benchmarks
-<<<<<<< HEAD
-=======
 
 Performance benchmarks for Movement-Optimizer.
 
@@ -13,4 +11,3 @@ python -m benchmarks.trajectory_optimizer
 ## Adding Benchmarks
 
 Place new benchmark scripts in this directory.
->>>>>>> origin/main

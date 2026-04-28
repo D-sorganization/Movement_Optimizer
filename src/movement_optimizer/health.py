@@ -11,6 +11,7 @@ import importlib.metadata
 import json
 import sys
 import time
+from contextlib import suppress
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -41,10 +42,8 @@ def health_check() -> HealthStatus:
         Returns HealthStatus with status == "ok" iff all checks pass.
     """
     version = "unknown"
-    try:
+    with suppress(importlib.metadata.PackageNotFoundError):
         version = importlib.metadata.version("movement-optimizer")
-    except importlib.metadata.PackageNotFoundError:
-        pass
 
     checks: dict[str, Any] = {}
 
@@ -58,11 +57,12 @@ def health_check() -> HealthStatus:
 
     # Check core physics backend instantiates without error
     try:
-        from .backend import LagrangianDynamics  # type: ignore[attr-defined]
+        from .models import BodyModel, LagrangianDynamics
 
-        _ = LagrangianDynamics()
+        body = BodyModel()
+        _ = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), 0.0)
         checks["physics_backend"] = "ok"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         checks["physics_backend"] = f"error: {exc}"
 
     status = "ok" if all(v == "ok" for v in checks.values()) else "degraded"

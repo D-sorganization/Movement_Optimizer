@@ -12,10 +12,10 @@ codes.
 
 ## Current Baseline
 
-- Total tracked suppressions: 171
-- Source suppressions: 134
+- Total tracked suppressions: 170
+- Source suppressions: 133
 - Test suppressions: 37
-- Most common categories: `attr-defined` (93), `arg-type` (45), `misc` (10),
+- Most common categories: `attr-defined` (92), `arg-type` (45), `misc` (10),
   `override` (7), `operator` (6)
 
 ## Remediation Policy
