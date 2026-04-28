@@ -193,7 +193,13 @@ jobs:
       - name: Check for Rust changes
         id: rust-changes
         run: |
-          if [ -f "rust_core/Cargo.toml" ]; then
+          if [ ! -f "rust_core/Cargo.toml" ]; then
+            echo "has_rust=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_rust_files="$(git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^rust_core/' || true)"
+          if [ -n "$changed_rust_files" ]; then
             echo "has_rust=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_rust=false" >> "$GITHUB_OUTPUT"
