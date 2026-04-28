@@ -591,7 +591,7 @@
     },
     {
       "codes": ["import-not-found"],
-      "line": 367,
+      "line": 370,
       "path": "src/movement_optimizer/models/lagrangian_dynamics.py",
       "text": "from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001"
     },
@@ -801,223 +801,223 @@
     },
     {
       "codes": ["operator"],
-      "line": 48,
+      "line": 49,
       "path": "tests/test_benchmarks.py",
       "text": "fn()  # type: ignore[operator]"
     },
     {
       "codes": ["arg-type"],
-      "line": 43,
+      "line": 44,
       "path": "tests/test_bilateral_3d.py",
       "text": "Bilateral3DModel(\"not a body\")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 147,
+      "line": 148,
       "path": "tests/test_bilateral_3d.py",
       "text": "model.forward_kinematics((0.0, 0.0, 0.0))  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 56,
+      "line": 57,
       "path": "tests/test_bilateral_3d_renderer.py",
       "text": "draw_bilateral_3d_pose(ax, \"nope\", model.t_pose())  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 64,
+      "line": 65,
       "path": "tests/test_bilateral_3d_renderer.py",
       "text": "draw_bilateral_3d_pose(ax, model, (0.0, 0.0, 0.0))  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 100,
+      "line": 101,
       "path": "tests/test_gait_sts.py",
       "text": "GaitAnalyzer(\"not a model\")  # type: ignore[arg-type]"
     },
     {
       "codes": ["return-value"],
-      "line": 61,
+      "line": 62,
       "path": "tests/test_issue_217_decompose.py",
       "text": "return dyn  # type: ignore[return-value]"
     },
     {
       "codes": ["no-untyped-def"],
-      "line": 426,
+      "line": 427,
       "path": "tests/test_issue_217_decompose.py",
       "text": "def tab(self):  # type: ignore[no-untyped-def]"
     },
     {
       "codes": ["no-untyped-def"],
-      "line": 431,
+      "line": 432,
       "path": "tests/test_issue_217_decompose.py",
       "text": "def test_build_grid_axes_returns_all_keys(self, tab) -> None:  # type: ignore[no-untyped-def]"
     },
     {
       "codes": ["no-untyped-def"],
-      "line": 449,
+      "line": 450,
       "path": "tests/test_issue_217_decompose.py",
       "text": "def test_configure_anim_axis_sets_xlim(self, tab) -> None:  # type: ignore[no-untyped-def]"
     },
     {
       "codes": ["no-untyped-def"],
-      "line": 456,
+      "line": 457,
       "path": "tests/test_issue_217_decompose.py",
       "text": "def test_render_analysis_plots_calls_renderers(self, tab) -> None:  # type: ignore[no-untyped-def]"
     },
     {
       "codes": ["return-value"],
-      "line": 43,
+      "line": 44,
       "path": "tests/test_issue_222_decompose.py",
       "text": "return dyn  # type: ignore[return-value]"
     },
     {
       "codes": ["attr-defined"],
-      "line": 281,
+      "line": 282,
       "path": "tests/test_issue_222_decompose.py",
       "text": "tau_supin = dyn_bench._batch_gravity_torques(q)  # type: ignore[attr-defined]"
     },
     {
       "codes": ["arg-type"],
-      "line": 266,
+      "line": 267,
       "path": "tests/test_main_window.py",
       "text": ")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 278,
+      "line": 279,
       "path": "tests/test_main_window.py",
       "text": ")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 290,
+      "line": 291,
       "path": "tests/test_main_window.py",
       "text": ")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 299,
+      "line": 300,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._update_result_summary(window, \"Squat\", result, exercise_type=\"squat\")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 308,
+      "line": 309,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._update_result_summary(window, \"Squat\", result, exercise_type=\"squat\")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 318,
+      "line": 319,
       "path": "tests/test_main_window.py",
       "text": ")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 339,
+      "line": 340,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._on_cancelled(window)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 346,
+      "line": 347,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._on_cancelled(window)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 353,
+      "line": 354,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._on_cancelled(window)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 361,
+      "line": 362,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._on_cancelled(window)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 377,
+      "line": 378,
       "path": "tests/test_main_window.py",
       "text": "MainWindow._cancel_optimization(window)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 397,
+      "line": 398,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._enable_post_run_buttons(window)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 415,
+      "line": 416,
       "path": "tests/test_main_window.py",
       "text": "mults = OptimizationMixin._seg_mults(window)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 425,
+      "line": 426,
       "path": "tests/test_main_window.py",
       "text": "mults = OptimizationMixin._seg_mults(window)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 442,
+      "line": 443,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._finish_or_chain(window, None, \"Done!\")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 451,
+      "line": 452,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._finish_or_chain(window, [1, 2], \"status\")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 462,
+      "line": 463,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._finish_or_chain(window, [3], \"status\")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 481,
+      "line": 482,
       "path": "tests/test_main_window.py",
       "text": ")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 490,
+      "line": 491,
       "path": "tests/test_main_window.py",
       "text": ")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 497,
+      "line": 498,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._resolve_exercise_params(window, 0)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 504,
+      "line": 505,
       "path": "tests/test_main_window.py",
       "text": "OptimizationMixin._resolve_exercise_params(window, 0)  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 514,
+      "line": 515,
       "path": "tests/test_main_window.py",
       "text": ")  # type: ignore[arg-type]"
     },
     {
       "codes": ["arg-type"],
-      "line": 525,
+      "line": 526,
       "path": "tests/test_main_window.py",
       "text": ")  # type: ignore[arg-type]"
     },
     {
       "codes": ["no-redef"],
-      "line": 11,
+      "line": 12,
       "path": "tests/test_movement_provider_manifest.py",
       "text": "import tomli as tomllib  # type: ignore[no-redef]  # Python 3.10 fallback"
     }
