@@ -236,16 +236,19 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         # 3x1 vectors via _coriolis_vector() and _gravity_vector()) for immediate matrix
         # multiplication. Instead, unroll the operations into simple scalars to save memory
         # allocation and loop overhead.
+        # Furthermore, Python's built-in `math` module (e.g., `math.cos`, `math.sin`)
+        # is faster than NumPy's scalar equivalents for unrolled scalar operations due
+        # to reduced function call overhead.
         q0, q1, q2 = q
         qd0, qd1, qd2 = qd
         qdd0, qdd1, qdd2 = qdd
 
-        c01 = np.cos(q0 - q1)
-        c02 = np.cos(q0 - q2)
-        c12 = np.cos(q1 - q2)
-        s01 = np.sin(q0 - q1)
-        s02 = np.sin(q0 - q2)
-        s12 = np.sin(q1 - q2)
+        c01 = math.cos(q0 - q1)
+        c02 = math.cos(q0 - q2)
+        c12 = math.cos(q1 - q2)
+        s01 = math.sin(q0 - q1)
+        s02 = math.sin(q0 - q2)
+        s12 = math.sin(q1 - q2)
 
         qd2_0 = qd0 * qd0
         qd2_1 = qd1 * qd1
@@ -259,7 +262,7 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         a02_s02 = self._a02 * s02
         a12_s12 = self._a12 * s12
 
-        trig = np.cos if self.supine else np.sin
+        trig = math.cos if self.supine else math.sin
         sq0 = trig(q0)
         sq1 = trig(q1)
         sq2 = trig(q2)

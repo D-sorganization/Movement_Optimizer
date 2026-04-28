@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Health endpoint for Movement-Optimizer.
 
 Provides a lightweight, side-effect-free health check that reports
@@ -7,11 +9,11 @@ physics-solver sanity check.
 
 from __future__ import annotations
 
-import contextlib
 import importlib.metadata
 import json
 import sys
 import time
+from contextlib import suppress
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -42,7 +44,7 @@ def health_check() -> HealthStatus:
         Returns HealthStatus with status == "ok" iff all checks pass.
     """
     version = "unknown"
-    with contextlib.suppress(importlib.metadata.PackageNotFoundError):
+    with suppress(importlib.metadata.PackageNotFoundError):
         version = importlib.metadata.version("movement-optimizer")
 
     checks: dict[str, Any] = {}
@@ -57,9 +59,10 @@ def health_check() -> HealthStatus:
 
     # Check core physics backend instantiates without error
     try:
-        from .backend import LagrangianDynamics  # type: ignore[attr-defined]
+        from .models import BodyModel, LagrangianDynamics
 
-        _ = LagrangianDynamics()
+        body = BodyModel()
+        _ = LagrangianDynamics(body, body.m_squat.copy(), body.I_squat.copy(), 0.0)
         checks["physics_backend"] = "ok"
     except Exception as exc:
         checks["physics_backend"] = f"error: {exc}"
