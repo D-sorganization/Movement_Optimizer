@@ -1,8 +1,8 @@
 name: Jules Issue Resolver
 on:
   schedule:
-    - cron: "0 10 * * 1"   # Monday 10am UTC
-    - cron: "0 10 * * 4"   # Thursday 10am UTC
+    - cron: "0 10 * * 1" # Monday 10am UTC
+    - cron: "0 10 * * 4" # Thursday 10am UTC
   workflow_dispatch:
     inputs:
       issue_number:
@@ -20,7 +20,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-
   # ── Dispatcher: route to self-hosted if available ──────────────────────────
   pick-runner:
     runs-on: self-hosted
@@ -48,7 +47,7 @@ jobs:
     runs-on: self-hosted
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with: { fetch-depth: 0 }
 
       - name: Gather target issues

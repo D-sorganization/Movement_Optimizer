@@ -1,4 +1,5 @@
-# Copyright (c) 2026 D-Sorganization. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2024-2026 D-sorganization
 """Kinematic output methods for the Lagrangian planar-chain model.
 
 ``LagrangianKinematicsMixin`` provides forward kinematics, bar-position
