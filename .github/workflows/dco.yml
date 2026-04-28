@@ -11,7 +11,9 @@ jobs:
         uses: actions/checkout@v4
       - name: DCO Check
 <<<<<<< HEAD
-        uses: DCO-Check/dco-check-action@v2
+        uses: src-d-frontends/dco-action@v1.0.4
+        with:
+          setup_git: false
 =======
         shell: bash
         run: |

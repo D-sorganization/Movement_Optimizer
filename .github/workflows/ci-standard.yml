@@ -14,6 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  local-only-workflows:
+    name: Reject hosted runner routing
+    runs-on: d-sorg-fleet
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run local-only workflow guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check_local_only_workflows.py
+
   pick-runner:
     runs-on: d-sorg-fleet
     timeout-minutes: 2
