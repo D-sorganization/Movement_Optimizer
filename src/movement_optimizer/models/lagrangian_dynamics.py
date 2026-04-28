@@ -42,6 +42,11 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         body is a valid BodyModel
         m_segments, I_segments are length-3 arrays
         load_mass >= 0
+
+    Complexity:
+        Scalar dynamics methods are O(1) for the fixed 3-link chain.  Batch
+        inverse dynamics is O(N) time and O(N) memory for ``N`` trajectory
+        samples because each sample is evaluated independently.
     """
 
     def __init__(
@@ -173,6 +178,9 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
 
         Returns:
             Symmetric (3, 3) mass matrix M(q).
+
+        Complexity:
+            O(1) time and memory for the fixed 3-link model.
         """
         M = np.zeros((3, 3))
         M[0, 0] = self._M00
@@ -351,6 +359,10 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         """Vectorised batch torques (N, 3) for q/qd/qdd each (N, 3).
 
         Tries the Rust accelerator; falls back to _numpy_inverse_dynamics_batch.
+
+        Complexity:
+            O(N) time and O(N) output memory for ``N`` trajectory samples.  The
+            Rust and NumPy paths have the same asymptotic complexity.
         """
         try:
             from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001

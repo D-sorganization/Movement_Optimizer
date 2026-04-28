@@ -33,6 +33,11 @@ def balance_pose(
     Preconditions:
         adjust_joint in {0, 1, 2}
         q_init is length-3
+
+    Complexity:
+        O(K + B) COM evaluations for fixed 3-link kinematics, where ``K`` is
+        the bracket scan count (currently 20) and ``B`` is the Brent iteration
+        count.  Each COM evaluation is O(1).
     """
     from scipy.optimize import brentq
 
@@ -83,6 +88,9 @@ def _standing_balanced(dyn: object, bar_mass: float, exercise_type: str) -> NDAr
     """Find a near-standing pose with COM at inner BOS center.
 
     Adjusts shin angle (joint 0) to shift COM forward over mid-foot.
+
+    Complexity:
+        Same as :func:`balance_pose`: O(K + B) fixed-chain COM evaluations.
     """
     q_stand = np.array([np.radians(a) for a in STANDING_DEG])
     return balance_pose(dyn, q_stand, exercise_type, bar_mass, adjust_joint=0)
