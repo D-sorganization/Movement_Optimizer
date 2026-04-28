@@ -118,6 +118,7 @@ class TrajectoryOptimizer:
     def build_splines(self, x: NDArray) -> CubicSpline:
         """Build cubic splines from the flat optimisation vector *x*.
 
+        Complexity: O(n_dof * n_ctrl) — vectorised np.vstack and CubicSpline ctor.
         Delegates to :func:`optimizer_spline.build_splines`.
         """
         return _build_splines_fn(
@@ -133,12 +134,17 @@ class TrajectoryOptimizer:
     def eval_trajectory(self, splines: CubicSpline) -> tuple[NDArray, NDArray, NDArray, NDArray]:
         """Evaluate position, velocity, acceleration, jerk at eval grid.
 
+        Complexity: O(n_dof * n_eval) — vectorised spline evaluation via scipy.
         Delegates to :func:`optimizer_spline.eval_trajectory`.
         """
         return _eval_trajectory_fn(splines, self.t_eval)
 
     def _compute_cost(self, x: NDArray) -> float:
-        """Compute total cost without mutating instance state."""
+        """Compute total cost without mutating instance state.
+
+        Complexity: O(n_dof * n_eval) — dominated by spline build, trajectory eval,
+        and batched inverse dynamics (all vectorised).
+        """
         if self.cancel_event.is_set():
             return float("inf")
 
@@ -239,7 +245,12 @@ class TrajectoryOptimizer:
         )
 
     def optimize(self) -> OptimizationResult:
-        """Run parallel multi-start SLSQP and return best result."""
+        """Run parallel multi-start SLSQP and return best result.
+
+        Complexity: O(n_starts * n_iter * n_dof * n_eval) — each start runs SLSQP
+        with cost and gradient evaluations scaling linearly with trajectory size.
+        Parallelism reduces wall-clock time but not total work.
+        """
         self._progress.reset()
 
         n_workers = min(self.n_starts, os.cpu_count() or 4)
