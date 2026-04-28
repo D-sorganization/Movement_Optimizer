@@ -309,7 +309,8 @@ class TrajectoryOptimizer:
         metrics.increment(
             "trajectory_optimization_completed_total",
             outcome="success" if result.success else "failed",
-            **labels,
+            exercise_type=self.exercise_type,
+            mode=mode,
         )
         metrics.observe("trajectory_optimization_elapsed_seconds", result.elapsed_s, **labels)
         metrics.observe("trajectory_optimization_cost", result.cost, **labels)
