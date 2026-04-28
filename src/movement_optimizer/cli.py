@@ -100,6 +100,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _add_body_args(parser)
     _add_run_args(parser)
+    parser.add_argument(
+        "--health",
+        action="store_true",
+        help="Emit a JSON health report and exit.",
+    )
     return parser
 
 
@@ -309,6 +314,10 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = _build_parser()
     args = parser.parse_args(argv)
+    if args.health:
+        from .health import health_check
+        print(health_check().to_json())
+        return 0
     _validate_cli_args(parser, args)
     _configure_logging(args.verbose)
     body = BodyModel(body_mass=args.body_mass, height=args.height)

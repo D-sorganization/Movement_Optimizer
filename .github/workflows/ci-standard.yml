@@ -81,7 +81,15 @@ jobs:
         run: mypy --ignore-missing-imports src/movement_optimizer/
 
       - name: Security Scan (bandit)
-        run: python -m bandit -r src/movement_optimizer/ -ll -ii
+        run: |
+          python -m bandit -r src/movement_optimizer/ -ll -ii -f json -o bandit_output.json || true
+          python -m bandit -r src/movement_optimizer/ -ll -ii
+
+      - name: Upload SAST artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit_output.json
 
       - name: Security Audit (pip-audit)
         run: |
