@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fail when GitHub Actions workflows can route to hosted runners."""
 from __future__ import annotations
+
 from pathlib import Path
 
 WORKFLOW_DIR = Path(".github") / "workflows"
