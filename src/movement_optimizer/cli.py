@@ -317,7 +317,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.health:
         from .health import health_check
 
-        print(health_check().to_json())
+        sys.stdout.write(f"{health_check().to_json()}\n")
         return 0
     _validate_cli_args(parser, args)
     _configure_logging(args.verbose)
