@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from ..observability import MetricSample as MetricSample
+from ..observability import metrics as metrics
 from .cache import SolutionCache as SolutionCache
 from .optimizer import TrajectoryOptimizer as TrajectoryOptimizer
 from .optimizer_diagnostics import run_minimize as run_minimize
@@ -20,6 +22,7 @@ from .result import ProgressReport as ProgressReport
 
 __all__ = [
     "CancelledError",
+    "MetricSample",
     "OptimizationResult",
     "ProgressReport",
     "ProgressTracker",
@@ -31,6 +34,7 @@ __all__ = [
     "build_splines",
     "detect_stall",
     "eval_trajectory",
+    "metrics",
     "run_minimize",
     "run_single_start",
 ]
