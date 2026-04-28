@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Tests for the 3D Bilateral kinematic model (issue #225)."""
 
 from __future__ import annotations

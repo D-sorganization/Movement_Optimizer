@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Spinal stress estimation at the L5/S1 joint.
 
 Computes compression and anterior-posterior shear forces at the L5/S1

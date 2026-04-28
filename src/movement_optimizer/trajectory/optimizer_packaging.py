@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Result-packaging helpers for the trajectory optimiser.
 
 These free functions handle the post-solve steps: expanding the solver's

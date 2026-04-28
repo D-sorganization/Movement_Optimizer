@@ -15,10 +15,10 @@ This is a refresh pass: fresh metrics, delta analysis vs 2026-04-09, and verific
 
 ### Code Volume
 
-| Language  | Files  | LOC       |
-| --------- | ------ | --------- |
-| Python    | 66     | 8,467     |
-| Rust      | 1      | 239       |
+| Language | Files | LOC |
+|---|---|---|
+| Python | 66 | 8,467 |
+| Rust | 1 | 239 |
 | **Total** | **67** | **8,706** |
 
 **Primary language**: Python
@@ -49,32 +49,32 @@ This is a refresh pass: fresh metrics, delta analysis vs 2026-04-09, and verific
 
 ### Oversized Python Functions (>40 LOC)
 
-| File                                                   | Function                 | Lines |
-| ------------------------------------------------------ | ------------------------ | ----- |
-| `src/movement_optimizer/cli.py`                        | `main`                   | 93    |
-| `src/movement_optimizer/trajectory/optimizer.py`       | `optimize`               | 71    |
-| `src/movement_optimizer/gui/comparison_dialog.py`      | `_draw_comparison_plots` | 70    |
-| `src/movement_optimizer/models/lagrangian_dynamics.py` | `inverse_dynamics_batch` | 67    |
-| `src/movement_optimizer/gui/exercise_tab.py`           | `_draw_bench_and_body`   | 64    |
-| `src/movement_optimizer/cli.py`                        | `_build_parser`          | 60    |
-| `src/movement_optimizer/gui/exercise_tab.py`           | `_plot_spine_loads`      | 53    |
-| `src/movement_optimizer/gui/exercise_tab.py`           | `_plot_com_path`         | 49    |
-| `src/movement_optimizer/gui/exercise_tab.py`           | `_create_axes`           | 48    |
-| `src/movement_optimizer/gui/file_operations.py`        | `_write_csv`             | 46    |
-| `src/movement_optimizer/gui/widgets.py`                | `_build_progress_panel`  | 44    |
-| `src/movement_optimizer/gui/main_window.py`            | `_opt_worker`            | 43    |
-| `src/movement_optimizer/gui/main_window.py`            | `_build_ui`              | 41    |
+| File | Function | Lines |
+|---|---|---|
+| `src/movement_optimizer/cli.py` | `main` | 93 |
+| `src/movement_optimizer/trajectory/optimizer.py` | `optimize` | 71 |
+| `src/movement_optimizer/gui/comparison_dialog.py` | `_draw_comparison_plots` | 70 |
+| `src/movement_optimizer/models/lagrangian_dynamics.py` | `inverse_dynamics_batch` | 67 |
+| `src/movement_optimizer/gui/exercise_tab.py` | `_draw_bench_and_body` | 64 |
+| `src/movement_optimizer/cli.py` | `_build_parser` | 60 |
+| `src/movement_optimizer/gui/exercise_tab.py` | `_plot_spine_loads` | 53 |
+| `src/movement_optimizer/gui/exercise_tab.py` | `_plot_com_path` | 49 |
+| `src/movement_optimizer/gui/exercise_tab.py` | `_create_axes` | 48 |
+| `src/movement_optimizer/gui/file_operations.py` | `_write_csv` | 46 |
+| `src/movement_optimizer/gui/widgets.py` | `_build_progress_panel` | 44 |
+| `src/movement_optimizer/gui/main_window.py` | `_opt_worker` | 43 |
+| `src/movement_optimizer/gui/main_window.py` | `_build_ui` | 41 |
 
 **Finding**: 13 oversized function(s) — violates single-responsibility principle. Extract helper methods; target <30 LOC/function.
 
 ### Monolithic Scripts (>300 LOC)
 
-| Script                                                 | LOC |
-| ------------------------------------------------------ | --- |
-| `src/movement_optimizer/gui/main_window.py`            | 581 |
-| `src/movement_optimizer/gui/exercise_tab.py`           | 514 |
-| `src/movement_optimizer/trajectory/optimizer.py`       | 468 |
-| `src/movement_optimizer/gui/widgets.py`                | 402 |
+| Script | LOC |
+|---|---|
+| `src/movement_optimizer/gui/main_window.py` | 581 |
+| `src/movement_optimizer/gui/exercise_tab.py` | 514 |
+| `src/movement_optimizer/trajectory/optimizer.py` | 468 |
+| `src/movement_optimizer/gui/widgets.py` | 402 |
 | `src/movement_optimizer/models/lagrangian_dynamics.py` | 373 |
 
 **Finding**: long scripts mix orchestration, business logic, and I/O. Split into focused modules under `src/` or `scripts/lib/`.
@@ -87,35 +87,31 @@ This is a refresh pass: fresh metrics, delta analysis vs 2026-04-09, and verific
 
 Baseline grades are carried forward. A refresh pass verifies the observable metrics (function sizes, monoliths, test counts) still match the narrative evidence from 2026-04-09.
 
-| Criterion        | Baseline Grade | Refresh Status |
-| ---------------- | -------------- | -------------- |
-| DRY              | B              | Re-verified    |
-| DbC              | A              | Re-verified    |
-| TDD              | B              | Re-verified    |
-| Orthogonality    | A              | Re-verified    |
-| Reusability      | A              | Re-verified    |
-| Changeability    | A              | Re-verified    |
-| LOD              | C              | Re-verified    |
-| Function Size    | B              | Re-verified    |
-| Script Monoliths | A              | Re-verified    |
-| Overall          | B+             | Re-verified    |
+| Criterion | Baseline Grade | Refresh Status |
+|---|---|---|
+| DRY | B | Re-verified |
+| DbC | A | Re-verified |
+| TDD | B | Re-verified |
+| Orthogonality | A | Re-verified |
+| Reusability | A | Re-verified |
+| Changeability | A | Re-verified |
+| LOD | C | Re-verified |
+| Function Size | B | Re-verified |
+| Script Monoliths | A | Re-verified |
+| Overall | B+ | Re-verified |
 
 ## 4. TDD / DRY / DbC / LOD Compliance Check
 
 ### TDD
-
 - 269 test functions across 18 test files.
 
 ### DRY
-
 - See baseline for detailed DRY findings. Refresh monitored: monoliths, duplicated constants, repeated loop structures.
 
 ### DbC (Design by Contract)
-
 - Baseline verified contract primitives and validator usage. Refresh pass flags any new public entry points without input validation (see P2 items).
 
 ### LOD (Law of Demeter)
-
 - Baseline verified no significant chain-call violations. Any new code in changed files should be spot-checked for `a.b.c.d` patterns.
 
 ## 5. Refresh Remediation Plan (Top Priorities)

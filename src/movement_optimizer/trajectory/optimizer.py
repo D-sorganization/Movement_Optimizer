@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Parallel multi-start trajectory optimiser engine."""
 
 from __future__ import annotations
@@ -15,6 +14,7 @@ from scipy.interpolate import CubicSpline
 
 from ..backend import PhysicsBackend
 from ..models import BodyModel
+from ..observability import metrics
 from .optimizer_bench import compute_bench_bar_cost
 from .optimizer_constraints import build_constraints
 from .optimizer_cost import (
@@ -54,6 +54,12 @@ class TrajectoryOptimizer:
 
     Enforces COM within the inner 60% of the foot via hard inequality constraints.
     Multiple starts run concurrently; the best solution is returned.
+
+    Complexity:
+        Let ``S`` be ``n_starts``, ``I`` the SLSQP iterations per start, ``N``
+        ``n_eval``, and ``W`` ``n_waypoints``.  Total optimizer work is
+        O(S * I * (W + N)) for the fixed 3-DOF model, with approximate wall-time
+        O(ceil(S / workers) * I * (W + N)) when parallel starts are enabled.
 
     Preconditions: q_start/q_end length-3; q_bounds (3,2); n_waypoints >= 4.
     """
@@ -119,6 +125,10 @@ class TrajectoryOptimizer:
         """Build cubic splines from the flat optimisation vector *x*.
 
         Delegates to :func:`optimizer_spline.build_splines`.
+
+        Complexity:
+            O(W * D) time and memory for ``W`` waypoint controls and ``D``
+            degrees of freedom.
         """
         return _build_splines_fn(
             x,
@@ -134,11 +144,21 @@ class TrajectoryOptimizer:
         """Evaluate position, velocity, acceleration, jerk at eval grid.
 
         Delegates to :func:`optimizer_spline.eval_trajectory`.
+
+        Complexity:
+            O(N * D) time and memory for ``N`` evaluation samples and ``D``
+            degrees of freedom.
         """
         return _eval_trajectory_fn(splines, self.t_eval)
 
     def _compute_cost(self, x: NDArray) -> float:
-        """Compute total cost without mutating instance state."""
+        """Compute total cost without mutating instance state.
+
+        Complexity:
+            O(W * D + N * D) time and O(N * D) memory, dominated by spline
+            evaluation and batched inverse dynamics.  ``D`` is fixed at 3 for
+            the current planar-chain model.
+        """
         if self.cancel_event.is_set():
             return float("inf")
 
@@ -239,10 +259,22 @@ class TrajectoryOptimizer:
         )
 
     def optimize(self) -> OptimizationResult:
-        """Run parallel multi-start SLSQP and return best result."""
+        """Run parallel multi-start SLSQP and return best result.
+
+        Complexity:
+            O(S * I * (W + N)) total work for fixed 3-DOF trajectories, where
+            ``S`` is starts, ``I`` is optimizer iterations per start, ``W`` is
+            waypoints, and ``N`` is evaluation samples.  Parallel mode reduces
+            wall time by up to ``n_workers`` but not total work.
+        """
         self._progress.reset()
 
         n_workers = min(self.n_starts, os.cpu_count() or 4)
+        metrics.increment(
+            "trajectory_optimization_started_total",
+            exercise_type=self.exercise_type,
+            mode="single" if n_workers <= 1 or self.n_starts <= 1 else "parallel",
+        )
         logger.info(
             "Starting optimisation: exercise=%s, n_starts=%d, n_workers=%d, n_wp=%d",
             self.exercise_type,
@@ -269,8 +301,15 @@ class TrajectoryOptimizer:
         wp0 = self._initial_guess()
         out = self._minimize_single(wp0.flatten(), self.cost, max_iter=MAX_ITER_PER_START * 2)
         if self.cancel_event.is_set():
+            metrics.increment(
+                "trajectory_optimization_cancelled_total",
+                exercise_type=self.exercise_type,
+                mode="single",
+            )
             raise CancelledError("Optimization cancelled by user")
-        return self._package_results(out, self._progress.elapsed())
+        result = self._package_results(out, self._progress.elapsed())
+        self._record_result_metrics(result, mode="single")
+        return result
 
     def _finalize_parallel_results(self, results: list[tuple[object, int]]) -> OptimizationResult:
         """Select the best result, log summary, and package output."""
@@ -287,7 +326,22 @@ class TrajectoryOptimizer:
             len(results),
             elapsed,
         )
-        return self._package_results(best_res, elapsed, total_evals)
+        result = self._package_results(best_res, elapsed, total_evals)
+        self._record_result_metrics(result, mode="parallel")
+        return result
+
+    def _record_result_metrics(self, result: OptimizationResult, *, mode: str) -> None:
+        """Publish summary metrics for a completed optimization."""
+        labels = {"exercise_type": self.exercise_type, "mode": mode}
+        metrics.increment(
+            "trajectory_optimization_completed_total",
+            outcome="success" if result.success else "failed",
+            exercise_type=self.exercise_type,
+            mode=mode,
+        )
+        metrics.observe("trajectory_optimization_elapsed_seconds", result.elapsed_s, **labels)
+        metrics.observe("trajectory_optimization_cost", result.cost, **labels)
+        metrics.observe("trajectory_optimization_evaluations", result.n_evals, **labels)
 
     def _check_solution_feasibility(
         self, res: object, q: NDArray, com_x: NDArray
@@ -313,7 +367,12 @@ class TrajectoryOptimizer:
     def _package_results(
         self, res: object, elapsed: float = 0.0, n_evals: int = 0
     ) -> OptimizationResult:
-        """Evaluate trajectories, assess feasibility, and build the result."""
+        """Evaluate trajectories, assess feasibility, and build the result.
+
+        Complexity:
+            O(N * D) time and memory to evaluate kinematics, dynamics, COM, and
+            result arrays for ``N`` samples and ``D`` degrees of freedom.
+        """
         q, qd, qdd, torques, power, com_traj, bar_traj, com_x = evaluate_solution(
             res,
             self.dynamics,

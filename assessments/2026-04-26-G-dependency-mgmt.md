@@ -7,9 +7,7 @@
 ## Findings
 
 ### [P1] No lockfile for Python dependencies
-
 No poetry.lock, uv.lock, or requirements.lock found.
 
 ### [P2] License present but no audit
-
 MIT License found.

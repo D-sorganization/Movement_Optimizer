@@ -7,5 +7,4 @@
 ## Findings
 
 ### [P2] .env.example present but no type-checked config
-
 No pydantic or dataclass config found.

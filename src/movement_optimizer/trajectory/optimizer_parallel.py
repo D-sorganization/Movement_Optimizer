@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Parallel multi-start driver for the trajectory optimiser.
 
 These free functions handle the concurrent execution of multiple SLSQP
@@ -45,6 +44,10 @@ def collect_future_results(
 
     Preconditions:
         All callables are thread-safe (called from the scheduling thread).
+
+    Complexity:
+        O(R) scheduler-side time and O(R) memory for ``R`` completed starts,
+        excluding the worker cost of each optimization.
     """
     results: list[tuple[Any, int]] = []
     total_evals = 0
@@ -94,6 +97,10 @@ def run_parallel_starts(
     Preconditions:
         n_starts >= 1
         n_workers >= 1
+
+    Complexity:
+        O(n_starts) scheduling work and O(n_starts) future bookkeeping, plus the
+        optimizer work performed by each submitted start.
     """
     with ThreadPoolExecutor(max_workers=n_workers) as pool:
         pending: set[Future] = {pool.submit(run_single_fn, seed) for seed in range(n_starts)}
@@ -107,6 +114,9 @@ def select_best_result(
 
     Preconditions:
         len(results) >= 1
+
+    Complexity:
+        O(R) time and O(1) extra memory for ``R`` completed start results.
     """
     if not results:
         raise ValueError("select_best_result requires at least one result")

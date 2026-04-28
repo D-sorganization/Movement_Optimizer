@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Constraint-vector builders for the trajectory optimiser.
 
 These free functions build the inequality-constraint vectors consumed by
@@ -46,6 +45,10 @@ def com_constraint_values(
     Preconditions:
         x.ndim == 1
         inner_heel <= inner_toe
+
+    Complexity:
+        O(W * D + N * D) time and O(N) output memory, where ``W`` is waypoint
+        controls, ``N`` evaluation samples, and ``D`` degrees of freedom.
     """
     splines = build_splines_fn(x)  # type: ignore[operator]
     q = splines(t_eval)
@@ -70,6 +73,10 @@ def bar_knee_clearance(
 
     Preconditions:
         x.ndim == 1
+
+    Complexity:
+        O(W * D + N * D) time and O(N) output memory for spline evaluation and
+        vectorized clearance computation.
     """
     splines = build_splines_fn(x)  # type: ignore[operator]
     q = splines(t_eval)
@@ -99,6 +106,9 @@ def joint_limit_constraint_values(
     Preconditions:
         x.ndim == 1
         q_bounds.shape == (n_dof, 2)
+
+    Complexity:
+        O(W * D + N * D) time and O(N * D) output memory.
     """
     splines = build_splines_fn(x)  # type: ignore[operator]
     q = splines(t_eval)
@@ -128,6 +138,10 @@ def build_constraints(
     Preconditions:
         exercise_type is a known exercise string.
         inner_heel <= inner_toe.
+
+    Complexity:
+        O(1) time and memory; the returned callables do the O(N * D) work when
+        SLSQP evaluates them.
     """
     constraints: list[dict] = [
         {

@@ -16,17 +16,19 @@ Run comprehensive linting and code quality checks on the codebase.
    ruff check . --fix
    ```
 
-// turbo 2. **Run black formatter**:
+// turbo
+2. **Run black formatter**:
 
-```bash
-black .
-```
+   ```bash
+   black .
+   ```
 
-// turbo 3. **Run mypy type checking**:
+// turbo
+3. **Run mypy type checking**:
 
-```bash
-mypy . --ignore-missing-imports
-```
+   ```bash
+   mypy . --ignore-missing-imports
+   ```
 
 1. **Find placeholder statements** (review manually):
 
@@ -34,12 +36,13 @@ mypy . --ignore-missing-imports
    grep -rn "TODO\|FIXME\|XXX\|HACK\|NotImplementedError\|pass$" --include="*.py" .
    ```
 
-// turbo 5. **Verify all checks pass**:
+// turbo
+5. **Verify all checks pass**:
 
-```bash
-ruff check .
-black --check .
-```
+   ```bash
+   ruff check .
+   black --check .
+   ```
 
 ## Output
 

@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Kinematic output methods for the Lagrangian planar-chain model.
 
 ``LagrangianKinematicsMixin`` provides forward kinematics, bar-position
@@ -37,6 +36,9 @@ class LagrangianKinematicsMixin:
             q: shape (N, 3)
         Returns:
             com_x: shape (N,)
+
+        Complexity:
+            O(N) time and O(N) memory for ``N`` trajectory samples.
         """
         b = self.body  # type: ignore[attr-defined]
         sq = np.sin(q)
@@ -75,7 +77,11 @@ class LagrangianKinematicsMixin:
         return numerator / total_mass
 
     def forward_kinematics(self, q: NDArray) -> dict[str, NDArray]:
-        """Compute joint positions for all joints in the chain."""
+        """Compute joint positions for all joints in the chain.
+
+        Complexity:
+            O(1) time and memory for the fixed 3-link model.
+        """
         L = self.L_eff  # type: ignore[attr-defined]
         names = self.joint_names  # type: ignore[attr-defined]
 
@@ -102,7 +108,11 @@ class LagrangianKinematicsMixin:
         }
 
     def bar_position(self, q: NDArray, exercise_type: str) -> NDArray:
-        """Return the barbell position vector for a given joint configuration."""
+        """Return the barbell position vector for a given joint configuration.
+
+        Complexity:
+            O(1) time and memory for the fixed 3-link model.
+        """
         L = self.L_eff  # type: ignore[attr-defined]
 
         # Performance optimization: Calculate shoulder position directly and unroll scalar
@@ -148,7 +158,11 @@ class LagrangianKinematicsMixin:
         exercise_type: str = "squat",
         bar_mass: float = 0.0,
     ) -> NDArray:
-        """Return the whole-body COM position vector."""
+        """Return the whole-body COM position vector.
+
+        Complexity:
+            O(1) time and memory for the fixed 3-link model.
+        """
         from ..constants import COM_FRAC
 
         b = self.body  # type: ignore[attr-defined]

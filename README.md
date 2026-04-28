@@ -53,7 +53,6 @@ Launch-Movement-Optimizer.bat         # Windows
 ```
 
 The GUI provides:
-
 - **Left sidebar**: Body parameters (mass, height, segment multipliers), barbell mass, optimization controls
 - **Right area**: Tabbed exercise views with animation and analysis plots
 - **Bottom bar**: Playback controls (play/pause, step, rewind, speed)

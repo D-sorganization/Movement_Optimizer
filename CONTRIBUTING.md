@@ -119,7 +119,6 @@ your feature branch.
 ## Reporting Issues
 
 Open a GitHub issue with:
-
 - A clear title and description
 - Steps to reproduce (if applicable)
 - Expected vs. actual behavior

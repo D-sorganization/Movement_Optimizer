@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2024-2026 D-sorganization
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
 """Pure cost-term functions for the trajectory optimiser.
 
 Each function computes one additive term of the total optimisation cost.
@@ -30,6 +29,9 @@ def compute_torque_cost(torques: NDArray, dt: float) -> float:
     Preconditions:
         torques.ndim == 2
         dt > 0
+
+    Complexity:
+        O(N * D) time and O(1) extra memory for ``N`` samples and ``D`` joints.
     """
     # np.vdot is significantly faster than np.sum(x**2)
     return float(np.vdot(torques, torques)) * dt
@@ -42,6 +44,9 @@ def compute_jerk_cost(qddd: NDArray, dt: float, weight: float) -> float:
         qddd.ndim == 2
         dt > 0
         weight >= 0
+
+    Complexity:
+        O(N * D) time and O(1) extra memory for ``N`` samples and ``D`` joints.
     """
     # np.vdot is significantly faster than np.sum(x**2)
     return weight * float(np.vdot(qddd, qddd)) * dt
@@ -54,6 +59,10 @@ def compute_torque_rate_cost(torques: NDArray, dt: float, weight: float) -> floa
         torques.ndim == 2 and torques.shape[0] >= 2
         dt > 0
         weight >= 0
+
+    Complexity:
+        O(N * D) time and O(N * D) memory because adjacent torque differences
+        are materialized.
     """
     dtau = np.diff(torques, axis=0) / dt
     # np.vdot is significantly faster than np.sum(x**2)
@@ -78,6 +87,10 @@ def compute_endpoint_damping_cost(
         len(damp_weights) == n_damp
         dt > 0
         weight >= 0
+
+    Complexity:
+        O(K * D) time and memory for ``K = n_damp`` endpoint samples and ``D``
+        joints.
     """
     nd = n_damp
     w = damp_weights
@@ -103,6 +116,9 @@ def compute_balance_cost(com_x: NDArray, center: float, dt: float, weight: float
         com_x.ndim == 1
         dt > 0
         weight >= 0
+
+    Complexity:
+        O(N) time and O(N) memory for the centered COM vector.
     """
     delta = com_x - center
     # np.vdot is significantly faster than np.sum(x**2)
