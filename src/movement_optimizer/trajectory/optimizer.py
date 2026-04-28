@@ -14,6 +14,7 @@ from scipy.interpolate import CubicSpline
 
 from ..backend import PhysicsBackend
 from ..models import BodyModel
+from ..observability import metrics
 from .optimizer_bench import compute_bench_bar_cost
 from .optimizer_constraints import build_constraints
 from .optimizer_cost import (
@@ -242,6 +243,11 @@ class TrajectoryOptimizer:
         self._progress.reset()
 
         n_workers = min(self.n_starts, os.cpu_count() or 4)
+        metrics.increment(
+            "trajectory_optimization_started_total",
+            exercise_type=self.exercise_type,
+            mode="single" if n_workers <= 1 or self.n_starts <= 1 else "parallel",
+        )
         logger.info(
             "Starting optimisation: exercise=%s, n_starts=%d, n_workers=%d, n_wp=%d",
             self.exercise_type,
@@ -268,8 +274,15 @@ class TrajectoryOptimizer:
         wp0 = self._initial_guess()
         out = self._minimize_single(wp0.flatten(), self.cost, max_iter=MAX_ITER_PER_START * 2)
         if self.cancel_event.is_set():
+            metrics.increment(
+                "trajectory_optimization_cancelled_total",
+                exercise_type=self.exercise_type,
+                mode="single",
+            )
             raise CancelledError("Optimization cancelled by user")
-        return self._package_results(out, self._progress.elapsed())
+        result = self._package_results(out, self._progress.elapsed())
+        self._record_result_metrics(result, mode="single")
+        return result
 
     def _finalize_parallel_results(self, results: list[tuple[object, int]]) -> OptimizationResult:
         """Select the best result, log summary, and package output."""
@@ -286,7 +299,21 @@ class TrajectoryOptimizer:
             len(results),
             elapsed,
         )
-        return self._package_results(best_res, elapsed, total_evals)
+        result = self._package_results(best_res, elapsed, total_evals)
+        self._record_result_metrics(result, mode="parallel")
+        return result
+
+    def _record_result_metrics(self, result: OptimizationResult, *, mode: str) -> None:
+        """Publish summary metrics for a completed optimization."""
+        labels = {"exercise_type": self.exercise_type, "mode": mode}
+        metrics.increment(
+            "trajectory_optimization_completed_total",
+            outcome="success" if result.success else "failed",
+            **labels,
+        )
+        metrics.observe("trajectory_optimization_elapsed_seconds", result.elapsed_s, **labels)
+        metrics.observe("trajectory_optimization_cost", result.cost, **labels)
+        metrics.observe("trajectory_optimization_evaluations", result.n_evals, **labels)
 
     def _check_solution_feasibility(
         self, res: object, q: NDArray, com_x: NDArray

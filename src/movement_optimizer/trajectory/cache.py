@@ -8,6 +8,7 @@ import json
 import logging
 import threading
 
+from ..observability import metrics
 from .result import OptimizationResult
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,13 @@ class SolutionCache:
             bar_height,
         )
         with self._lock:
-            return self._store.get(key)
+            result = self._store.get(key)
+        metrics.increment(
+            "solution_cache_lookup_total",
+            exercise_type=exercise_type,
+            outcome="hit" if result is not None else "miss",
+        )
+        return result
 
     def put(
         self,
@@ -100,8 +107,15 @@ class SolutionCache:
         )
         with self._lock:
             self._store[key] = result
+            size = len(self._store)
+        metrics.increment("solution_cache_put_total", exercise_type=exercise_type)
+        metrics.observe("solution_cache_entries", size)
         logger.debug("Cached solution for key=%s", key)
 
     def clear(self) -> None:
         with self._lock:
+            size = len(self._store)
             self._store.clear()
+        metrics.increment("solution_cache_clear_total")
+        metrics.observe("solution_cache_entries", 0)
+        logger.debug("Cleared solution cache entries=%d", size)
