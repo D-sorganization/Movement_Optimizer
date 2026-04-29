@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from numpy.typing import NDArray
@@ -10,6 +11,8 @@ from scipy.optimize import minimize
 
 from .result import CancelledError
 from .tuning import MAX_ITER_PER_START
+
+logger = logging.getLogger(__name__)
 
 
 def make_cancel_callback(cancel_event) -> Callable[[NDArray], None]:
@@ -102,6 +105,7 @@ def run_single_start(
     try:
         res = run_minimize(wp0.flatten(), cost_fn, bounds, constraints, cancel_event)
     except CancelledError:
+        logger.info("Optimization cancelled by user")
         return None
 
     if cancel_event.is_set():
