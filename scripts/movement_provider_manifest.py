@@ -61,6 +61,90 @@ def _resolve_repo_relative_path(repo_root: Path, relative_path: str, *, label: s
     return path
 
 
+def _validate_model_id(model_id: str, model_ids: set[str]) -> None:
+    """Validate a model ID for format and uniqueness."""
+    if not isinstance(model_id, str) or not model_id.strip():
+        raise ValueError("model id must be a non-empty string")
+    if model_id in model_ids:
+        raise ValueError(f"duplicate model id: {model_id}")
+
+
+def _validate_model_paths(
+    model_id: str, model: dict[str, Any], repo_root: Path
+) -> None:
+    """Validate all path references in a model entry."""
+    source_root = _resolve_repo_relative_path(
+        repo_root,
+        str(model["source_root"]),
+        label=f"{model_id}.source_root",
+    )
+    artifact_path = (source_root / str(model["path"])).resolve(strict=False)
+    if not artifact_path.exists():
+        raise ValueError(f"{model_id}.path does not exist: {artifact_path}")
+
+    _resolve_repo_relative_path(
+        repo_root,
+        str(model["working_dir"]),
+        label=f"{model_id}.working_dir",
+    )
+
+
+def _validate_model_python_paths(
+    model_id: str, python_paths: Any, repo_root: Path
+) -> None:
+    """Validate the python_paths list."""
+    if not isinstance(python_paths, list) or not python_paths:
+        raise ValueError(f"{model_id}.python_paths must be a non-empty list")
+    for index, python_path in enumerate(python_paths):
+        _resolve_repo_relative_path(
+            repo_root,
+            str(python_path),
+            label=f"{model_id}.python_paths[{index}]",
+        )
+
+
+def _validate_model_launcher(model_id: str, launcher: Any, repo_root: Path) -> None:
+    """Validate the launcher configuration."""
+    if not isinstance(launcher, dict):
+        raise ValueError(f"{model_id}.launcher must be a mapping")
+    _require_fields(launcher, _REQUIRED_LAUNCHER_FIELDS, label=f"{model_id}.launcher")
+    if launcher["category"] != "tool":
+        raise ValueError(f"{model_id}.launcher.category must be 'tool'")
+
+    _resolve_repo_relative_path(
+        repo_root,
+        str(launcher["logo"]),
+        label=f"{model_id}.launcher.logo",
+    )
+
+
+def _validate_model_entry(
+    model: dict[str, Any], model_ids: set[str], repo_root: Path
+) -> str:
+    """Validate a single model entry and return its ID."""
+    if not isinstance(model, dict):
+        raise ValueError("model entries must be mappings")
+    _require_fields(model, _REQUIRED_MODEL_FIELDS, label=f"model[{model.get('id', '?')}]")
+
+    model_id = model["id"]
+    _validate_model_id(model_id, model_ids)
+    model_ids.add(model_id)
+
+    _validate_model_paths(model_id, model, repo_root)
+
+    python_paths = model["python_paths"]
+    _validate_model_python_paths(model_id, python_paths, repo_root)
+
+    capabilities = model["capabilities"]
+    if not isinstance(capabilities, list) or not capabilities:
+        raise ValueError(f"{model_id}.capabilities must be a non-empty list")
+
+    launcher = model["launcher"]
+    _validate_model_launcher(model_id, launcher, repo_root)
+
+    return model_id
+
+
 def validate_movement_provider_manifest(
     repo_root: Path = REPO_ROOT,
     path: Path = MOVEMENT_PROVIDER_MANIFEST,
@@ -75,57 +159,6 @@ def validate_movement_provider_manifest(
 
     model_ids: set[str] = set()
     for model in models:
-        if not isinstance(model, dict):
-            raise ValueError("model entries must be mappings")
-        _require_fields(model, _REQUIRED_MODEL_FIELDS, label=f"model[{model.get('id', '?')}]")
-
-        model_id = model["id"]
-        if not isinstance(model_id, str) or not model_id.strip():
-            raise ValueError("model id must be a non-empty string")
-        if model_id in model_ids:
-            raise ValueError(f"duplicate model id: {model_id}")
-        model_ids.add(model_id)
-
-        source_root = _resolve_repo_relative_path(
-            repo_root,
-            str(model["source_root"]),
-            label=f"{model_id}.source_root",
-        )
-        artifact_path = (source_root / str(model["path"])).resolve(strict=False)
-        if not artifact_path.exists():
-            raise ValueError(f"{model_id}.path does not exist: {artifact_path}")
-
-        _resolve_repo_relative_path(
-            repo_root,
-            str(model["working_dir"]),
-            label=f"{model_id}.working_dir",
-        )
-
-        python_paths = model["python_paths"]
-        if not isinstance(python_paths, list) or not python_paths:
-            raise ValueError(f"{model_id}.python_paths must be a non-empty list")
-        for index, python_path in enumerate(python_paths):
-            _resolve_repo_relative_path(
-                repo_root,
-                str(python_path),
-                label=f"{model_id}.python_paths[{index}]",
-            )
-
-        capabilities = model["capabilities"]
-        if not isinstance(capabilities, list) or not capabilities:
-            raise ValueError(f"{model_id}.capabilities must be a non-empty list")
-
-        launcher = model["launcher"]
-        if not isinstance(launcher, dict):
-            raise ValueError(f"{model_id}.launcher must be a mapping")
-        _require_fields(launcher, _REQUIRED_LAUNCHER_FIELDS, label=f"{model_id}.launcher")
-        if launcher["category"] != "tool":
-            raise ValueError(f"{model_id}.launcher.category must be 'tool'")
-
-        _resolve_repo_relative_path(
-            repo_root,
-            str(launcher["logo"]),
-            label=f"{model_id}.launcher.logo",
-        )
+        _validate_model_entry(model, model_ids, repo_root)
 
     return manifest
