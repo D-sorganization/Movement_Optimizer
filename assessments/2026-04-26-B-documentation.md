@@ -7,4 +7,5 @@
 ## Findings
 
 ### [P2] AGENTS.md and CLAUDE.md present but low ADRs
+
 No ADR files found in docs/.

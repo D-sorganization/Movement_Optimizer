@@ -7,7 +7,9 @@
 ## Findings
 
 ### [P2] CLAUDE.md and AGENTS.md present
+
 Good agentic context.
 
 ### [P2] SPEC.md present (180 lines)
+
 Specification adequate.

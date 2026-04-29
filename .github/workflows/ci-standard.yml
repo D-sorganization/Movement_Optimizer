@@ -112,22 +112,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "${{ matrix.python-version }}" }
 
-      - name: Install System Dependencies
-        run: |
-          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-            sudo apt-get -o DPkg::Lock::Timeout=300 -o APT::Get::Lock-Timeout=300 update
-            sudo apt-get -o DPkg::Lock::Timeout=300 -o APT::Get::Lock-Timeout=300 install -y libegl1 xvfb
-          else
-            echo "Using preinstalled deps on self-hosted runner"
-          fi
-
       - name: Install Dependencies
         run: |
-          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-            sudo apt-get -o DPkg::Lock::Timeout=300 -o APT::Get::Lock-Timeout=300 update && sudo apt-get -o DPkg::Lock::Timeout=300 -o APT::Get::Lock-Timeout=300 install -y libegl1
-          else
-            echo "Using preinstalled deps on self-hosted runner"
-          fi
           python -m venv .ci-venv
           . .ci-venv/bin/activate
           python -m pip install --upgrade pip
