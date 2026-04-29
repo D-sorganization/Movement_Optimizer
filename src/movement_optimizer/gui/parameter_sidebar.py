@@ -125,7 +125,7 @@ class ParameterSidebar(QScrollArea):
     def show_optimizing(self) -> None:
         _st.show_optimizing(self)
         self.cancel_btn.setEnabled(True)
-        self.cancel_btn.setToolTip("Cancel the currently running optimization")
+        self.cancel_btn.setToolTip("Cancel the currently running optimization (Esc)")
         self.opt_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
         self.both_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
 
@@ -238,4 +238,4 @@ class ParameterSidebar(QScrollArea):
         if not available:
             self.cancel_btn.setToolTip("Cancellation already requested, shutting down safely...")
         else:
-            self.cancel_btn.setToolTip("Cancel the currently running optimization")
+            self.cancel_btn.setToolTip("Cancel the currently running optimization (Esc)")
