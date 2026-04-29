@@ -324,7 +324,7 @@ class TestTrajectoryOptimizerProperties:
         self, body_mass: float, height: float, bar_mass: float
     ):
         """Optimizer should always produce a finite cost for valid inputs."""
-        from movement_optimizer.exercises import make_squat_config
+        from movement_optimizer.models import make_squat_config
         from movement_optimizer.trajectory import TrajectoryOptimizer
 
         body = BodyModel(body_mass, height)
@@ -356,7 +356,7 @@ class TestTrajectoryOptimizerProperties:
         self, q0: float, q1: float, q2: float
     ):
         """Cost should be consistent for static start/end poses."""
-        from movement_optimizer.exercises import make_squat_config
+        from movement_optimizer.models import make_squat_config
         from movement_optimizer.trajectory import TrajectoryOptimizer
 
         body = BodyModel(75.0, 1.75)
