@@ -22,6 +22,7 @@ def show_optimizing(sidebar) -> None:
     sidebar.both_btn.setEnabled(False)
     sidebar.both_btn.setToolTip("Optimization currently in progress. Please wait or cancel.")
     sidebar.cancel_btn.setVisible(True)
+    sidebar.cancel_btn.setToolTip("Cancel the currently running optimization (Esc)")
     sidebar.stall_label.setVisible(False)
     sidebar.stall_label.setText("")
     sidebar.progress.setValue(0)
@@ -31,10 +32,12 @@ def show_optimizing(sidebar) -> None:
 def show_idle(sidebar) -> None:
     sidebar.opt_btn.setEnabled(True)
     sidebar.opt_btn.setToolTip(
-        "Start trajectory optimization for the currently selected exercise tab"
+        "Start trajectory optimization for the currently selected exercise tab (Ctrl+R)"
     )
     sidebar.both_btn.setEnabled(True)
-    sidebar.both_btn.setToolTip("Start trajectory optimization sequentially for all exercise tabs")
+    sidebar.both_btn.setToolTip(
+        "Start trajectory optimization sequentially for all exercise tabs (Ctrl+Shift+R)"
+    )
     sidebar.cancel_btn.setVisible(False)
 
 

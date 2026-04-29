@@ -107,22 +107,27 @@ def build_buttons(sidebar) -> None:
     sidebar.opt_btn = QPushButton("\u25b6  Optimize Current Tab")
     sidebar.opt_btn.setProperty("class", "primary")
     sidebar.opt_btn.setToolTip(
-        "Start trajectory optimization for the currently selected exercise tab"
+        "Start trajectory optimization for the currently selected exercise tab (Ctrl+R)"
     )
     sidebar.opt_btn.setAccessibleName("Optimize Current Tab")
+    sidebar.opt_btn.setShortcut("Ctrl+R")
     sidebar.opt_btn.clicked.connect(sidebar.optimize_current.emit)
     sidebar.main_layout.addWidget(sidebar.opt_btn)
 
     sidebar.both_btn = QPushButton("Optimize All Tabs")
-    sidebar.both_btn.setToolTip("Start trajectory optimization sequentially for all exercise tabs")
+    sidebar.both_btn.setToolTip(
+        "Start trajectory optimization sequentially for all exercise tabs (Ctrl+Shift+R)"
+    )
     sidebar.both_btn.setAccessibleName("Optimize All Tabs")
+    sidebar.both_btn.setShortcut("Ctrl+Shift+R")
     sidebar.both_btn.clicked.connect(sidebar.optimize_both.emit)
     sidebar.main_layout.addWidget(sidebar.both_btn)
 
     sidebar.cancel_btn = QPushButton("\u2716  Cancel")
     sidebar.cancel_btn.setProperty("class", "cancel")
-    sidebar.cancel_btn.setToolTip("Cancel the currently running optimization")
+    sidebar.cancel_btn.setToolTip("Cancel the currently running optimization (Esc)")
     sidebar.cancel_btn.setAccessibleName("Cancel")
+    sidebar.cancel_btn.setShortcut("Esc")
     sidebar.cancel_btn.clicked.connect(sidebar.cancel_requested.emit)
     sidebar.cancel_btn.setVisible(False)
     sidebar.main_layout.addWidget(sidebar.cancel_btn)

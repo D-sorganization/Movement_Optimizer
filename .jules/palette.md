@@ -32,3 +32,7 @@
 
 **Learning:** Common media keys (Space, Left, Right, Home) can easily be bound to QPushButton instances using `setShortcut()` and visually signaled to users by updating their tooltip to include the shortcut in parentheses.
 **Action:** Always bind these expected keyboard shortcuts and update tooltips for simple accessibility UX boosts in Qt applications.
+
+## 2026-04-29 - State-Dependent Tooltip Management for Keyboard Shortcuts
+**Learning:** When adding keyboard shortcuts to PyQt6 action buttons and surfacing them in tooltips (e.g., `setToolTip("Action (Ctrl+R)")`), state management functions that dynamically update these tooltips (like disabling an "Optimize" button during a run) often overwrite the shortcut hint when the button is re-enabled if not carefully synchronized.
+**Action:** When surfacing keyboard shortcuts in tooltips, you must manually trace and update *every* state management function that alters that button's tooltip (e.g., `show_idle`, `set_cancellation_available`) to ensure the `(Shortcut)` text is consistently preserved during UI state transitions.
