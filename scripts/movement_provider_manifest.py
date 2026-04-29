@@ -69,9 +69,7 @@ def _validate_model_id(model_id: str, model_ids: set[str]) -> None:
         raise ValueError(f"duplicate model id: {model_id}")
 
 
-def _validate_model_paths(
-    model_id: str, model: dict[str, Any], repo_root: Path
-) -> None:
+def _validate_model_paths(model_id: str, model: dict[str, Any], repo_root: Path) -> None:
     """Validate all path references in a model entry."""
     source_root = _resolve_repo_relative_path(
         repo_root,
@@ -89,9 +87,7 @@ def _validate_model_paths(
     )
 
 
-def _validate_model_python_paths(
-    model_id: str, python_paths: Any, repo_root: Path
-) -> None:
+def _validate_model_python_paths(model_id: str, python_paths: Any, repo_root: Path) -> None:
     """Validate the python_paths list."""
     if not isinstance(python_paths, list) or not python_paths:
         raise ValueError(f"{model_id}.python_paths must be a non-empty list")
@@ -118,9 +114,7 @@ def _validate_model_launcher(model_id: str, launcher: Any, repo_root: Path) -> N
     )
 
 
-def _validate_model_entry(
-    model: dict[str, Any], model_ids: set[str], repo_root: Path
-) -> str:
+def _validate_model_entry(model: dict[str, Any], model_ids: set[str], repo_root: Path) -> str:
     """Validate a single model entry and return its ID."""
     if not isinstance(model, dict):
         raise ValueError("model entries must be mappings")
