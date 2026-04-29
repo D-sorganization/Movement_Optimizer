@@ -7,7 +7,9 @@
 ## Findings
 
 ### [P1] Structured logging imports found but metrics absent
+
 Evidence_J shows some logging.
 
 ### [P2] No health endpoint
+
 No /ready or /alive endpoint found.

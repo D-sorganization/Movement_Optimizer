@@ -13,5 +13,6 @@ Please report security vulnerabilities to the repository maintainers via a priva
 ## Security Scanning
 
 This repository uses:
+
 - `bandit` for static security analysis
 - `pip-audit` for dependency vulnerability scanning
