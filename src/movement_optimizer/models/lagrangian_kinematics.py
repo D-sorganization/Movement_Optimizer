@@ -10,6 +10,7 @@ physics class stays focused on mass-matrix and torque computation.
 from __future__ import annotations
 
 import math
+
 import numpy as np
 from numpy.typing import NDArray
 
