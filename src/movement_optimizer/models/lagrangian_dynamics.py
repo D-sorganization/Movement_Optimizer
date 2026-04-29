@@ -9,6 +9,7 @@ here for backward compatibility.
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 from numpy.typing import NDArray
@@ -186,9 +187,9 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         M[0, 0] = self._M00
         M[1, 1] = self._M11
         M[2, 2] = self._M22
-        M[0, 1] = M[1, 0] = self._a01 * np.cos(q[0] - q[1])
-        M[0, 2] = M[2, 0] = self._a02 * np.cos(q[0] - q[2])
-        M[1, 2] = M[2, 1] = self._a12 * np.cos(q[1] - q[2])
+        M[0, 1] = M[1, 0] = self._a01 * math.cos(q[0] - q[1])
+        M[0, 2] = M[2, 0] = self._a02 * math.cos(q[0] - q[2])
+        M[1, 2] = M[2, 1] = self._a12 * math.cos(q[1] - q[2])
         return M
 
     def _coriolis_vector(self, q: NDArray, qd: NDArray) -> NDArray:
@@ -201,9 +202,9 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         relative to centrifugal and gravitational terms.  A full
         Christoffel-symbol formulation would be needed for fast movements.
         """
-        s01 = np.sin(q[0] - q[1])
-        s02 = np.sin(q[0] - q[2])
-        s12 = np.sin(q[1] - q[2])
+        s01 = math.sin(q[0] - q[1])
+        s02 = math.sin(q[0] - q[2])
+        s12 = math.sin(q[1] - q[2])
         C = np.zeros(3)
         C[0] = self._a01 * s01 * qd[1] ** 2 + self._a02 * s02 * qd[2] ** 2
         C[1] = -self._a01 * s01 * qd[0] ** 2 + self._a12 * s12 * qd[2] ** 2
@@ -220,7 +221,7 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
             Gravity vector G(q) of shape (3,).
         """
         G = np.zeros(3)
-        trig = np.cos if self.supine else np.sin
+        trig = math.cos if self.supine else math.sin
         G[0] = self._g0 * trig(q[0])
         G[1] = self._g1 * trig(q[1])
         G[2] = self._g2 * trig(q[2])
@@ -237,12 +238,12 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         qd0, qd1, qd2 = qd
         qdd0, qdd1, qdd2 = qdd
 
-        c01 = np.cos(q0 - q1)
-        c02 = np.cos(q0 - q2)
-        c12 = np.cos(q1 - q2)
-        s01 = np.sin(q0 - q1)
-        s02 = np.sin(q0 - q2)
-        s12 = np.sin(q1 - q2)
+        c01 = math.cos(q0 - q1)
+        c02 = math.cos(q0 - q2)
+        c12 = math.cos(q1 - q2)
+        s01 = math.sin(q0 - q1)
+        s02 = math.sin(q0 - q2)
+        s12 = math.sin(q1 - q2)
 
         qd2_0 = qd0 * qd0
         qd2_1 = qd1 * qd1
@@ -256,7 +257,7 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         a02_s02 = self._a02 * s02
         a12_s12 = self._a12 * s12
 
-        trig = np.cos if self.supine else np.sin
+        trig = math.cos if self.supine else math.sin
         sq0 = trig(q0)
         sq1 = trig(q1)
         sq2 = trig(q2)
