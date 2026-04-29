@@ -42,7 +42,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = [
-    "E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF",
+    "E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF", "C90",
 ]
 ignore = [
     "E501",
@@ -50,6 +50,9 @@ ignore = [
     "N803",
     "N806",
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.ruff.lint.isort]
 known-first-party = ["movement_optimizer"]
