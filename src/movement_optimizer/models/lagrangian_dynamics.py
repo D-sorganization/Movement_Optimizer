@@ -9,8 +9,8 @@ here for backward compatibility.
 from __future__ import annotations
 
 import logging
-import math
 
+import math
 import numpy as np
 from numpy.typing import NDArray
 

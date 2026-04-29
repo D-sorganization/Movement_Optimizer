@@ -21,6 +21,3 @@
 ## 2024-04-27 - Contextual Tooltips for Disabled States
 **Learning:** In PyQt6 UIs, disabling buttons during long-running tasks without explaining *why* they are disabled (or what state the system is currently in) creates user confusion. Standard tooltips describing the action often feel contradictory when the action is disabled.
 **Action:** Always dynamically update `setToolTip()` alongside `setEnabled()` state changes (e.g. on `cancel_btn` when cancellation is already in progress, or `clear_compare_btn` when there is nothing to clear).
-## 2026-04-29 - Adding Keyboard Shortcuts to PyQt6 Media Controls
-**Learning:** Common media keys (Space, Left, Right, Home) can easily be bound to QPushButton instances using `setShortcut()` and visually signaled to users by updating their tooltip to include the shortcut in parentheses.
-**Action:** Always bind these expected keyboard shortcuts and update tooltips for simple accessibility UX boosts in Qt applications.

@@ -10,7 +10,6 @@ physics class stays focused on mass-matrix and torque computation.
 from __future__ import annotations
 
 import math
-
 import numpy as np
 from numpy.typing import NDArray
 
@@ -89,14 +88,10 @@ class LagrangianKinematicsMixin:
 
         # Performance optimization: Fully unroll scalar components and only instantiate
         # the final return vectors to prevent massive memory allocation overhead from
-        # intermediate np.array combinations. Using math.sin/math.cos for scalar
-        # operations significantly reduces overhead compared to numpy.
-        sq0 = math.sin(q[0])
-        sq1 = math.sin(q[1])
-        sq2 = math.sin(q[2])
-        cq0 = math.cos(q[0])
-        cq1 = math.cos(q[1])
-        cq2 = math.cos(q[2])
+        # intermediate np.array combinations.
+        q0, q1, q2 = q
+        sq0, sq1, sq2 = math.sin(q0), math.sin(q1), math.sin(q2)
+        cq0, cq1, cq2 = math.cos(q0), math.cos(q1), math.cos(q2)
 
         p1_x = L[0] * sq0
         p1_y = L[0] * cq0
@@ -124,13 +119,9 @@ class LagrangianKinematicsMixin:
 
         # Performance optimization: Calculate shoulder position directly and unroll scalar
         # components for exercise-specific logic to avoid intermediate array allocations.
-        # Using math.sin/math.cos avoids overhead of numpy scalar functions.
-        sq0 = math.sin(q[0])
-        sq1 = math.sin(q[1])
-        sq2 = math.sin(q[2])
-        cq0 = math.cos(q[0])
-        cq1 = math.cos(q[1])
-        cq2 = math.cos(q[2])
+        q0, q1, q2 = q
+        sq0, sq1, sq2 = math.sin(q0), math.sin(q1), math.sin(q2)
+        cq0, cq1, cq2 = math.cos(q0), math.cos(q1), math.cos(q2)
 
         p1_x = L[0] * sq0
         p1_y = L[0] * cq0
@@ -183,13 +174,9 @@ class LagrangianKinematicsMixin:
 
         # Performance optimization: Fully unroll scalar components to avoid multiple
         # intermediate array allocations and vector math overhead.
-        # Using math.sin/math.cos significantly reduces overhead (~40% faster).
-        sq0 = math.sin(q[0])
-        sq1 = math.sin(q[1])
-        sq2 = math.sin(q[2])
-        cq0 = math.cos(q[0])
-        cq1 = math.cos(q[1])
-        cq2 = math.cos(q[2])
+        q0, q1, q2 = q
+        sq0, sq1, sq2 = math.sin(q0), math.sin(q1), math.sin(q2)
+        cq0, cq1, cq2 = math.cos(q0), math.cos(q1), math.cos(q2)
 
         knee_x = L[0] * sq0
         knee_y = L[0] * cq0

@@ -208,13 +208,13 @@ jobs:
 
       - name: Format Check (rustfmt)
         if: steps.rust-changes.outputs.has_rust == 'true'
-        run: cd rust_core && cargo fmt --all -- --check
+        run: cd rust_core && ~/.cargo/bin/cargo fmt --all -- --check
 
       - name: Lint (Clippy)
         if: steps.rust-changes.outputs.has_rust == 'true'
-        run: cd rust_core && cargo clippy --all-targets -- -D warnings
+        run: cd rust_core && ~/.cargo/bin/cargo clippy --all-targets -- -D warnings
 
       - name: Run Rust Tests
         if: steps.rust-changes.outputs.has_rust == 'true'
-        run: cd rust_core && cargo test
+        run: cd rust_core && ~/.cargo/bin/cargo test
     needs: pick-runner

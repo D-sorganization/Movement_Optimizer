@@ -8,7 +8,6 @@ BANNED = (
     "ubuntu-latest", "windows-latest", "macos-latest",
     "force_cloud", "mode=cloud",
     "Routing to GitHub-hosted", "using GitHub-hosted",
-    "runner=ubuntu-latest", "runner=windows-latest", "runner=macos-latest",
 )
 
 def main() -> int:
