@@ -163,6 +163,14 @@ class OptimizationMixin:
 
     def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
         def cb(report: ProgressReport) -> None:
+            logger.debug(
+                "iter=%d cost=%.3f best=%.3f improve=%+.3f%% elapsed=%.1fs",
+                report.iteration,
+                report.cost,
+                report.best_cost,
+                report.improvement_pct,
+                report.elapsed_s,
+            )
             self._sig_progress.emit(report)  # type: ignore[attr-defined]
 
         return cb
