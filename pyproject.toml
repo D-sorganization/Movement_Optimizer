@@ -36,6 +36,9 @@ movement-optimizer = "movement_optimizer.__main__:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+movement_optimizer = ["locale/*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"

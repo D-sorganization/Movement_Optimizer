@@ -8,7 +8,7 @@ Usage::
     # Call once at startup (before any widgets are created):
     setup_translations()          # auto-detect system locale
     setup_translations("de")      # force German
-    setup_translations(None)      # English fallback only
+    setup_translations(None)      # same as no-arg: auto-detect system locale
 
     # Wrap every user-visible string:
     label = tr("Body Mass")
