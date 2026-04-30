@@ -29,6 +29,11 @@ def setup_translations(locale: str | None = None) -> None:
     if app is None:
         return
 
+    # Remove any previously installed translator so language switches are clean.
+    if _translator is not None:
+        app.removeTranslator(_translator)
+        _translator = None
+
     if locale is None:
         locale = QLocale.system().name()  # e.g. 'en_US', 'de_DE'
 
