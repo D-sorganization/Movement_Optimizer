@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..constants import BAR_MASS_KG
+from ..i18n import tr
 from ..rendering import Palette
 from .labelled_slider import LabelledSlider
 
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 def build_body_params(sidebar) -> None:
     grp = QGroupBox("Body Parameters")
     lay = QVBoxLayout(grp)
-    sidebar.mass_slider = LabelledSlider("Body Mass", 40, 150, 75, "kg", 0)
+    sidebar.mass_slider = LabelledSlider(tr("Body Mass"), 40, 150, 75, "kg", 0)
     sidebar.height_slider = LabelledSlider("Height", 1.40, 2.10, 1.75, "m", 2)
     lay.addWidget(sidebar.mass_slider)
     lay.addWidget(sidebar.height_slider)
@@ -104,7 +105,7 @@ def build_optimization(sidebar) -> None:
 
 
 def build_buttons(sidebar) -> None:
-    sidebar.opt_btn = QPushButton("\u25b6  Optimize Current Tab")
+    sidebar.opt_btn = QPushButton("\u25b6  " + tr("Run Optimization"))
     sidebar.opt_btn.setProperty("class", "primary")
     sidebar.opt_btn.setToolTip(
         "Start trajectory optimization for the currently selected exercise tab (Ctrl+R)"
@@ -123,7 +124,7 @@ def build_buttons(sidebar) -> None:
     sidebar.both_btn.clicked.connect(sidebar.optimize_both.emit)
     sidebar.main_layout.addWidget(sidebar.both_btn)
 
-    sidebar.cancel_btn = QPushButton("\u2716  Cancel")
+    sidebar.cancel_btn = QPushButton("\u2716  " + tr("Cancel"))
     sidebar.cancel_btn.setProperty("class", "cancel")
     sidebar.cancel_btn.setToolTip("Cancel the currently running optimization (Esc)")
     sidebar.cancel_btn.setAccessibleName("Cancel")
@@ -200,7 +201,7 @@ def build_results(sidebar) -> None:
     lay.addWidget(sidebar.result_label)
     sidebar.main_layout.addWidget(grp)
 
-    sidebar.export_btn = QPushButton("Export CSV")
+    sidebar.export_btn = QPushButton(tr("Export") + " CSV")
     sidebar.export_btn.setEnabled(False)
     sidebar.export_btn.setToolTip("Run optimization first to enable exporting kinematics to CSV")
     sidebar.export_btn.setAccessibleName("Export CSV")
