@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import matplotlib
 import numpy as np
+import pytest
 from matplotlib.figure import Figure
 
 matplotlib.use("Agg")
 
 from movement_optimizer.export import (
+    _validate_export_path,
     export_animation_gif,
     export_plots_pdf,
     export_plots_png,
@@ -62,3 +64,80 @@ class TestExportGIF:
         export_animation_gif(fig, draw_frame, n_frames=5, path=str(path), fps=5)
         assert path.exists()
         assert path.stat().st_size > 0
+
+
+class TestPathTraversalValidation:
+    """Issue #398: paths must be validated to prevent traversal attacks."""
+
+    def test_rejects_empty_path(self, tmp_path):
+        with pytest.raises(ValueError, match="non-empty"):
+            _validate_export_path("", base_dir=tmp_path)
+
+    def test_rejects_null_byte(self, tmp_path):
+        with pytest.raises(ValueError, match="null"):
+            _validate_export_path("foo\x00.png", base_dir=tmp_path)
+
+    def test_rejects_dotdot_escape(self, tmp_path):
+        with pytest.raises(ValueError, match="escapes base directory"):
+            _validate_export_path("../escape.png", base_dir=tmp_path)
+
+    def test_rejects_deep_dotdot_escape(self, tmp_path):
+        with pytest.raises(ValueError, match="escapes base directory"):
+            _validate_export_path("a/b/../../../escape.png", base_dir=tmp_path)
+
+    def test_rejects_absolute_path_outside_base(self, tmp_path, tmp_path_factory):
+        outside = tmp_path_factory.mktemp("outside") / "evil.png"
+        with pytest.raises(ValueError, match="escapes base directory"):
+            _validate_export_path(str(outside), base_dir=tmp_path)
+
+    def test_accepts_path_inside_base(self, tmp_path):
+        resolved = _validate_export_path("ok.png", base_dir=tmp_path)
+        assert resolved == (tmp_path / "ok.png").resolve()
+
+    def test_accepts_nested_subdir(self, tmp_path):
+        resolved = _validate_export_path("sub/dir/ok.png", base_dir=tmp_path)
+        assert resolved == (tmp_path / "sub" / "dir" / "ok.png").resolve()
+
+    def test_accepts_absolute_path_inside_base(self, tmp_path):
+        target = tmp_path / "ok.png"
+        resolved = _validate_export_path(str(target), base_dir=tmp_path)
+        assert resolved == target.resolve()
+
+    def test_no_base_dir_still_rejects_null_byte(self):
+        with pytest.raises(ValueError, match="null"):
+            _validate_export_path("foo\x00.png", base_dir=None)
+
+    def test_no_base_dir_still_rejects_empty(self):
+        with pytest.raises(ValueError, match="non-empty"):
+            _validate_export_path("", base_dir=None)
+
+    def test_export_png_rejects_traversal(self, tmp_path):
+        fig = _make_figure()
+        with pytest.raises(ValueError, match="escapes base directory"):
+            export_plots_png(fig, "../evil.png", base_dir=str(tmp_path))
+
+    def test_export_pdf_rejects_traversal(self, tmp_path):
+        fig = _make_figure()
+        with pytest.raises(ValueError, match="escapes base directory"):
+            export_plots_pdf(fig, "../evil.pdf", base_dir=str(tmp_path))
+
+    def test_export_gif_rejects_traversal(self, tmp_path):
+        fig = _make_figure()
+
+        def draw_frame(_: int) -> None:
+            pass
+
+        with pytest.raises(ValueError, match="escapes base directory"):
+            export_animation_gif(
+                fig, draw_frame, n_frames=2, path="../evil.gif", base_dir=str(tmp_path)
+            )
+
+    def test_export_png_rejects_null_byte(self, tmp_path):
+        fig = _make_figure()
+        with pytest.raises(ValueError, match="null"):
+            export_plots_png(fig, str(tmp_path / "ev\x00il.png"))
+
+    def test_export_png_writes_inside_base(self, tmp_path):
+        fig = _make_figure()
+        export_plots_png(fig, "ok.png", base_dir=str(tmp_path))
+        assert (tmp_path / "ok.png").exists()

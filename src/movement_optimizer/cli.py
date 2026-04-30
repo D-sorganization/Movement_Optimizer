@@ -26,6 +26,14 @@ from .models import (
     make_squat_config,
 )
 from .trajectory import OptimizationResult, TrajectoryOptimizer
+from .validation import (
+    BAR_MASS_RANGE,
+    BODY_MASS_RANGE,
+    DURATION_RANGE,
+    HEIGHT_RANGE,
+    SMOOTHNESS_RANGE,
+    validate_all,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,19 +54,21 @@ def _add_body_args(parser: argparse.ArgumentParser) -> None:
         "--body-mass",
         type=float,
         default=75.0,
-        help="Body mass in kg (default: 75.0).",
+        help=(f"Body mass in kg (range {BODY_MASS_RANGE[0]}-{BODY_MASS_RANGE[1]}, default: 75.0)."),
     )
     parser.add_argument(
         "--height",
         type=float,
         default=1.75,
-        help="Height in metres (default: 1.75).",
+        help=(f"Height in metres (range {HEIGHT_RANGE[0]}-{HEIGHT_RANGE[1]}, default: 1.75)."),
     )
     parser.add_argument(
         "--bar-mass",
         type=float,
         default=60.0,
-        help="Barbell mass in kg (default: 60.0).",
+        help=(
+            f"Barbell mass in kg (range {BAR_MASS_RANGE[0]}-{BAR_MASS_RANGE[1]}, default: 60.0)."
+        ),
     )
 
 
@@ -68,13 +78,18 @@ def _add_run_args(parser: argparse.ArgumentParser) -> None:
         "--duration",
         type=float,
         default=2.0,
-        help="Movement duration in seconds (default: 2.0).",
+        help=(
+            f"Movement duration in seconds "
+            f"(range {DURATION_RANGE[0]}-{DURATION_RANGE[1]}, default: 2.0)."
+        ),
     )
     parser.add_argument(
         "--smoothness",
         type=float,
         default=1.0,
-        help="Smoothness weight (default: 1.0).",
+        help=(
+            f"Smoothness weight (range {SMOOTHNESS_RANGE[0]}-{SMOOTHNESS_RANGE[1]}, default: 1.0)."
+        ),
     )
     parser.add_argument(
         "--output",
@@ -255,22 +270,23 @@ def _save_or_emit(result: OptimizationResult, exercise: str, output: str | None)
 
 
 def _validate_cli_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    """DbC: reject invalid numeric CLI arguments via parser.error.
+    """Reject invalid numeric CLI arguments via parser.error.
 
-    Preconditions:
-        args.body_mass > 0
-        args.height > 0
-        args.bar_mass >= 0
-        args.duration > 0
+    Delegates to :func:`movement_optimizer.validation.validate_all` so the
+    GUI and CLI share a single source of truth for valid ranges. Any
+    :class:`ValueError` raised by the validator is converted into a
+    user-friendly ``parser.error`` exit (which prints usage and exits 2).
     """
-    if args.body_mass <= 0:
-        parser.error(f"--body-mass must be positive, got {args.body_mass}")
-    if args.height <= 0:
-        parser.error(f"--height must be positive, got {args.height}")
-    if args.bar_mass < 0:
-        parser.error(f"--bar-mass must be non-negative, got {args.bar_mass}")
-    if args.duration <= 0:
-        parser.error(f"--duration must be positive, got {args.duration}")
+    try:
+        validate_all(
+            body_mass=args.body_mass,
+            height=args.height,
+            bar_mass=args.bar_mass,
+            duration=args.duration,
+            smoothness=args.smoothness,
+        )
+    except (ValueError, TypeError) as exc:
+        parser.error(str(exc))
 
 
 def _log_optimization_start(
