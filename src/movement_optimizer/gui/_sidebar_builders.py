@@ -185,12 +185,15 @@ def build_optimization(sidebar) -> None:
 
 
 def build_buttons(sidebar) -> None:
-    sidebar.opt_btn = QPushButton("\u25b6  " + tr("Run Optimization"))
+    sidebar.opt_btn = QPushButton(tr("Run Optimization"))
     sidebar.opt_btn.setProperty("class", "primary")
     sidebar.opt_btn.setToolTip(
         "Start trajectory optimization for the currently selected exercise tab (Ctrl+R)"
     )
     sidebar.opt_btn.setAccessibleName("Optimize Current Tab")
+    sidebar.opt_btn.setAccessibleDescription(
+        "Start trajectory optimization for the currently selected exercise tab."
+    )
     sidebar.opt_btn.setShortcut("Ctrl+R")
     sidebar.opt_btn.clicked.connect(sidebar.optimize_current.emit)
     sidebar.main_layout.addWidget(sidebar.opt_btn)
@@ -200,14 +203,18 @@ def build_buttons(sidebar) -> None:
         "Start trajectory optimization sequentially for all exercise tabs (Ctrl+Shift+R)"
     )
     sidebar.both_btn.setAccessibleName("Optimize All Tabs")
+    sidebar.both_btn.setAccessibleDescription(
+        "Start trajectory optimization sequentially for every exercise tab."
+    )
     sidebar.both_btn.setShortcut("Ctrl+Shift+R")
     sidebar.both_btn.clicked.connect(sidebar.optimize_both.emit)
     sidebar.main_layout.addWidget(sidebar.both_btn)
 
-    sidebar.cancel_btn = QPushButton("\u2716  " + tr("Cancel"))
+    sidebar.cancel_btn = QPushButton(tr("Cancel"))
     sidebar.cancel_btn.setProperty("class", "cancel")
     sidebar.cancel_btn.setToolTip("Cancel the currently running optimization (Esc)")
     sidebar.cancel_btn.setAccessibleName("Cancel")
+    sidebar.cancel_btn.setAccessibleDescription("Cancel the currently running optimization.")
     sidebar.cancel_btn.setShortcut("Esc")
     sidebar.cancel_btn.clicked.connect(sidebar.cancel_requested.emit)
     sidebar.cancel_btn.setVisible(False)
@@ -285,12 +292,14 @@ def build_results(sidebar) -> None:
     sidebar.export_btn.setEnabled(False)
     sidebar.export_btn.setToolTip("Run optimization first to enable exporting kinematics to CSV")
     sidebar.export_btn.setAccessibleName("Export CSV")
+    sidebar.export_btn.setAccessibleDescription("Export optimized kinematics to a CSV file.")
     sidebar.export_btn.clicked.connect(sidebar.export_requested.emit)
     sidebar.main_layout.addWidget(sidebar.export_btn)
 
     sidebar.reset_btn = QPushButton("Reset Defaults")
     sidebar.reset_btn.setToolTip("Reset all parameters to default values")
     sidebar.reset_btn.setAccessibleName("Reset Defaults")
+    sidebar.reset_btn.setAccessibleDescription("Reset all parameters to their default values.")
     sidebar.reset_btn.clicked.connect(sidebar.reset_requested.emit)
     sidebar.main_layout.addWidget(sidebar.reset_btn)
 
@@ -306,11 +315,13 @@ def build_persistence_buttons(sidebar) -> None:
     sidebar.save_btn.setEnabled(False)
     sidebar.save_btn.setToolTip("Run optimization first to enable saving the trajectory solution")
     sidebar.save_btn.setAccessibleName("Save Solution")
+    sidebar.save_btn.setAccessibleDescription("Save the current trajectory solution to a file.")
     sidebar.save_btn.clicked.connect(sidebar.save_solution_requested.emit)
     lay.addWidget(sidebar.save_btn)
     sidebar.load_btn = QPushButton("Load Solution")
     sidebar.load_btn.setToolTip("Load a previously saved trajectory solution file")
     sidebar.load_btn.setAccessibleName("Load Solution")
+    sidebar.load_btn.setAccessibleDescription("Load a previously saved trajectory solution file.")
     sidebar.load_btn.clicked.connect(sidebar.load_solution_requested.emit)
     lay.addWidget(sidebar.load_btn)
     sidebar.main_layout.addWidget(grp)
@@ -323,18 +334,23 @@ def build_export_buttons(sidebar) -> None:
     sidebar.export_video_btn.setEnabled(False)
     sidebar.export_video_btn.setToolTip("Run optimization first to enable exporting animation GIF")
     sidebar.export_video_btn.setAccessibleName("Export Animation GIF")
+    sidebar.export_video_btn.setAccessibleDescription("Export the optimized animation as a GIF.")
     sidebar.export_video_btn.clicked.connect(sidebar.export_video_requested.emit)
     lay.addWidget(sidebar.export_video_btn)
     sidebar.export_plots_btn = QPushButton("Export Plots (PNG/PDF)")
     sidebar.export_plots_btn.setEnabled(False)
     sidebar.export_plots_btn.setToolTip("Run optimization first to enable exporting plots")
     sidebar.export_plots_btn.setAccessibleName("Export Plots")
+    sidebar.export_plots_btn.setAccessibleDescription("Export analysis plots as PNG or PDF files.")
     sidebar.export_plots_btn.clicked.connect(sidebar.export_plots_requested.emit)
     lay.addWidget(sidebar.export_plots_btn)
     sidebar.export_excel_btn = QPushButton("Save as Excel (.xlsx)")
     sidebar.export_excel_btn.setEnabled(False)
     sidebar.export_excel_btn.setToolTip("Run optimization first to enable Excel export")
     sidebar.export_excel_btn.setAccessibleName("Save as Excel")
+    sidebar.export_excel_btn.setAccessibleDescription(
+        "Save optimized results to an Excel workbook."
+    )
     sidebar.export_excel_btn.clicked.connect(sidebar.export_excel_requested.emit)
     lay.addWidget(sidebar.export_excel_btn)
     sidebar.main_layout.addWidget(grp)
@@ -347,17 +363,22 @@ def build_comparison_buttons(sidebar) -> None:
     sidebar.add_compare_btn.setEnabled(False)
     sidebar.add_compare_btn.setToolTip("Run optimization first to add current trial to comparison")
     sidebar.add_compare_btn.setAccessibleName("Add to Comparison")
+    sidebar.add_compare_btn.setAccessibleDescription(
+        "Add the current optimized trial to the comparison set."
+    )
     sidebar.add_compare_btn.clicked.connect(sidebar.add_comparison_requested.emit)
     lay.addWidget(sidebar.add_compare_btn)
     sidebar.compare_btn = QPushButton("Compare Trials")
     sidebar.compare_btn.setEnabled(False)
     sidebar.compare_btn.setToolTip("Add multiple trials to comparison first")
     sidebar.compare_btn.setAccessibleName("Compare Trials")
+    sidebar.compare_btn.setAccessibleDescription("Open the trial comparison dialog.")
     sidebar.compare_btn.clicked.connect(sidebar.compare_trials_requested.emit)
     lay.addWidget(sidebar.compare_btn)
     sidebar.clear_compare_btn = QPushButton("Clear Comparison")
     sidebar.clear_compare_btn.setToolTip("Clear all trials currently saved for comparison")
     sidebar.clear_compare_btn.setAccessibleName("Clear Comparison")
+    sidebar.clear_compare_btn.setAccessibleDescription("Clear all trials from the comparison set.")
     sidebar.clear_compare_btn.clicked.connect(sidebar.clear_comparison_requested.emit)
     lay.addWidget(sidebar.clear_compare_btn)
     sidebar.main_layout.addWidget(grp)

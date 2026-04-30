@@ -40,7 +40,7 @@ def show_idle(sidebar) -> None:
     )
     # Restore cancel button to its default text/state before hiding it so that
     # the next optimization run starts with a clean button label.
-    sidebar.cancel_btn.setText("✖  Cancel")
+    sidebar.cancel_btn.setText("Cancel")
     sidebar.cancel_btn.setEnabled(True)
     sidebar.cancel_btn.setVisible(False)
 
