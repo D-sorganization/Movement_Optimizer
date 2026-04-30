@@ -98,6 +98,34 @@ class FileOperationsMixin:
         except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
             QMessageBox.critical(self, "Load Error", str(e))
 
+    def _load_result(self: MainWindow) -> None:  # type: ignore[misc]
+        """Load a previously exported result JSON file and display its contents."""
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Result",
+            "",
+            "JSON Files (*.json)",
+        )
+        if not path:
+            return
+        try:
+            data = import_result_from_json(path)
+            exercise_type = data.get("exercise_type", "unknown")
+            cost = data.get("metadata", {}).get("cost", "N/A")
+            format_version = data.get("format_version", "legacy")
+            self.status_label.setText(
+                f"Loaded result: {exercise_type} from {os.path.basename(path)}"
+            )
+            QMessageBox.information(
+                self,
+                "Result Loaded",
+                f"Exercise: {exercise_type}\nCost: {cost}\nFormat version: {format_version}",
+            )
+        except FileNotFoundError as e:
+            QMessageBox.critical(self, "File Not Found", str(e))
+        except (OSError, ValueError) as e:
+            QMessageBox.critical(self, "Load Error", str(e))
+
     def _export_video(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
         r, _fi, body, dyn = self._snapshot_idx_state(idx)
@@ -172,7 +200,9 @@ class FileOperationsMixin:
         try:
             mass = getattr(body, "mass", None)
             height = getattr(body, "height", None)
-            export_to_excel(r, path, exercise_name=exercise_name, body_mass_kg=mass, body_height_m=height)
+            export_to_excel(
+                r, path, exercise_name=exercise_name, body_mass_kg=mass, body_height_m=height
+            )
             self.status_label.setText(f"Exported: {os.path.basename(path)}")
             QMessageBox.information(self, "Exported", f"Excel workbook saved to:\n{path}")
         except ImportError as e:
