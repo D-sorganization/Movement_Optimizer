@@ -124,7 +124,7 @@ class TestConcurrentSnapshot:
                     if r is None:
                         continue
                     cost = int(r.cost)
-                    body_iter = body[1] if isinstance(body, tuple) else None
+                    body_iter = body[1] if isinstance(body, tuple) else None  # type: ignore
                     dyn_iter = dyn[1] if isinstance(dyn, tuple) else None
                     observations.append((cost, fi, body_iter or 0, dyn_iter or 0))
             except BaseException as exc:  # pragma: no cover - debug aid

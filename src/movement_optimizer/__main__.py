@@ -9,6 +9,7 @@ import sys
 from PyQt6.QtWidgets import QApplication
 
 from .gui import MainWindow
+from .i18n import setup_translations
 
 
 def main() -> None:
@@ -18,6 +19,7 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
     app = QApplication(sys.argv)
+    setup_translations()
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

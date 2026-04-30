@@ -11,12 +11,18 @@ All returned arrays must be >= 0 at feasible points (SLSQP convention).
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 
 from ..backend import PhysicsBackend
 from ..constants import BAR_KNEE_CLEARANCE_M
 from ..models import BodyModel
+
+# Type alias for the spline-building callable used throughout the optimizer.
+# build_splines takes a flat waypoint vector and returns a CubicSpline object.
+_BuildSplinesFn = Callable[[NDArray], object]
 
 __all__ = [
     "bar_knee_clearance",
@@ -28,7 +34,7 @@ __all__ = [
 
 def com_constraint_values(
     x: NDArray,
-    build_splines_fn: object,
+    build_splines_fn: _BuildSplinesFn,
     t_eval: NDArray,
     dynamics: PhysicsBackend,
     exercise_type: str,
@@ -50,8 +56,8 @@ def com_constraint_values(
         O(W * D + N * D) time and O(N) output memory, where ``W`` is waypoint
         controls, ``N`` evaluation samples, and ``D`` degrees of freedom.
     """
-    splines = build_splines_fn(x)  # type: ignore[operator]
-    q = splines(t_eval)
+    splines = build_splines_fn(x)
+    q = splines(t_eval)  # type: ignore[operator]  # CubicSpline is callable but typed as object; the returned object is always callable at runtime
     com_x = dynamics.com_x_batch(q, exercise_type, bar_mass)
     lower = com_x - inner_heel
     upper = inner_toe - com_x
@@ -60,7 +66,7 @@ def com_constraint_values(
 
 def bar_knee_clearance(
     x: NDArray,
-    build_splines_fn: object,
+    build_splines_fn: _BuildSplinesFn,
     t_eval: NDArray,
     body: BodyModel,
 ) -> NDArray:
@@ -78,8 +84,8 @@ def bar_knee_clearance(
         O(W * D + N * D) time and O(N) output memory for spline evaluation and
         vectorized clearance computation.
     """
-    splines = build_splines_fn(x)  # type: ignore[operator]
-    q = splines(t_eval)
+    splines = build_splines_fn(x)
+    q = splines(t_eval)  # type: ignore[operator]  # CubicSpline is callable but typed as object
     L = body.L
     # Using @ for matrix-vector multiplication is significantly faster than
     # calculating individual segment x-coordinates via element-wise multiplication and summing.
@@ -92,7 +98,7 @@ def bar_knee_clearance(
 
 def joint_limit_constraint_values(
     x: NDArray,
-    build_splines_fn: object,
+    build_splines_fn: _BuildSplinesFn,
     t_eval: NDArray,
     q_bounds: NDArray,
 ) -> NDArray:
@@ -110,8 +116,8 @@ def joint_limit_constraint_values(
     Complexity:
         O(W * D + N * D) time and O(N * D) output memory.
     """
-    splines = build_splines_fn(x)  # type: ignore[operator]
-    q = splines(t_eval)
+    splines = build_splines_fn(x)
+    q = splines(t_eval)  # type: ignore[operator]  # CubicSpline is callable but typed as object
     lower = q - q_bounds[:, 0]
     upper = q_bounds[:, 1] - q
     return np.concatenate([lower.flatten(), upper.flatten()])
@@ -119,7 +125,7 @@ def joint_limit_constraint_values(
 
 def build_constraints(
     exercise_type: str,
-    build_splines_fn: object,
+    build_splines_fn: _BuildSplinesFn,
     t_eval: NDArray,
     dynamics: PhysicsBackend,
     bar_mass: float,

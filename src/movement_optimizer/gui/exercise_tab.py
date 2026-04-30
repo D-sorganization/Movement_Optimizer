@@ -6,8 +6,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from matplotlib.axes import Axes
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qtagg import (  # type: ignore[attr-defined]
+from matplotlib.backends.backend_qtagg import (  # type: ignore[attr-defined]  # matplotlib stubs omit NavigationToolbar2QT from backend_qtagg stub
     NavigationToolbar2QT as NavigationToolbar,
 )
 from matplotlib.figure import Figure
@@ -62,16 +63,16 @@ class ExerciseTab(QWidget):
             style_axis(ax)
         return axes
 
-    def _configure_anim_axis(self, ax: object) -> None:
+    def _configure_anim_axis(self, ax: Axes) -> None:
         """Set aspect, limits, and placeholder text on the animation axis.
 
         Args:
             ax: The animation Matplotlib Axes to configure.
         """
-        ax.set_aspect("equal", adjustable="datalim")  # type: ignore[attr-defined]
-        ax.set_xlim(-0.9, 0.9)  # type: ignore[attr-defined]
-        ax.set_ylim(-0.15, 1.8)  # type: ignore[attr-defined]
-        ax.text(  # type: ignore[attr-defined]
+        ax.set_aspect("equal", adjustable="datalim")
+        ax.set_xlim(-0.9, 0.9)
+        ax.set_ylim(-0.15, 1.8)
+        ax.text(
             0.5,
             0.5,
             "Click Optimize to begin",
@@ -80,7 +81,7 @@ class ExerciseTab(QWidget):
             fontsize=13,
             color=Palette.FG_DIM,
             style="italic",
-            transform=ax.transAxes,  # type: ignore[attr-defined]
+            transform=ax.transAxes,
         )
 
     def _create_axes(self) -> None:

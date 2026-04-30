@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..constants import BAR_MASS_KG
+from ..i18n import tr
 from ..rendering import Palette
 from .labelled_slider import LabelledSlider
 
@@ -32,8 +33,24 @@ logger = logging.getLogger(__name__)
 def build_body_params(sidebar) -> None:
     grp = QGroupBox("Body Parameters")
     lay = QVBoxLayout(grp)
-    sidebar.mass_slider = LabelledSlider("Body Mass", 40, 150, 75, "kg", 0)
-    sidebar.height_slider = LabelledSlider("Height", 1.40, 2.10, 1.75, "m", 2)
+    sidebar.mass_slider = LabelledSlider(
+        tr("Body Mass"),
+        40,
+        150,
+        75,
+        "kg",
+        0,
+        tooltip="Total body mass in kilograms (40-150 kg)",
+    )
+    sidebar.height_slider = LabelledSlider(
+        "Height",
+        1.40,
+        2.10,
+        1.75,
+        "m",
+        2,
+        tooltip="Standing height in metres (1.40-2.10 m)",
+    )
     lay.addWidget(sidebar.mass_slider)
     lay.addWidget(sidebar.height_slider)
     sidebar.main_layout.addWidget(grp)
@@ -45,9 +62,33 @@ def build_segment_lengths(sidebar) -> None:
     hint = QLabel("Multipliers on base length")
     hint.setProperty("class", "dim")
     lay.addWidget(hint)
-    sidebar.ll_slider = LabelledSlider("Lower Leg", 0.70, 1.30, 1.00, "x", 2)
-    sidebar.ul_slider = LabelledSlider("Upper Leg", 0.70, 1.30, 1.00, "x", 2)
-    sidebar.to_slider = LabelledSlider("Torso", 0.70, 1.30, 1.00, "x", 2)
+    sidebar.ll_slider = LabelledSlider(
+        "Lower Leg",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Lower leg length multiplier relative to base length (0.70-1.30 x)",
+    )
+    sidebar.ul_slider = LabelledSlider(
+        "Upper Leg",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Upper leg length multiplier relative to base length (0.70-1.30 x)",
+    )
+    sidebar.to_slider = LabelledSlider(
+        "Torso",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Torso length multiplier relative to base length (0.70-1.30 x)",
+    )
     lay.addWidget(sidebar.ll_slider)
     lay.addWidget(sidebar.ul_slider)
     lay.addWidget(sidebar.to_slider)
@@ -60,11 +101,35 @@ def build_barbell(sidebar) -> None:
     hint = QLabel(f"Olympic bar = {BAR_MASS_KG:.0f} kg")
     hint.setProperty("class", "dim")
     lay.addWidget(hint)
-    sidebar.bar_slider = LabelledSlider("Total Bar + Plates", 0, 300, 60, "kg", 0)
+    sidebar.bar_slider = LabelledSlider(
+        "Total Bar + Plates",
+        0,
+        300,
+        60,
+        "kg",
+        0,
+        tooltip="Total barbell plus plates mass in kilograms (0-300 kg)",
+    )
     lay.addWidget(sidebar.bar_slider)
-    sidebar.bar_depth_slider = LabelledSlider("Bar Back Offset", 0.0, 0.4, 0.0, "m", 2)
+    sidebar.bar_depth_slider = LabelledSlider(
+        "Bar Back Offset",
+        0.0,
+        0.4,
+        0.0,
+        "m",
+        2,
+        tooltip="Horizontal distance the bar sits behind the shoulder joint (0.00-0.40 m)",
+    )
     lay.addWidget(sidebar.bar_depth_slider)
-    sidebar.bar_height_slider = LabelledSlider("Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2)
+    sidebar.bar_height_slider = LabelledSlider(
+        "Bar Drop Offset",
+        0.0,
+        0.4,
+        0.0,
+        "m",
+        2,
+        tooltip="Vertical distance the bar drops below the shoulder joint (0.00-0.40 m)",
+    )
     lay.addWidget(sidebar.bar_height_slider)
     sidebar.main_layout.addWidget(grp)
 
@@ -93,8 +158,24 @@ def build_optimization(sidebar) -> None:
                 )
     model_row.addWidget(sidebar.model_combo)
     lay.addLayout(model_row)
-    sidebar.dur_slider = LabelledSlider("Duration", 0.5, 5.0, 2.0, "s", 1)
-    sidebar.smooth_slider = LabelledSlider("Smoothness", 0.1, 5.0, 1.0, "x", 1)
+    sidebar.dur_slider = LabelledSlider(
+        "Duration",
+        0.5,
+        5.0,
+        2.0,
+        "s",
+        1,
+        tooltip="Total movement duration in seconds (0.5-5.0 s)",
+    )
+    sidebar.smooth_slider = LabelledSlider(
+        "Smoothness",
+        0.1,
+        5.0,
+        1.0,
+        "x",
+        1,
+        tooltip="Smoothness penalty multiplier — higher values produce smoother joint torques (0.1-5.0 x)",
+    )
     hint = QLabel("Higher = smoother torques")
     hint.setProperty("class", "dim")
     lay.addWidget(sidebar.dur_slider)
@@ -104,7 +185,7 @@ def build_optimization(sidebar) -> None:
 
 
 def build_buttons(sidebar) -> None:
-    sidebar.opt_btn = QPushButton("\u25b6  Optimize Current Tab")
+    sidebar.opt_btn = QPushButton("\u25b6  " + tr("Run Optimization"))
     sidebar.opt_btn.setProperty("class", "primary")
     sidebar.opt_btn.setToolTip(
         "Start trajectory optimization for the currently selected exercise tab (Ctrl+R)"
@@ -123,7 +204,7 @@ def build_buttons(sidebar) -> None:
     sidebar.both_btn.clicked.connect(sidebar.optimize_both.emit)
     sidebar.main_layout.addWidget(sidebar.both_btn)
 
-    sidebar.cancel_btn = QPushButton("\u2716  Cancel")
+    sidebar.cancel_btn = QPushButton("\u2716  " + tr("Cancel"))
     sidebar.cancel_btn.setProperty("class", "cancel")
     sidebar.cancel_btn.setToolTip("Cancel the currently running optimization (Esc)")
     sidebar.cancel_btn.setAccessibleName("Cancel")
@@ -200,7 +281,7 @@ def build_results(sidebar) -> None:
     lay.addWidget(sidebar.result_label)
     sidebar.main_layout.addWidget(grp)
 
-    sidebar.export_btn = QPushButton("Export CSV")
+    sidebar.export_btn = QPushButton(tr("Export") + " CSV")
     sidebar.export_btn.setEnabled(False)
     sidebar.export_btn.setToolTip("Run optimization first to enable exporting kinematics to CSV")
     sidebar.export_btn.setAccessibleName("Export CSV")
@@ -250,6 +331,12 @@ def build_export_buttons(sidebar) -> None:
     sidebar.export_plots_btn.setAccessibleName("Export Plots")
     sidebar.export_plots_btn.clicked.connect(sidebar.export_plots_requested.emit)
     lay.addWidget(sidebar.export_plots_btn)
+    sidebar.export_excel_btn = QPushButton("Save as Excel (.xlsx)")
+    sidebar.export_excel_btn.setEnabled(False)
+    sidebar.export_excel_btn.setToolTip("Run optimization first to enable Excel export")
+    sidebar.export_excel_btn.setAccessibleName("Save as Excel")
+    sidebar.export_excel_btn.clicked.connect(sidebar.export_excel_requested.emit)
+    lay.addWidget(sidebar.export_excel_btn)
     sidebar.main_layout.addWidget(grp)
 
 

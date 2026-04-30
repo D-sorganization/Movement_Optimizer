@@ -140,4 +140,135 @@ class TestPathTraversalValidation:
     def test_export_png_writes_inside_base(self, tmp_path):
         fig = _make_figure()
         export_plots_png(fig, "ok.png", base_dir=str(tmp_path))
-        assert (tmp_path / "ok.png").exists()
+
+
+class TestExportExcel:
+    """Tests for export_to_excel (issue #411)."""
+
+    def _make_result(self):
+        from conftest import make_test_result
+
+        return make_test_result()
+
+    def test_produces_nonempty_file(self, tmp_path):
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path))
+        assert path.exists()
+        assert path.stat().st_size > 0
+
+    def test_creates_parent_dirs(self, tmp_path):
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        path = tmp_path / "sub" / "dir" / "test.xlsx"
+        export_to_excel(r, str(path))
+        assert path.exists()
+
+    def test_has_three_sheets(self, tmp_path):
+        import openpyxl
+
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path))
+        wb = openpyxl.load_workbook(str(path))
+        assert set(wb.sheetnames) == {"Summary", "Trajectory", "Torques"}
+
+    def test_trajectory_sheet_has_correct_headers(self, tmp_path):
+        import openpyxl
+
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path))
+        wb = openpyxl.load_workbook(str(path))
+        ws = wb["Trajectory"]
+        headers = [cell.value for cell in ws[1]]
+        assert headers[0] == "time (s)"
+        assert "q1 (deg)" in headers
+        assert "dq1 (deg/s)" in headers
+
+    def test_torques_sheet_has_correct_headers(self, tmp_path):
+        import openpyxl
+
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path))
+        wb = openpyxl.load_workbook(str(path))
+        ws = wb["Torques"]
+        headers = [cell.value for cell in ws[1]]
+        assert headers[0] == "time (s)"
+        assert "tau1 (N*m)" in headers
+
+    def test_trajectory_sheet_has_correct_row_count(self, tmp_path):
+        import openpyxl
+
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        n = len(r.t)
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path))
+        wb = openpyxl.load_workbook(str(path))
+        ws = wb["Trajectory"]
+        # rows = header + n data rows
+        assert ws.max_row == n + 1
+
+    def test_torques_sheet_has_correct_row_count(self, tmp_path):
+        import openpyxl
+
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        n = len(r.t)
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path))
+        wb = openpyxl.load_workbook(str(path))
+        ws = wb["Torques"]
+        assert ws.max_row == n + 1
+
+    def test_summary_contains_exercise_name(self, tmp_path):
+        import openpyxl
+
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path), exercise_name="Squat")
+        wb = openpyxl.load_workbook(str(path))
+        ws = wb["Summary"]
+        values = [row[0].value for row in ws.iter_rows()]
+        assert "Exercise" in values
+
+    def test_summary_contains_torque_statistics(self, tmp_path):
+        import openpyxl
+
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path))
+        wb = openpyxl.load_workbook(str(path))
+        ws = wb["Summary"]
+        all_values = [str(cell.value) for row in ws.iter_rows() for cell in row if cell.value]
+        assert any("Peak" in v for v in all_values)
+
+    def test_raises_on_none_result(self, tmp_path):
+        from movement_optimizer.export_excel import export_to_excel
+
+        with pytest.raises(ValueError, match="None"):
+            export_to_excel(None, str(tmp_path / "test.xlsx"))  # type: ignore[arg-type]
+
+    def test_raises_on_null_byte_in_path(self, tmp_path):
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        with pytest.raises(ValueError, match="null"):
+            export_to_excel(r, str(tmp_path / "ev\x00il.xlsx"))
