@@ -65,6 +65,41 @@ class TestCLIParser:
         assert args.output == "out.json"
 
 
+class TestCLIRangeValidation:
+    """Issue #400: CLI must reject out-of-range numeric arguments."""
+
+    @pytest.mark.parametrize(
+        ("flag", "value", "match"),
+        [
+            ("--body-mass", "-1", "body_mass"),
+            ("--body-mass", "0", "body_mass"),
+            ("--body-mass", "500", "body_mass"),
+            ("--height", "0", "height"),
+            ("--height", "5", "height"),
+            ("--bar-mass", "-10", "bar_mass"),
+            ("--bar-mass", "1000", "bar_mass"),
+            ("--duration", "0.1", "duration"),
+            ("--duration", "100", "duration"),
+            ("--smoothness", "-1", "smoothness"),
+            ("--smoothness", "0", "smoothness"),
+            ("--smoothness", "999", "smoothness"),
+        ],
+    )
+    def test_rejects_out_of_range(self, capsys, flag: str, value: str, match: str):
+        with pytest.raises(SystemExit) as excinfo:
+            cli.main(["--exercise", "squat", flag, value])
+        assert excinfo.value.code == 2  # argparse error exit code
+        err = capsys.readouterr().err
+        assert match in err
+        # Helpful message includes the valid range so the user knows what to do.
+        assert "[" in err and "]" in err
+
+    def test_rejects_nan_body_mass(self, capsys):
+        with pytest.raises(SystemExit):
+            cli.main(["--exercise", "squat", "--body-mass", "nan"])
+        assert "finite" in capsys.readouterr().err
+
+
 class TestResultSummary:
     def test_summary_keys(self):
         result = make_test_result()
