@@ -21,7 +21,8 @@ class AnimationControlMixin:
 
     def _toggle_play(self: MainWindow) -> None:  # type: ignore[override]
         idx = self.tabs.currentIndex()
-        if self.results[idx] is None:
+        r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
+        if r is None:
             return
         if self.is_playing:
             self._stop_anim()
@@ -39,84 +40,85 @@ class AnimationControlMixin:
         if not self.is_playing:
             return
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, fi, body, dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
 
-        fi = self.anim_frames[idx]
         _, etype = self.EXERCISE_CONFIGS[idx]
-        body = self.bodies_list[idx]
         if body is None:
             raise ValueError("DbC Blocked: Precondition failed.")
         self.exercise_tabs[idx].draw_anim_frame(
             fi,
             r,
-            self.dynamics_list[idx],
+            dyn,
             body,
             etype,
         )
 
         n = len(r.t)
-        self.anim_frames[idx] = (fi + 1) % n
+        next_frame = (fi + 1) % n
+        self._set_anim_frame(idx, next_frame)
         speed = self.controls.speed_multiplier()
         self.controls.set_playback_status(fi + 1, n, speed)
         delay = max(15, int(40 / max(0.1, speed)))
-        if self.anim_frames[idx] == 0:
+        if next_frame == 0:
             delay = 700
         self.anim_timer.start(delay)
 
     def _step_fwd(self: MainWindow) -> None:  # type: ignore[override]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, fi, body, dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         self._stop_anim()
         n = len(r.t)
-        self.anim_frames[idx] = (self.anim_frames[idx] + 1) % n
+        new_frame = (fi + 1) % n
+        self._set_anim_frame(idx, new_frame)
         _, etype = self.EXERCISE_CONFIGS[idx]
         self.exercise_tabs[idx].draw_anim_frame(
-            self.anim_frames[idx],
+            new_frame,
             r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
+            dyn,
+            body,  # type: ignore[arg-type]
             etype,
         )
         self.controls.set_playback_status(
-            self.anim_frames[idx] + 1,
+            new_frame + 1,
             n,
             self.controls.speed_multiplier(),
         )
 
     def _step_back(self: MainWindow) -> None:  # type: ignore[override]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, fi, body, dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         self._stop_anim()
         n = len(r.t)
-        self.anim_frames[idx] = (self.anim_frames[idx] - 1) % n
+        new_frame = (fi - 1) % n
+        self._set_anim_frame(idx, new_frame)
         _, etype = self.EXERCISE_CONFIGS[idx]
         self.exercise_tabs[idx].draw_anim_frame(
-            self.anim_frames[idx],
+            new_frame,
             r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
+            dyn,
+            body,  # type: ignore[arg-type]
             etype,
         )
 
     def _rewind(self: MainWindow) -> None:  # type: ignore[override]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, body, dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         self._stop_anim()
-        self.anim_frames[idx] = 0
+        self._set_anim_frame(idx, 0)
         _, etype = self.EXERCISE_CONFIGS[idx]
         self.exercise_tabs[idx].draw_anim_frame(
             0,
             r,
-            self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
+            dyn,
+            body,  # type: ignore[arg-type]
             etype,
         )
 

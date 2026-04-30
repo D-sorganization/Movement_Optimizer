@@ -32,7 +32,7 @@ class FileOperationsMixin:
 
     def _export(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
@@ -48,7 +48,7 @@ class FileOperationsMixin:
 
     def _save_solution(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
@@ -96,7 +96,7 @@ class FileOperationsMixin:
 
     def _export_video(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, body, dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
@@ -111,8 +111,6 @@ class FileOperationsMixin:
         try:
             tab = self.exercise_tabs[idx]
             _, etype = self.EXERCISE_CONFIGS[idx]
-            body = self.bodies_list[idx]
-            dyn = self.dynamics_list[idx]
             n_frames = len(r.t)
 
             if body is None:
@@ -129,7 +127,7 @@ class FileOperationsMixin:
 
     def _export_plots(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")

@@ -13,10 +13,16 @@ if TYPE_CHECKING:
 
 
 def collect_results(window: MainWindow) -> dict[str, OptimizationResult]:
-    """Collect non-null exercise results keyed by exercise type."""
+    """Collect non-null exercise results keyed by exercise type.
+
+    Briefly acquires ``window._opt_lock`` so the snapshot is consistent with
+    the worker thread's writes to ``window.results``.
+    """
+    with window._opt_lock:
+        snapshot = list(window.results)
     results: dict[str, OptimizationResult] = {}
     for index, (_, exercise_type) in enumerate(window.EXERCISE_CONFIGS):
-        result = window.results[index]
+        result = snapshot[index]
         if result is not None:
             results[exercise_type] = result
     return results

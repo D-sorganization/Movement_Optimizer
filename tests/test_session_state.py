@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -47,6 +48,8 @@ class _FakeWindow:
 
     def __init__(self) -> None:
         self.results = [make_test_result(cost=10.0), None, make_test_result(cost=20.0)]
+        # collect_results acquires this lock to take a consistent snapshot.
+        self._opt_lock = threading.RLock()
 
 
 class TestSessionState:
