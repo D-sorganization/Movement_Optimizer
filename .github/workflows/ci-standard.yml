@@ -80,9 +80,17 @@ jobs:
           fi
           python -m venv .ci-venv
           . .ci-venv/bin/activate
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-          python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7 pre-commit
+          pip_retry() {
+            for attempt in 1 2 3; do
+              python -m pip "$@" && return 0
+              echo "pip $* failed on attempt ${attempt}; retrying after network backoff"
+              sleep 20
+            done
+            python -m pip "$@"
+          }
+          pip_retry install --upgrade pip
+          pip_retry install -e ".[dev]"
+          pip_retry install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7 pre-commit
           echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
 
       - name: Run pre-commit hooks
@@ -150,8 +158,16 @@ jobs:
         run: |
           python -m venv .ci-venv
           . .ci-venv/bin/activate
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          pip_retry() {
+            for attempt in 1 2 3; do
+              python -m pip "$@" && return 0
+              echo "pip $* failed on attempt ${attempt}; retrying after network backoff"
+              sleep 20
+            done
+            python -m pip "$@"
+          }
+          pip_retry install --upgrade pip
+          pip_retry install -e ".[dev]"
           echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
 
       - name: Run Tests
