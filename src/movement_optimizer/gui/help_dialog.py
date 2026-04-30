@@ -144,5 +144,5 @@ class ParameterHelpDialog(QDialog):
         outer.addWidget(scroll)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        buttons.rejected.connect(self.accept)
+        buttons.rejected.connect(self.reject)
         outer.addWidget(buttons)
