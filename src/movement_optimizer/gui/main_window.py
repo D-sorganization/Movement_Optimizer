@@ -127,6 +127,8 @@ class MainWindow(
         self._settings = QSettings("D-sorganization", "Movement-Optimizer")
 
         self._undo_stack = UndoStack()
+        self.action_undo: QAction | None = None
+        self.action_redo: QAction | None = None
 
         self._build_ui()
         self.setStyleSheet(QSS)
@@ -163,10 +165,30 @@ class MainWindow(
             self._sidebar_toggle_btn.setAccessibleDescription("Hide the parameter sidebar.")
 
     def _build_menu_bar(self) -> None:
-        """Add the Help menu to the application menu bar."""
+        """Add application menus."""
         menu_bar = self.menuBar()
+        if menu_bar is None:
+            raise RuntimeError("MainWindow menu bar is unavailable")
 
-        help_menu = menu_bar.addMenu("&Help")  # type: ignore
+        edit_menu = menu_bar.addMenu("&Edit")
+        if edit_menu is None:
+            raise RuntimeError("MainWindow Edit menu could not be created")
+        self.action_undo = QAction("&Undo", self)
+        self.action_undo.setShortcut(QKeySequence.StandardKey.Undo)
+        self.action_undo.setStatusTip("Undo the last parameter change")
+        self.action_undo.triggered.connect(self._undo)
+        edit_menu.addAction(self.action_undo)
+
+        self.action_redo = QAction("&Redo", self)
+        self.action_redo.setShortcut(QKeySequence.StandardKey.Redo)
+        self.action_redo.setStatusTip("Redo the last undone parameter change")
+        self.action_redo.triggered.connect(self._redo)
+        edit_menu.addAction(self.action_redo)
+        self._update_undo_redo_actions()
+
+        help_menu = menu_bar.addMenu("&Help")
+        if help_menu is None:
+            raise RuntimeError("MainWindow Help menu could not be created")
 
         for topic_id, topic in HELP_TOPICS.items():
             action = QAction(f"&{topic.title}", self)
@@ -176,14 +198,14 @@ class MainWindow(
             )
             if topic_id == "parameters":
                 action.setShortcut(QKeySequence("F1"))
-            help_menu.addAction(action)  # type: ignore
+            help_menu.addAction(action)
 
-        help_menu.addSeparator()  # type: ignore
+        help_menu.addSeparator()
 
         about_action = QAction("&About", self)
         about_action.setStatusTip("Show information about Movement Optimizer")
         about_action.triggered.connect(self._show_about)
-        help_menu.addAction(about_action)  # type: ignore
+        help_menu.addAction(about_action)
 
     def _show_about(self) -> None:
         """Display an About dialog with app name, version, and description."""
@@ -246,8 +268,6 @@ class MainWindow(
         QShortcut(QKeySequence("Home"), self).activated.connect(self._rewind)
         QShortcut(QKeySequence("End"), self).activated.connect(self._jump_to_end)
         QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._save_solution)
-        QShortcut(QKeySequence.StandardKey.Undo, self).activated.connect(self._undo)
-        QShortcut(QKeySequence.StandardKey.Redo, self).activated.connect(self._redo)
 
     def _connect_slider_undo(self) -> None:
         """Wire sidebar sliders so value changes are recorded on the undo stack."""
@@ -281,10 +301,8 @@ class MainWindow(
                     old_val = prev[0]
                     if new_val != old_val:
                         cmd = SliderChangeCommand(raw_slider, old_val, new_val)
-                        # execute() would move the slider back then to new_val --
-                        # the slider is already at new_val so push without re-executing.
-                        self._undo_stack._undo.append(cmd)
-                        self._undo_stack._redo.clear()
+                        self._undo_stack.record_executed(cmd)
+                        self._update_undo_redo_actions()
                         logger.debug(
                             "Slider %s: %d -> %d recorded",
                             raw_slider.accessibleName(),
@@ -298,15 +316,24 @@ class MainWindow(
             raw.sliderPressed.connect(on_press)
             raw.sliderReleased.connect(on_release)
 
+    def _update_undo_redo_actions(self) -> None:
+        """Keep Edit menu actions synchronized with the undo stack."""
+        if self.action_undo is not None:
+            self.action_undo.setEnabled(self._undo_stack.can_undo)
+        if self.action_redo is not None:
+            self.action_redo.setEnabled(self._undo_stack.can_redo)
+
     def _undo(self) -> None:
         """Undo the last slider change via the undo stack."""
         if self._undo_stack.undo():
             logger.debug("Undo triggered")
+        self._update_undo_redo_actions()
 
     def _redo(self) -> None:
         """Redo the last undone slider change via the undo stack."""
         if self._undo_stack.redo():
             logger.debug("Redo triggered")
+        self._update_undo_redo_actions()
 
     def closeEvent(self, event: Any) -> None:
         self._save_layout()
@@ -347,6 +374,8 @@ class MainWindow(
             return
         try:
             restore_slider_values(self.sidebar, state.get("slider_values", {}))
+            self._undo_stack.clear()
+            self._update_undo_redo_actions()
             self.status_label.setText("Previous session restored (slider values).")
         except (OSError, KeyError, TypeError, ValueError):
             logger.warning("Failed to restore session: %s", traceback.format_exc())

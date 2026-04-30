@@ -155,6 +155,27 @@ class TestUndoStackBasics:
         # Only the last 3 should remain
         assert len(stack._undo) == 3
 
+    def test_default_max_size_is_one_hundred(self) -> None:
+        stack = UndoStack()
+        for i in range(105):
+            stack.push(_CounterCommand([], label=str(i)))
+        assert len(stack._undo) == 100
+
+    def test_record_executed_does_not_execute_command(self) -> None:
+        log: list[str] = []
+        stack = UndoStack()
+        stack.record_executed(_CounterCommand(log))
+        assert log == []
+        assert stack.can_undo
+
+    def test_clear_removes_undo_and_redo_history(self) -> None:
+        stack = UndoStack()
+        stack.push(_CounterCommand([]))
+        stack.undo()
+        stack.clear()
+        assert not stack.can_undo
+        assert not stack.can_redo
+
     def test_invalid_max_size_raises(self) -> None:
         with pytest.raises(ValueError):
             UndoStack(max_size=0)

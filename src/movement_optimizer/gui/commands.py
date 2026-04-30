@@ -46,7 +46,7 @@ class UndoStack:
         ValueError: If *max_size* is not a positive integer.
     """
 
-    def __init__(self, max_size: int = 50) -> None:
+    def __init__(self, max_size: int = 100) -> None:
         if max_size <= 0:
             raise ValueError(f"max_size must be a positive integer, got {max_size!r}")
         self._undo: deque[Command] = deque(maxlen=max_size)
@@ -64,6 +64,16 @@ class UndoStack:
         self._undo.append(cmd)
         self._redo.clear()
         logger.debug("UndoStack: pushed %s (depth=%d)", type(cmd).__name__, len(self._undo))
+
+    def record_executed(self, cmd: Command) -> None:
+        """Record an already-applied command without calling ``execute``.
+
+        This is useful for UI controls that have already changed by the time
+        their completion signal fires, such as ``QSlider.sliderReleased``.
+        """
+        self._undo.append(cmd)
+        self._redo.clear()
+        logger.debug("UndoStack: recorded %s (depth=%d)", type(cmd).__name__, len(self._undo))
 
     def undo(self) -> bool:
         """Undo the most recently executed command.
@@ -94,6 +104,12 @@ class UndoStack:
         self._undo.append(cmd)
         logger.debug("UndoStack: redid %s (depth=%d)", type(cmd).__name__, len(self._undo))
         return True
+
+    def clear(self) -> None:
+        """Remove all undo and redo history."""
+        self._undo.clear()
+        self._redo.clear()
+        logger.debug("UndoStack: cleared")
 
     @property
     def can_undo(self) -> bool:
