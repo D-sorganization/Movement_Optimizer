@@ -86,6 +86,38 @@ class TrajectoryOptimizer:
         progress_cb: Callable[[ProgressReport], None] | None = None,
         cancel_event: threading.Event | None = None,
     ) -> None:
+        """Configure a multi-start trajectory optimiser.
+
+        Args:
+            body: Anthropometric model providing inner-BOS bounds.
+            dynamics: Physics backend implementing :class:`PhysicsBackend`.
+            exercise_type: Identifier such as ``"squat"`` or ``"deadlift"``;
+                selects the COM model and balance constraint.
+            bar_mass: External barbell load in kg.
+            q_start: Initial joint-angle vector, shape ``(n_dof,)`` in rad.
+            q_end: Final joint-angle vector, shape ``(n_dof,)`` in rad.
+            q_bounds: Per-joint ``(lo, hi)`` limits, shape ``(n_dof, 2)``.
+            q_via: Optional intermediate waypoint inserted at the time-grid
+                midpoint. Defaults to None.
+            duration: Movement duration in seconds.
+            n_waypoints: Number of free interior control points (must be
+                >= 4).
+            n_eval: Number of evaluation samples on the dense grid.
+            jerk_weight: Weight on integrated squared jerk.
+            torque_rate_weight: Weight on integrated squared torque rate.
+            endpoint_weight: Weight on endpoint velocity/acceleration damping.
+            smoothness: Global multiplier applied to the three
+                smoothness weights above.
+            n_starts: Number of multi-start SLSQP runs to launch.
+            progress_cb: Optional callback receiving :class:`ProgressReport`
+                snapshots.
+            cancel_event: Optional event; setting it terminates
+                :meth:`optimize` with :class:`CancelledError`.
+
+        Raises:
+            ValueError: If ``n_waypoints < 4`` or ``q_bounds`` has the
+                wrong shape.
+        """
         if n_waypoints < 4:
             raise ValueError("need >= 4 waypoints")
         n_dof = q_bounds.shape[0]
@@ -259,7 +291,18 @@ class TrajectoryOptimizer:
         )
 
     def optimize(self) -> OptimizationResult:
-        """Run parallel multi-start SLSQP and return best result.
+        """Run parallel multi-start SLSQP and return the best result.
+
+        Each start launches an SLSQP run with bounds and inner-BOS
+        constraints; the start with the lowest feasible cost wins.
+
+        Returns:
+            :class:`OptimizationResult` populated with the best
+            trajectory, cost, timing, and feasibility metadata.
+
+        Raises:
+            CancelledError: If ``cancel_event`` was set before the
+                optimisation produced any feasible result.
 
         Complexity:
             O(S * I * (W + N)) total work for fixed 3-DOF trajectories, where

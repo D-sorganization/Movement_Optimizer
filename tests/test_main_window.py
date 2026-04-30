@@ -175,6 +175,9 @@ class _FakeSidebar:
     def set_cancellation_available(self, available: bool) -> None:
         self.cancel_btn.enabled = available
 
+    def set_cancelling(self) -> None:
+        self.cancel_btn.enabled = False
+
 
 class _FakeTab:
     """Surrogate for ExerciseTab — records draw calls."""
@@ -365,6 +368,7 @@ class TestCancelOptimization:
         from movement_optimizer.gui.main_window import MainWindow
 
         window = _FakeWindow()
+        window._opt_running = True  # guard only fires when optimization is active
         window.sidebar.cancel_btn.enabled = True
 
         MainWindow._cancel_optimization(window)  # type: ignore[arg-type]
