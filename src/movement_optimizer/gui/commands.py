@@ -132,11 +132,11 @@ class SliderChangeCommand(Command):
         self._new = new_value
 
     def execute(self) -> None:
-        self._slider.blockSignals(True)
+        # Do NOT block signals: setValue must fire valueChanged so that
+        # LabelledSlider._on_change updates the displayed label. Re-entrant
+        # command recording is not a risk here because recording hooks use
+        # sliderPressed/Released, which only fire on user interaction.
         self._slider.setValue(self._new)
-        self._slider.blockSignals(False)
 
     def undo(self) -> None:
-        self._slider.blockSignals(True)
         self._slider.setValue(self._old)
-        self._slider.blockSignals(False)
