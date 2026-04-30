@@ -23,6 +23,7 @@ from typing import Any
 
 import matplotlib
 from PyQt6.QtCore import QSettings, QTimer, pyqtSignal
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
@@ -36,6 +37,7 @@ from ..trajectory import (
     SolutionCache,
 )
 from .animation_control import AnimationControlMixin
+from .commands import SliderChangeCommand, UndoStack
 from .comparison_mixin import ComparisonMixin
 from .file_operations import FileOperationsMixin
 from .optimization_mixin import OptimizationMixin
@@ -120,9 +122,13 @@ class MainWindow(
 
         self._settings = QSettings("D-sorganization", "Movement-Optimizer")
 
+        self._undo_stack = UndoStack()
+
         self._build_ui()
         self.setStyleSheet(QSS)
         self._restore_layout()
+        self._connect_slider_undo()
+        self._install_shortcuts()
 
     def _build_ui(self) -> None:
         (
@@ -162,6 +168,70 @@ class MainWindow(
                 "speed_changed": self._on_speed,
             }
         )
+
+    def _install_shortcuts(self) -> None:
+        """Install Ctrl+Z / Ctrl+Y undo/redo keyboard shortcuts."""
+        QShortcut(QKeySequence.StandardKey.Undo, self).activated.connect(self._undo)
+        QShortcut(QKeySequence.StandardKey.Redo, self).activated.connect(self._redo)
+
+    def _connect_slider_undo(self) -> None:
+        """Wire sidebar sliders so value changes are recorded on the undo stack."""
+        slider_names = [
+            "mass_slider",
+            "height_slider",
+            "ll_slider",
+            "ul_slider",
+            "to_slider",
+            "bar_slider",
+            "bar_depth_slider",
+            "bar_height_slider",
+            "dur_slider",
+            "smooth_slider",
+        ]
+        for name in slider_names:
+            labelled = getattr(self.sidebar, name, None)
+            if labelled is None:
+                logger.warning("_connect_slider_undo: sidebar has no attribute %r", name)
+                continue
+            raw = labelled.slider
+
+            def _make_handler(raw_slider):
+                prev: list[int] = [raw_slider.value()]
+
+                def _on_press():
+                    prev[0] = raw_slider.value()
+
+                def _on_release():
+                    new_val = raw_slider.value()
+                    old_val = prev[0]
+                    if new_val != old_val:
+                        cmd = SliderChangeCommand(raw_slider, old_val, new_val)
+                        # The slider is already at new_val; append directly without
+                        # calling execute() to avoid a redundant setValue round-trip.
+                        self._undo_stack._undo.append(cmd)
+                        self._undo_stack._redo.clear()
+                        logger.debug(
+                            "Slider %s: %d -> %d recorded",
+                            raw_slider.accessibleName(),
+                            old_val,
+                            new_val,
+                        )
+
+                return _on_press, _on_release
+
+            on_press, on_release = _make_handler(raw)
+            raw.sliderPressed.connect(on_press)
+            raw.sliderReleased.connect(on_release)
+
+    def _undo(self) -> None:
+        """Undo the last slider change via the undo stack."""
+        if self._undo_stack.undo():
+            logger.debug("Undo triggered")
+
+    def _redo(self) -> None:
+        """Redo the last undone slider change via the undo stack."""
+        if self._undo_stack.redo():
+            logger.debug("Redo triggered")
 
     def closeEvent(self, event: Any) -> None:
         self._save_layout()
