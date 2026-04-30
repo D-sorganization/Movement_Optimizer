@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from .result_analysis import ResultAnalyzer
+
 if TYPE_CHECKING:
     from .trajectory.result import OptimizationResult
 
@@ -105,6 +107,43 @@ def _write_torques_sheet(ws, result: OptimizationResult) -> None:
         ws.append(row)
 
 
+def _write_statistics_sheet(ws, result: OptimizationResult) -> None:
+    """Populate the Statistics worksheet with summary metrics and recommendations."""
+    analyzer = ResultAnalyzer(result)
+
+    ws.append(
+        [
+            "Joint",
+            "Mean (N*m)",
+            "Std dev (N*m)",
+            "Min (N*m)",
+            "Max (N*m)",
+            "Peak |tau| (N*m)",
+            "RMS (N*m)",
+        ]
+    )
+    for stat in analyzer.torque_statistics():
+        ws.append(
+            [
+                stat.joint,
+                round(stat.mean_nm, 3),
+                round(stat.std_nm, 3),
+                round(stat.min_nm, 3),
+                round(stat.max_nm, 3),
+                round(stat.peak_abs_nm, 3),
+                round(stat.rms_nm, 3),
+            ]
+        )
+
+    ws.append([])
+    ws.append(["Balance assessment", analyzer.balance_assessment()])
+    ws.append(["COM range from trajectory (cm)", round(analyzer.com_range_cm(), 3)])
+    ws.append([])
+    ws.append(["Recommendations"])
+    for recommendation in analyzer.recommendations():
+        ws.append([recommendation])
+
+
 def export_to_excel(
     result: OptimizationResult,
     path: str | Path,
@@ -114,13 +153,15 @@ def export_to_excel(
 ) -> None:
     """Export optimization result to an Excel workbook with multiple sheets.
 
-    Creates three sheets:
+    Creates four sheets:
 
     * **Summary** - key parameters and per-joint statistics (peak torque,
       mean torque, RMS torque) plus convergence status.
     * **Trajectory** - time-series columns ``time``, ``q1``-``q3`` (degrees),
       ``dq1``-``dq3`` (deg/s).
     * **Torques** - time-series columns ``time``, ``tau1``-``tau3`` (N*m).
+    * **Statistics** - mean, standard deviation, range, peak, RMS, balance
+      assessment, and result-driven recommendations.
 
     Args:
         result: Completed :class:`~movement_optimizer.trajectory.OptimizationResult`.
@@ -164,6 +205,9 @@ def export_to_excel(
 
     ws_torques = wb.create_sheet("Torques")
     _write_torques_sheet(ws_torques, result)
+
+    ws_statistics = wb.create_sheet("Statistics")
+    _write_statistics_sheet(ws_statistics, result)
 
     safe_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(str(safe_path))

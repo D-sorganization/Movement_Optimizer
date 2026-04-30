@@ -14,8 +14,8 @@ from movement_optimizer.export_excel import export_to_excel
 
 
 class TestExportToExcel:
-    def test_creates_file_with_three_sheets(self, tmp_path):
-        """export_to_excel creates an .xlsx file with Summary, Trajectory, Torques sheets."""
+    def test_creates_file_with_expected_sheets(self, tmp_path):
+        """export_to_excel creates workbook sheets for summary, data, and statistics."""
         result = make_test_result()
         path = tmp_path / "out.xlsx"
 
@@ -23,7 +23,7 @@ class TestExportToExcel:
 
         assert path.exists()
         wb = openpyxl.load_workbook(str(path))
-        assert set(wb.sheetnames) == {"Summary", "Trajectory", "Torques"}
+        assert set(wb.sheetnames) == {"Summary", "Trajectory", "Torques", "Statistics"}
 
     def test_summary_sheet_has_non_empty_data(self, tmp_path):
         """The Summary sheet contains at least one row of non-empty data."""
@@ -100,3 +100,19 @@ class TestExportToExcel:
         assert "Deadlift" in all_values
         assert 80.0 in all_values
         assert 1.82 in all_values
+
+    def test_statistics_sheet_contains_required_metrics(self, tmp_path):
+        """The Statistics sheet includes mean, std, min, max, and recommendations."""
+        result = make_test_result()
+        path = tmp_path / "stats.xlsx"
+
+        export_to_excel(result, path)
+
+        wb = openpyxl.load_workbook(str(path))
+        ws = wb["Statistics"]
+        values = [cell for row in ws.iter_rows(values_only=True) for cell in row if cell]
+        assert "Mean (N*m)" in values
+        assert "Std dev (N*m)" in values
+        assert "Min (N*m)" in values
+        assert "Max (N*m)" in values
+        assert "Recommendations" in values
