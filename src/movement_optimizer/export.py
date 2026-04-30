@@ -178,6 +178,8 @@ def export_result_json(
         raise ValueError(f"data must be a dict, got {type(data).__name__}")
     safe_path = _validate_export_path(path, base_dir)
     safe_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"format_version": EXPORT_FORMAT_VERSION, **data}
+    # Put format_version last in the merge so caller-supplied keys cannot
+    # accidentally override the canonical version tag.
+    payload = {**data, "format_version": EXPORT_FORMAT_VERSION}
     safe_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     logger.info("Exported result JSON to %s", safe_path)
