@@ -32,8 +32,26 @@ logger = logging.getLogger(__name__)
 def build_body_params(sidebar) -> None:
     grp = QGroupBox("Body Parameters")
     lay = QVBoxLayout(grp)
-    sidebar.mass_slider = LabelledSlider("Body Mass", 40, 150, 75, "kg", 0)
-    sidebar.height_slider = LabelledSlider("Height", 1.40, 2.10, 1.75, "m", 2)
+    sidebar.mass_slider = LabelledSlider(
+        "Body Mass (kg)",
+        40,
+        150,
+        75,
+        "kg",
+        0,
+        tooltip="Body mass of the lifter in kilograms (typically 50-150 kg)."
+        " Affects segment inertia and gravitational loading throughout the movement.",
+    )
+    sidebar.height_slider = LabelledSlider(
+        "Height (m)",
+        1.40,
+        2.10,
+        1.75,
+        "m",
+        2,
+        tooltip="Standing height of the lifter in metres (typically 1.40-2.10 m)."
+        " Used to scale all segment lengths via anthropometric fractions.",
+    )
     lay.addWidget(sidebar.mass_slider)
     lay.addWidget(sidebar.height_slider)
     sidebar.main_layout.addWidget(grp)
@@ -45,9 +63,36 @@ def build_segment_lengths(sidebar) -> None:
     hint = QLabel("Multipliers on base length")
     hint.setProperty("class", "dim")
     lay.addWidget(hint)
-    sidebar.ll_slider = LabelledSlider("Lower Leg", 0.70, 1.30, 1.00, "x", 2)
-    sidebar.ul_slider = LabelledSlider("Upper Leg", 0.70, 1.30, 1.00, "x", 2)
-    sidebar.to_slider = LabelledSlider("Torso", 0.70, 1.30, 1.00, "x", 2)
+    sidebar.ll_slider = LabelledSlider(
+        "Lower Leg (x)",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Multiplier on the base lower-leg (shank) segment length (0.70-1.30)."
+        " 1.00 = default anthropometric fraction of height.",
+    )
+    sidebar.ul_slider = LabelledSlider(
+        "Upper Leg (x)",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Multiplier on the base upper-leg (thigh) segment length (0.70-1.30)."
+        " 1.00 = default anthropometric fraction of height.",
+    )
+    sidebar.to_slider = LabelledSlider(
+        "Torso (x)",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Multiplier on the base torso segment length (0.70-1.30)."
+        " 1.00 = default anthropometric fraction of height.",
+    )
     lay.addWidget(sidebar.ll_slider)
     lay.addWidget(sidebar.ul_slider)
     lay.addWidget(sidebar.to_slider)
@@ -60,11 +105,38 @@ def build_barbell(sidebar) -> None:
     hint = QLabel(f"Olympic bar = {BAR_MASS_KG:.0f} kg")
     hint.setProperty("class", "dim")
     lay.addWidget(hint)
-    sidebar.bar_slider = LabelledSlider("Total Bar + Plates", 0, 300, 60, "kg", 0)
+    sidebar.bar_slider = LabelledSlider(
+        "Total Bar + Plates (kg)",
+        0,
+        300,
+        60,
+        "kg",
+        0,
+        tooltip="Combined mass of the barbell and any loaded plates in kilograms (0-300 kg)."
+        " An unloaded Olympic bar weighs 20 kg.",
+    )
     lay.addWidget(sidebar.bar_slider)
-    sidebar.bar_depth_slider = LabelledSlider("Bar Back Offset", 0.0, 0.4, 0.0, "m", 2)
+    sidebar.bar_depth_slider = LabelledSlider(
+        "Bar Back Offset (m)",
+        0.0,
+        0.4,
+        0.0,
+        "m",
+        2,
+        tooltip="Horizontal distance (m) the bar is displaced behind the shoulder contact point"
+        " (0.00-0.40 m). Use for high-bar vs low-bar squat setups.",
+    )
     lay.addWidget(sidebar.bar_depth_slider)
-    sidebar.bar_height_slider = LabelledSlider("Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2)
+    sidebar.bar_height_slider = LabelledSlider(
+        "Bar Drop Offset (m)",
+        0.0,
+        0.4,
+        0.0,
+        "m",
+        2,
+        tooltip="Vertical distance (m) the bar sits below the default shoulder height"
+        " (0.00-0.40 m). Positive values lower the bar contact point.",
+    )
     lay.addWidget(sidebar.bar_height_slider)
     sidebar.main_layout.addWidget(grp)
 
@@ -93,8 +165,26 @@ def build_optimization(sidebar) -> None:
                 )
     model_row.addWidget(sidebar.model_combo)
     lay.addLayout(model_row)
-    sidebar.dur_slider = LabelledSlider("Duration", 0.5, 5.0, 2.0, "s", 1)
-    sidebar.smooth_slider = LabelledSlider("Smoothness", 0.1, 5.0, 1.0, "x", 1)
+    sidebar.dur_slider = LabelledSlider(
+        "Duration (s)",
+        0.5,
+        5.0,
+        2.0,
+        "s",
+        1,
+        tooltip="Total movement duration in seconds (0.5-5.0 s)."
+        " Shorter durations produce faster, more dynamic trajectories.",
+    )
+    sidebar.smooth_slider = LabelledSlider(
+        "Smoothness (x)",
+        0.1,
+        5.0,
+        1.0,
+        "x",
+        1,
+        tooltip="Penalty weight on joint-torque rate of change (0.1-5.0)."
+        " Higher values encourage smoother torque transitions.",
+    )
     hint = QLabel("Higher = smoother torques")
     hint.setProperty("class", "dim")
     lay.addWidget(sidebar.dur_slider)
