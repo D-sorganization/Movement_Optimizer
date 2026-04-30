@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -348,7 +348,7 @@ def save_solution(
     data = {
         "schema_version": SCHEMA_VERSION,
         "format_version": RESULT_FORMAT_VERSION,
-        "export_timestamp": datetime.now(UTC).isoformat(),
+        "export_timestamp": datetime.now(timezone.utc).isoformat(),
         "export_app_version": __version__,
         "exercise_type": exercise_type,
         "bar_mass": bar_mass,
