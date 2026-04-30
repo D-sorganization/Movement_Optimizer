@@ -19,6 +19,16 @@ from movement_optimizer.models import (
 from movement_optimizer.trajectory import OptimizationResult, TrajectoryOptimizer
 
 
+@pytest.fixture(scope="session")
+def qapp():
+    from PyQt6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app
+
+
 def make_test_result(seed: int = 42, cost: float = 42.5) -> OptimizationResult:
     """Create a minimal OptimizationResult for testing.
 

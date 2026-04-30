@@ -19,7 +19,6 @@ from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from ..export import export_animation_gif, export_plots_pdf, export_plots_png
 from ..export_excel import export_to_excel
-from ..import_results import import_result_from_json
 from ..persistence import InvalidStateFileError, load_solution, save_solution
 from ..trajectory import OptimizationResult
 
@@ -172,7 +171,9 @@ class FileOperationsMixin:
         try:
             mass = getattr(body, "mass", None)
             height = getattr(body, "height", None)
-            export_to_excel(r, path, exercise_name=exercise_name, body_mass_kg=mass, body_height_m=height)
+            export_to_excel(
+                r, path, exercise_name=exercise_name, body_mass_kg=mass, body_height_m=height
+            )
             self.status_label.setText(f"Exported: {os.path.basename(path)}")
             QMessageBox.information(self, "Exported", f"Excel workbook saved to:\n{path}")
         except ImportError as e:
