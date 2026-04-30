@@ -80,6 +80,8 @@ jobs:
           fi
           python -m venv .ci-venv
           . .ci-venv/bin/activate
+          export PIP_NO_CACHE_DIR=1
+          export PIP_DEFAULT_TIMEOUT=120
           pip_retry() {
             for attempt in 1 2 3; do
               python -m pip "$@" && return 0
@@ -158,6 +160,8 @@ jobs:
         run: |
           python -m venv .ci-venv
           . .ci-venv/bin/activate
+          export PIP_NO_CACHE_DIR=1
+          export PIP_DEFAULT_TIMEOUT=120
           pip_retry() {
             for attempt in 1 2 3; do
               python -m pip "$@" && return 0
