@@ -169,7 +169,8 @@ class FileOperationsMixin:
         if not path:
             return
         try:
-            mass = getattr(body, "mass", None)
+            body = self.bodies_list[idx]
+            mass = getattr(body, "body_mass", None)  # BodyModel uses body_mass, not mass
             height = getattr(body, "height", None)
             export_to_excel(
                 r, path, exercise_name=exercise_name, body_mass_kg=mass, body_height_m=height
