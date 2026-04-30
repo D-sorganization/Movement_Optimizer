@@ -52,9 +52,11 @@ def build_central_widget(
     outer.addLayout(content_row, stretch=1)
 
     # Sidebar collapse / expand toggle button.
-    sidebar_toggle_btn = QPushButton("◀")
+    sidebar_toggle_btn = QPushButton("Hide sidebar")
     sidebar_toggle_btn.setToolTip("Collapse/expand sidebar")
-    sidebar_toggle_btn.setFixedWidth(20)
+    sidebar_toggle_btn.setAccessibleName("Hide sidebar")
+    sidebar_toggle_btn.setAccessibleDescription("Hide the parameter sidebar.")
+    sidebar_toggle_btn.setMinimumWidth(96)
     sidebar_toggle_btn.setMinimumHeight(36)
 
     splitter = QSplitter(Qt.Orientation.Horizontal)

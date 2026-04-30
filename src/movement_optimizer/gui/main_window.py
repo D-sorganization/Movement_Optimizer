@@ -153,7 +153,14 @@ class MainWindow(
         """Collapse or expand the parameter sidebar."""
         visible = self.sidebar.isVisible()
         self.sidebar.setVisible(not visible)
-        self._sidebar_toggle_btn.setText("▶" if visible else "◀")
+        if visible:
+            self._sidebar_toggle_btn.setText("Show sidebar")
+            self._sidebar_toggle_btn.setAccessibleName("Show sidebar")
+            self._sidebar_toggle_btn.setAccessibleDescription("Show the parameter sidebar.")
+        else:
+            self._sidebar_toggle_btn.setText("Hide sidebar")
+            self._sidebar_toggle_btn.setAccessibleName("Hide sidebar")
+            self._sidebar_toggle_btn.setAccessibleDescription("Hide the parameter sidebar.")
 
     def _build_menu_bar(self) -> None:
         """Add the Help menu to the application menu bar."""

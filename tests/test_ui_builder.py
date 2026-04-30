@@ -1,6 +1,6 @@
 # Copyright (c) 2026 D-Sorganization. All rights reserved.
 import pytest
-from PyQt6.QtWidgets import QLabel, QTabWidget, QWidget
+from PyQt6.QtWidgets import QLabel, QPushButton, QTabWidget, QWidget
 
 from movement_optimizer.gui.ui_builder import build_central_widget
 from movement_optimizer.gui.widgets import ParameterSidebar, PlaybackControls
@@ -53,3 +53,60 @@ class TestUIBuilder:
         assert controls.frame_label.text() == "Frame 4/12"
         assert controls.speed_label.text() == "1.5x"
         assert controls.speed_multiplier() == pytest.approx(1.5)
+
+    def test_playback_buttons_have_visible_labels_and_accessible_metadata(self, qapp):
+        controls = PlaybackControls()
+
+        buttons = (
+            controls.btn_rewind,
+            controls.btn_back,
+            controls.btn_play,
+            controls.btn_fwd,
+        )
+        for button in buttons:
+            assert _has_visible_word_label(button)
+            assert button.accessibleName()
+            assert button.accessibleDescription()
+
+        controls.set_playing(True)
+
+        assert controls.btn_play.text() == "Pause"
+        assert controls.btn_play.accessibleName() == "Pause"
+        assert controls.btn_play.accessibleDescription()
+
+    def test_sidebar_action_buttons_have_accessible_metadata(self, qapp):
+        window = QWidget()
+        (
+            _central,
+            sidebar,
+            _tabs,
+            _exercise_tabs,
+            _controls,
+            _status_label,
+            sidebar_toggle_btn,
+        ) = build_central_widget(window, (("Squat", "squat"),))
+
+        buttons = [
+            sidebar_toggle_btn,
+            sidebar.opt_btn,
+            sidebar.both_btn,
+            sidebar.cancel_btn,
+            sidebar.export_btn,
+            sidebar.reset_btn,
+            sidebar.save_btn,
+            sidebar.load_btn,
+            sidebar.export_video_btn,
+            sidebar.export_plots_btn,
+            sidebar.export_excel_btn,
+            sidebar.add_compare_btn,
+            sidebar.compare_btn,
+            sidebar.clear_compare_btn,
+        ]
+        for button in buttons:
+            assert _has_visible_word_label(button)
+            assert button.accessibleName()
+            assert button.accessibleDescription()
+
+
+def _has_visible_word_label(button: QPushButton) -> bool:
+    return any(char.isalnum() for char in button.text())

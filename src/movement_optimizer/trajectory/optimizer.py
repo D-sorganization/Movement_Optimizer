@@ -271,7 +271,7 @@ class TrajectoryOptimizer:
 
     def _minimize_single(
         self, x0: NDArray, cost_fn: Callable, max_iter: int = MAX_ITER_PER_START
-    ) -> 'Any':
+    ) -> Any:
         return run_minimize(
             x0,
             cost_fn,
@@ -281,7 +281,7 @@ class TrajectoryOptimizer:
             max_iter=max_iter,
         )
 
-    def _run_single_start(self, seed: int) -> tuple['Any', int] | None:
+    def _run_single_start(self, seed: int) -> tuple[Any, int] | None:
         return run_single_start(
             seed,
             self._perturbed_guess,
@@ -355,7 +355,7 @@ class TrajectoryOptimizer:
         self._record_result_metrics(result, mode="single")
         return result
 
-    def _finalize_parallel_results(self, results: list[tuple['Any', int]]) -> OptimizationResult:
+    def _finalize_parallel_results(self, results: list[tuple[Any, int]]) -> OptimizationResult:
         """Select the best result, log summary, and package output."""
         if not results:
             raise CancelledError("All optimization starts were cancelled")
@@ -387,9 +387,7 @@ class TrajectoryOptimizer:
         metrics.observe("trajectory_optimization_cost", result.cost, **labels)
         metrics.observe("trajectory_optimization_evaluations", result.n_evals, **labels)
 
-    def _check_solution_feasibility(
-        self, res: 'Any', q: NDArray, com_x: NDArray
-    ) -> tuple[bool, int]:
+    def _check_solution_feasibility(self, res: Any, q: NDArray, com_x: NDArray) -> tuple[bool, int]:
         """Assess cost finiteness, COM bounds, and joint-limit violations.
 
         Args:
@@ -409,7 +407,7 @@ class TrajectoryOptimizer:
         return cost_finite and com_in_bounds, n_viol
 
     def _package_results(
-        self, res: 'Any', elapsed: float = 0.0, n_evals: int = 0
+        self, res: Any, elapsed: float = 0.0, n_evals: int = 0
     ) -> OptimizationResult:
         """Evaluate trajectories, assess feasibility, and build the result.
 
