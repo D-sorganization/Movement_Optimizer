@@ -142,8 +142,12 @@ class MainWindow(
     def _build_menu_bar(self) -> None:
         """Add the Help menu to the application menu bar."""
         menu_bar = self.menuBar()
+        if menu_bar is None:
+            return
 
         help_menu = menu_bar.addMenu("&Help")
+        if help_menu is None:
+            return
 
         about_action = QAction("&About", self)
         about_action.setStatusTip("Show information about Movement Optimizer")
