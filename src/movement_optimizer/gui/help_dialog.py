@@ -1,9 +1,10 @@
 # Copyright (c) 2026 D-Sorganization. All rights reserved.
-"""ParameterHelpDialog: scrollable parameter-guide dialog for the Help menu."""
+"""Offline help dialogs for the GUI Help menu."""
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import ClassVar
 
 from PyQt6.QtCore import Qt
@@ -13,6 +14,8 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QLabel,
     QScrollArea,
+    QTabWidget,
+    QTextBrowser,
     QVBoxLayout,
     QWidget,
 )
@@ -20,8 +23,79 @@ from PyQt6.QtWidgets import (
 logger = logging.getLogger(__name__)
 
 
-class ParameterHelpDialog(QDialog):
-    """Shows a scrollable list of parameter descriptions with units and ranges.
+@dataclass(frozen=True)
+class HelpTopic:
+    """Single offline help topic shown in the help center."""
+
+    title: str
+    body: str
+
+
+HELP_TOPICS: dict[str, HelpTopic] = {
+    "getting_started": HelpTopic(
+        "Getting Started",
+        """
+        <h2>Getting Started</h2>
+        <ol>
+          <li>Select an exercise tab such as Bottoms Up Squat or Deadlift.</li>
+          <li>Set body mass, height, bar load, and movement duration in the sidebar.</li>
+          <li>Click <b>Run Optimization</b> or press <b>Ctrl+R</b>.</li>
+          <li>Review the animation, joint-angle plots, torque plots, and balance summary.</li>
+        </ol>
+        <p>If a solve fails, reduce the bar load, increase duration, or reset defaults
+        before trying again.</p>
+        """,
+    ),
+    "parameters": HelpTopic(
+        "Parameter Guide",
+        "Use the parameter table for units, valid ranges, and modeling impact.",
+    ),
+    "results": HelpTopic(
+        "Understanding Results",
+        """
+        <h2>Understanding Results</h2>
+        <p><b>Angles</b> show joint positions over time. <b>Torques</b> show the
+        rotational effort required at each joint in N*m. <b>Power</b> combines torque
+        and joint velocity. <b>COM</b> plots show whether the center of mass stays
+        inside the base of support.</p>
+        <p>Lower cost is generally better for the configured objective, but it should
+        be interpreted together with balance, peak torques, and movement realism.</p>
+        """,
+    ),
+    "troubleshooting": HelpTopic(
+        "Troubleshooting Optimization",
+        """
+        <h2>Troubleshooting Optimization</h2>
+        <p>If the optimizer cannot find a balanced trajectory:</p>
+        <ul>
+          <li>Increase movement duration for a slower, easier movement.</li>
+          <li>Reduce barbell mass.</li>
+          <li>Reset segment multipliers to 1.0.</li>
+          <li>Check that bar offsets are physically plausible.</li>
+          <li>Try a less demanding exercise or range of motion.</li>
+        </ul>
+        """,
+    ),
+    "glossary": HelpTopic(
+        "Glossary",
+        "Common biomechanics and optimization terms used by Movement Optimizer.",
+    ),
+}
+
+
+GLOSSARY: dict[str, str] = {
+    "BOS": "Base of support: the stable area under the foot.",
+    "COM": "Center of mass: the weighted average position of the model mass.",
+    "Cost": "Objective value minimized by the optimizer; lower is generally better.",
+    "N*m": "Newton-meter, the unit used for joint torque.",
+    "ROM": "Range of motion: the angular distance covered by a joint or movement.",
+    "Spline": "A smooth curve used to interpolate movement waypoints.",
+    "Torque": "Rotational force required at a joint.",
+}
+
+
+class HelpCenterDialog(QDialog):
+    """Shows offline help topics, parameter descriptions, and glossary terms.
 
     Precondition: parent must be a QWidget or None.
     """
@@ -87,25 +161,48 @@ class ParameterHelpDialog(QDialog):
         ),
     }
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, initial_topic: str = "parameters") -> None:
         super().__init__(parent)
-        self.setWindowTitle("Parameter Guide")
-        self.setMinimumWidth(560)
-        self.setMinimumHeight(480)
+        self.setWindowTitle("Movement Optimizer Help")
+        self.setMinimumWidth(680)
+        self.setMinimumHeight(560)
+        self._topic_indexes: dict[str, int] = {}
         self._build_ui()
+        self.select_topic(initial_topic)
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
         outer.setContentsMargins(12, 12, 12, 12)
         outer.setSpacing(8)
 
-        header = QLabel(
-            "Each parameter below controls a physical property of the model. "
-            "Adjust sliders on the left-hand sidebar to change their values."
-        )
+        header = QLabel("Offline help for setup, parameters, results, troubleshooting, and terms.")
         header.setWordWrap(True)
         outer.addWidget(header)
 
+        self.tabs = QTabWidget()
+        outer.addWidget(self.tabs, stretch=1)
+
+        for topic_id, topic in HELP_TOPICS.items():
+            widget: QWidget
+            if topic_id == "parameters":
+                widget = self._build_parameter_tab()
+            elif topic_id == "glossary":
+                widget = self._build_glossary_tab()
+            else:
+                widget = self._build_text_tab(topic.body)
+            self._topic_indexes[topic_id] = self.tabs.addTab(widget, topic.title)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(self.accept)
+        outer.addWidget(buttons)
+
+    def _build_text_tab(self, html: str) -> QTextBrowser:
+        browser = QTextBrowser()
+        browser.setOpenExternalLinks(False)
+        browser.setHtml(html)
+        return browser
+
+    def _build_parameter_tab(self) -> QScrollArea:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -142,8 +239,43 @@ class ParameterHelpDialog(QDialog):
 
         content.setLayout(grid)
         scroll.setWidget(content)
-        outer.addWidget(scroll)
+        return scroll
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        buttons.rejected.connect(self.accept)
-        outer.addWidget(buttons)
+    def _build_glossary_tab(self) -> QScrollArea:
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        content = QWidget()
+        grid = QGridLayout(content)
+        grid.setContentsMargins(4, 4, 4, 4)
+        grid.setSpacing(8)
+        grid.setColumnStretch(1, 1)
+
+        for row, (term, definition) in enumerate(GLOSSARY.items()):
+            term_label = QLabel(f"<b>{term}</b>")
+            term_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+            definition_label = QLabel(definition)
+            definition_label.setWordWrap(True)
+            definition_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+            grid.addWidget(term_label, row, 0)
+            grid.addWidget(definition_label, row, 1)
+
+        content.setLayout(grid)
+        scroll.setWidget(content)
+        return scroll
+
+    def select_topic(self, topic_id: str) -> None:
+        """Select the requested topic tab, defaulting to the parameter guide."""
+        self.tabs.setCurrentIndex(
+            self._topic_indexes.get(topic_id, self._topic_indexes["parameters"])
+        )
+
+
+class ParameterHelpDialog(HelpCenterDialog):
+    """Backward-compatible parameter-guide entrypoint."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent, initial_topic="parameters")

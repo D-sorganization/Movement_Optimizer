@@ -40,7 +40,7 @@ from .animation_control import AnimationControlMixin
 from .commands import SliderChangeCommand, UndoStack
 from .comparison_mixin import ComparisonMixin
 from .file_operations import FileOperationsMixin
-from .help_dialog import ParameterHelpDialog
+from .help_dialog import HELP_TOPICS, HelpCenterDialog
 from .optimization_mixin import OptimizationMixin
 from .session_state import collect_results, collect_slider_values, restore_slider_values
 from .stylesheet import QSS
@@ -168,16 +168,22 @@ class MainWindow(
 
         help_menu = menu_bar.addMenu("&Help")  # type: ignore
 
+        for topic_id, topic in HELP_TOPICS.items():
+            action = QAction(f"&{topic.title}", self)
+            action.setStatusTip(f"Open help topic: {topic.title}")
+            action.triggered.connect(
+                lambda _checked=False, tid=topic_id: self._show_help_topic(tid)
+            )
+            if topic_id == "parameters":
+                action.setShortcut(QKeySequence("F1"))
+            help_menu.addAction(action)  # type: ignore
+
+        help_menu.addSeparator()  # type: ignore
+
         about_action = QAction("&About", self)
         about_action.setStatusTip("Show information about Movement Optimizer")
         about_action.triggered.connect(self._show_about)
         help_menu.addAction(about_action)  # type: ignore
-
-        guide_action = QAction("&Parameter Guide", self)
-        guide_action.setShortcut(QKeySequence("F1"))
-        guide_action.setStatusTip("Open the parameter reference guide")
-        guide_action.triggered.connect(self._show_parameter_guide)
-        help_menu.addAction(guide_action)  # type: ignore
 
     def _show_about(self) -> None:
         """Display an About dialog with app name, version, and description."""
@@ -195,9 +201,9 @@ class MainWindow(
             "&#169; 2026 D-Sorganization. All rights reserved.",
         )
 
-    def _show_parameter_guide(self) -> None:
-        """Open the parameter guide dialog."""
-        dlg = ParameterHelpDialog(self)
+    def _show_help_topic(self, topic_id: str = "parameters") -> None:
+        """Open the offline help center at a specific topic."""
+        dlg = HelpCenterDialog(self, initial_topic=topic_id)
         dlg.exec()
 
     def _connect_signals(self) -> None:
