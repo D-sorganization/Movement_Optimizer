@@ -1,7 +1,9 @@
 # Copyright (c) 2026 D-Sorganization. All rights reserved.
-# mypy: disable-error-code="misc,has-type"
+# mypy: disable-error-code="misc,has-type,override"
 # Mixin pattern: methods annotate self as MainWindow to access its attributes,
 # but mypy cannot verify this pattern without the concrete class in scope.
+# ``override`` is suppressed because mypy treats ``self: MainWindow`` as an
+# incompatible self-type override for the mixin -- this is intentional.
 """Animation playback helpers extracted from MainWindow.
 
 Provides play/pause toggle, step forward/back, rewind, and frame
@@ -19,7 +21,7 @@ if TYPE_CHECKING:
 class AnimationControlMixin:
     """Mixin providing animation playback for MainWindow."""
 
-    def _toggle_play(self: MainWindow) -> None:  # type: ignore[override]
+    def _toggle_play(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         if self.results[idx] is None:
             return
@@ -30,12 +32,12 @@ class AnimationControlMixin:
             self.controls.set_playing(True)
             self._anim_step()
 
-    def _stop_anim(self: MainWindow) -> None:  # type: ignore[override]
+    def _stop_anim(self: MainWindow) -> None:
         self.is_playing = False
         self.anim_timer.stop()
         self.controls.set_playing(False)
 
-    def _anim_step(self: MainWindow) -> None:  # type: ignore[override]
+    def _anim_step(self: MainWindow) -> None:
         if not self.is_playing:
             return
         idx = self.tabs.currentIndex()
@@ -65,7 +67,7 @@ class AnimationControlMixin:
             delay = 700
         self.anim_timer.start(delay)
 
-    def _step_fwd(self: MainWindow) -> None:  # type: ignore[override]
+    def _step_fwd(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:
@@ -78,7 +80,7 @@ class AnimationControlMixin:
             self.anim_frames[idx],
             r,
             self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
+            self.bodies_list[idx],  # type: ignore[arg-type]  # bodies_list[idx] is BodyModel|None; None is guarded: r is None returns early before body is used
             etype,
         )
         self.controls.set_playback_status(
@@ -87,7 +89,7 @@ class AnimationControlMixin:
             self.controls.speed_multiplier(),
         )
 
-    def _step_back(self: MainWindow) -> None:  # type: ignore[override]
+    def _step_back(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:
@@ -100,11 +102,11 @@ class AnimationControlMixin:
             self.anim_frames[idx],
             r,
             self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
+            self.bodies_list[idx],  # type: ignore[arg-type]  # bodies_list[idx] is BodyModel|None; None is guarded: r is None returns early before body is used
             etype,
         )
 
-    def _rewind(self: MainWindow) -> None:  # type: ignore[override]
+    def _rewind(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:
@@ -116,11 +118,11 @@ class AnimationControlMixin:
             0,
             r,
             self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
+            self.bodies_list[idx],  # type: ignore[arg-type]  # bodies_list[idx] is BodyModel|None; None is guarded: r is None returns early before body is used
             etype,
         )
 
-    def _jump_to_end(self: MainWindow) -> None:  # type: ignore[override]
+    def _jump_to_end(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:
@@ -134,7 +136,7 @@ class AnimationControlMixin:
             last_frame,
             r,
             self.dynamics_list[idx],
-            self.bodies_list[idx],  # type: ignore[arg-type]
+            self.bodies_list[idx],  # type: ignore[arg-type]  # bodies_list[idx] is BodyModel|None; None is guarded: r is None returns early before body is used
             etype,
         )
         self.controls.set_playback_status(
@@ -143,5 +145,5 @@ class AnimationControlMixin:
             self.controls.speed_multiplier(),
         )
 
-    def _on_speed(self: MainWindow, speed: float) -> None:  # type: ignore[override]
+    def _on_speed(self: MainWindow, speed: float) -> None:
         self.controls.set_speed_multiplier_text(speed)

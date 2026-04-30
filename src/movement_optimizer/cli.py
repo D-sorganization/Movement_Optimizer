@@ -224,13 +224,13 @@ def _build_optimizer(
     dyn, qs, qe, qb, q_via = _unpack_exercise_config(config)
     opt = TrajectoryOptimizer(
         body,
-        dyn,  # type: ignore[arg-type]
+        dyn,  # type: ignore[arg-type]  # Any from _unpack_exercise_config; is PhysicsBackend at runtime
         exercise,
         bar_mass,
-        qs,  # type: ignore[arg-type]
-        qe,  # type: ignore[arg-type]
-        qb,  # type: ignore[arg-type]
-        q_via=q_via,  # type: ignore[arg-type]
+        qs,  # type: ignore[arg-type]  # Any from _unpack_exercise_config; is NDArray at runtime
+        qe,  # type: ignore[arg-type]  # Any from _unpack_exercise_config; is NDArray at runtime
+        qb,  # type: ignore[arg-type]  # Any from _unpack_exercise_config; is NDArray at runtime
+        q_via=q_via,  # type: ignore[arg-type]  # Any from _unpack_exercise_config; is NDArray|None at runtime
         duration=duration,
         n_waypoints=12,
         smoothness=smoothness,

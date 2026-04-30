@@ -50,7 +50,9 @@ try:
         BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
 
 except ImportError:
-    # Fallback if ud-tools isn't installed
+    # Fallback if ud-tools isn't installed.
+    # [no-redef]: mypy sees both branches of the try/except as unconditional;
+    # at runtime exactly one branch executes, making the re-definition safe.
     class Palette:  # type: ignore[no-redef]
         """Centralised colour definitions."""
 

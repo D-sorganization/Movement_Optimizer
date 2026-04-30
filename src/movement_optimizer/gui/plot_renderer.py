@@ -188,8 +188,10 @@ def plot_spine_loads(
     if exercise_type == "bottoms_up_squat":
         exercise_type = "squat"
 
-    comp = spinal_compression(r.q, r.qd, r.qdd, body, bar_mass, exercise_type)
-    shear = spinal_shear(r.q, r.qd, r.qdd, body, bar_mass, exercise_type)
+    # np.asarray narrows float | NDArray to NDArray so matplotlib fill_between
+    # and comparison operators receive a concrete array type.
+    comp = np.asarray(spinal_compression(r.q, r.qd, r.qdd, body, bar_mass, exercise_type))
+    shear = np.asarray(spinal_shear(r.q, r.qd, r.qdd, body, bar_mass, exercise_type))
 
     ax = ax_comp
     ax.plot(r.t, comp, color=Palette.RED, lw=2, label="L5/S1 compression")
@@ -205,7 +207,7 @@ def plot_spine_loads(
         r.t,
         NIOSH_COMPRESSION_LIMIT,
         comp,
-        where=comp > NIOSH_COMPRESSION_LIMIT,  # type: ignore[arg-type]
+        where=comp > NIOSH_COMPRESSION_LIMIT,
         alpha=0.3,
         color=Palette.RED,
         label="Exceeds limit",

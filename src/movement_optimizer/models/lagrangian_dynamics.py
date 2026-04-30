@@ -366,7 +366,7 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
             Rust and NumPy paths have the same asymptotic complexity.
         """
         try:
-            from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001
+            from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001  # optional Rust extension; falls back to NumPy below
 
             return inverse_dynamics_batch_rs(
                 q,

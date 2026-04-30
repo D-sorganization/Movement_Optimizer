@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class FileOperationsMixin:
     """Mixin providing file I/O actions for MainWindow."""
 
-    def _export(self: MainWindow) -> None:  # type: ignore[misc]
+    def _export(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:
@@ -46,7 +46,7 @@ class FileOperationsMixin:
             return
         _write_csv(self, path, r)
 
-    def _save_solution(self: MainWindow) -> None:  # type: ignore[misc]
+    def _save_solution(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:
@@ -69,7 +69,7 @@ class FileOperationsMixin:
         except (OSError, TypeError, ValueError) as e:
             QMessageBox.critical(self, "Save Error", str(e))
 
-    def _load_solution(self: MainWindow) -> None:  # type: ignore[misc]
+    def _load_solution(self: MainWindow) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Load Solution",
@@ -94,7 +94,7 @@ class FileOperationsMixin:
         except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
             QMessageBox.critical(self, "Load Error", str(e))
 
-    def _export_video(self: MainWindow) -> None:  # type: ignore[misc]
+    def _export_video(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:
@@ -127,7 +127,7 @@ class FileOperationsMixin:
         except (OSError, ValueError, RuntimeError) as e:
             QMessageBox.critical(self, "Export Error", str(e))
 
-    def _export_plots(self: MainWindow) -> None:  # type: ignore[misc]
+    def _export_plots(self: MainWindow) -> None:
         idx = self.tabs.currentIndex()
         r = self.results[idx]
         if r is None:

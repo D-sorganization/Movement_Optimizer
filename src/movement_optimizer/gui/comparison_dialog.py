@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6.QtCore import Qt
@@ -82,7 +83,7 @@ class ComparisonDialog(QWidget):
             )
         return "\n".join(lines)
 
-    def _draw_angles_subplot(self, ax: object, joint_labels: list[str]) -> None:
+    def _draw_angles_subplot(self, ax: Axes, joint_labels: list[str]) -> None:
         """Plot joint-angle curves for all trials on *ax*.
 
         Args:
@@ -94,7 +95,7 @@ class ComparisonDialog(QWidget):
             color = self.TRIAL_COLORS[i % len(self.TRIAL_COLORS)]
             label = trial["name"]
             for j in range(3):
-                ax.plot(  # type: ignore[attr-defined]
+                ax.plot(
                     r.t,
                     np.degrees(r.q[:, j]),
                     color=color,
@@ -103,12 +104,12 @@ class ComparisonDialog(QWidget):
                     label=f"{label} - {joint_labels[j]}" if j == 0 else None,
                     linestyle=["-", "--", ":"][j],
                 )
-        ax.set_title("Joint Angles", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]
-        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
-        ax.set_ylabel("Angle (deg)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
-        ax.legend(fontsize=6, loc="best")  # type: ignore[attr-defined]
+        ax.set_title("Joint Angles", color=Palette.FG, fontsize=9)
+        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
+        ax.set_ylabel("Angle (deg)", color=Palette.FG_DIM, fontsize=8)
+        ax.legend(fontsize=6, loc="best")
 
-    def _draw_torques_subplot(self, ax: object) -> None:
+    def _draw_torques_subplot(self, ax: Axes) -> None:
         """Plot joint-torque curves for all trials on *ax*.
 
         Args:
@@ -119,7 +120,7 @@ class ComparisonDialog(QWidget):
             color = self.TRIAL_COLORS[i % len(self.TRIAL_COLORS)]
             label = trial["name"]
             for j in range(3):
-                ax.plot(  # type: ignore[attr-defined]
+                ax.plot(
                     r.t,
                     r.torques[:, j],
                     color=color,
@@ -128,12 +129,12 @@ class ComparisonDialog(QWidget):
                     label=f"{label}" if j == 0 else None,
                     linestyle=["-", "--", ":"][j],
                 )
-        ax.set_title("Joint Torques", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]
-        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
-        ax.set_ylabel("Torque (Nm)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
-        ax.legend(fontsize=6, loc="best")  # type: ignore[attr-defined]
+        ax.set_title("Joint Torques", color=Palette.FG, fontsize=9)
+        ax.set_xlabel("Time (s)", color=Palette.FG_DIM, fontsize=8)
+        ax.set_ylabel("Torque (Nm)", color=Palette.FG_DIM, fontsize=8)
+        ax.legend(fontsize=6, loc="best")
 
-    def _draw_com_subplot(self, ax: object) -> None:
+    def _draw_com_subplot(self, ax: Axes) -> None:
         """Plot COM trajectory paths for all trials on *ax*.
 
         Args:
@@ -143,7 +144,7 @@ class ComparisonDialog(QWidget):
             r = trial["result"]
             color = self.TRIAL_COLORS[i % len(self.TRIAL_COLORS)]
             label = trial["name"]
-            ax.plot(  # type: ignore[attr-defined]
+            ax.plot(
                 r.com[:, 0],
                 r.com[:, 1],
                 color=color,
@@ -151,11 +152,11 @@ class ComparisonDialog(QWidget):
                 alpha=0.8,
                 label=label,
             )
-        ax.set_title("COM Path", color=Palette.FG, fontsize=9)  # type: ignore[attr-defined]
-        ax.set_xlabel("X (m)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
-        ax.set_ylabel("Y (m)", color=Palette.FG_DIM, fontsize=8)  # type: ignore[attr-defined]
-        ax.legend(fontsize=6, loc="best")  # type: ignore[attr-defined]
-        ax.set_aspect("equal", adjustable="datalim")  # type: ignore[attr-defined]
+        ax.set_title("COM Path", color=Palette.FG, fontsize=9)
+        ax.set_xlabel("X (m)", color=Palette.FG_DIM, fontsize=8)
+        ax.set_ylabel("Y (m)", color=Palette.FG_DIM, fontsize=8)
+        ax.legend(fontsize=6, loc="best")
+        ax.set_aspect("equal", adjustable="datalim")
 
     def _draw_comparison_plots(self) -> None:
         gs = self.fig.add_gridspec(1, 3, hspace=0.3, wspace=0.35)

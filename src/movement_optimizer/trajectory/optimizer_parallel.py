@@ -11,9 +11,19 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
-from typing import Any
+from typing import Any, Protocol
 
 from .result import CancelledError
+
+
+class _HasFun(Protocol):
+    """Minimal interface for objects with a `.fun` cost attribute (e.g. scipy OptimizeResult)."""
+
+    @property
+    def fun(self) -> float:
+        """Objective function value."""
+        ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +118,8 @@ def run_parallel_starts(
 
 
 def select_best_result(
-    results: list[tuple[Any, int]],
-) -> tuple[Any, int]:
+    results: list[tuple[_HasFun, int]],
+) -> tuple[_HasFun, int]:
     """Return the (scipy_result, total_evals) pair with the lowest cost.
 
     Preconditions:
@@ -120,6 +130,6 @@ def select_best_result(
     """
     if not results:
         raise ValueError("select_best_result requires at least one result")
-    best_res, _ = min(results, key=lambda r: float(r[0].fun))  # type: ignore[attr-defined]
+    best_res, _ = min(results, key=lambda r: float(r[0].fun))
     total_evals = sum(n for _, n in results)
     return best_res, total_evals

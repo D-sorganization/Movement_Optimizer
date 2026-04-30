@@ -11,14 +11,32 @@ lives here.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Protocol
+
 import numpy as np
 from numpy.typing import NDArray
 
 from ..constants import JOINT_LIMITS, STANDING_DEG
 
+if TYPE_CHECKING:
+    from .body_model import BodyModel
+
+
+class _DynamicsWithBody(Protocol):
+    """Minimal interface required by balance_pose and _standing_balanced."""
+
+    @property
+    def body(self) -> BodyModel:
+        """The BodyModel (inner_center attribute used for COM targeting)."""
+        ...
+
+    def com_position(self, q: NDArray, exercise_type: str, bar_mass: float) -> NDArray:
+        """Return whole-body COM position [x, y]."""
+        ...
+
 
 def balance_pose(
-    dyn: object,
+    dyn: _DynamicsWithBody,
     q_init: NDArray,
     exercise_type: str,
     bar_mass: float,
@@ -41,7 +59,7 @@ def balance_pose(
     """
     from scipy.optimize import brentq
 
-    body = dyn.body  # type: ignore[attr-defined]
+    body = dyn.body
     target_x = body.inner_center
     # Use actual joint limits from JOINT_LIMITS for the bracket bounds
     # instead of hardcoded values.  For non-monotonic residuals (e.g. hip
@@ -53,7 +71,7 @@ def balance_pose(
     def residual(angle: float) -> float:
         q = q_init.copy()
         q[adjust_joint] = angle
-        return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x  # type: ignore[attr-defined]
+        return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x
 
     # Scan for the first sign change within the bracket.  The residual
     # may be non-monotonic (e.g. hip COM_x peaks mid-range then falls),
@@ -84,7 +102,7 @@ def balance_pose(
     return q
 
 
-def _standing_balanced(dyn: object, bar_mass: float, exercise_type: str) -> NDArray:
+def _standing_balanced(dyn: _DynamicsWithBody, bar_mass: float, exercise_type: str) -> NDArray:
     """Find a near-standing pose with COM at inner BOS center.
 
     Adjusts shin angle (joint 0) to shift COM forward over mid-foot.

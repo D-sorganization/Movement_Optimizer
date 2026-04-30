@@ -27,12 +27,13 @@ from .optimizer_cost import (
 from .optimizer_diagnostics import run_minimize, run_single_start
 from .optimizer_guess import build_bounds, build_initial_guess, build_perturbed_guess
 from .optimizer_packaging import (
+    _OptimizeResult,
     build_result_object,
     check_com_feasibility,
     count_joint_limit_violations,
     evaluate_solution,
 )
-from .optimizer_parallel import run_parallel_starts, select_best_result
+from .optimizer_parallel import _HasFun, run_parallel_starts, select_best_result
 from .optimizer_progress import ProgressTracker, detect_stall
 from .optimizer_spline import build_splines as _build_splines_fn
 from .optimizer_spline import eval_trajectory as _eval_trajectory_fn
@@ -176,7 +177,7 @@ class TrajectoryOptimizer:
         )
 
         if self.exercise_type == "bench_press":
-            segment_lengths = self.dynamics.L  # type: ignore[attr-defined]
+            segment_lengths = self.dynamics.segment_lengths
             total += compute_bench_bar_cost(q, segment_lengths, self.dt)
         else:
             com_x = self.dynamics.com_x_batch(q, self.exercise_type, self.bar_mass)
@@ -311,7 +312,7 @@ class TrajectoryOptimizer:
         self._record_result_metrics(result, mode="single")
         return result
 
-    def _finalize_parallel_results(self, results: list[tuple[object, int]]) -> OptimizationResult:
+    def _finalize_parallel_results(self, results: list[tuple[_HasFun, int]]) -> OptimizationResult:
         """Select the best result, log summary, and package output."""
         if not results:
             raise CancelledError("All optimization starts were cancelled")
@@ -321,7 +322,7 @@ class TrajectoryOptimizer:
 
         logger.info(
             "Optimisation finished: best_cost=%.2f, total_evals=%d, n_starts=%d, time=%.1fs",
-            best_res.fun,  # type: ignore[attr-defined]
+            best_res.fun,
             total_evals,
             len(results),
             elapsed,
@@ -344,7 +345,7 @@ class TrajectoryOptimizer:
         metrics.observe("trajectory_optimization_evaluations", result.n_evals, **labels)
 
     def _check_solution_feasibility(
-        self, res: object, q: NDArray, com_x: NDArray
+        self, res: _OptimizeResult, q: NDArray, com_x: NDArray
     ) -> tuple[bool, int]:
         """Assess cost finiteness, COM bounds, and joint-limit violations.
 
@@ -356,7 +357,7 @@ class TrajectoryOptimizer:
         Returns:
             ``(success, n_joint_limit_violations)``
         """
-        cost_val = float(res.fun)  # type: ignore[attr-defined]
+        cost_val = float(res.fun)
         cost_finite = cost_val < float("inf") and not np.isnan(cost_val)
         com_in_bounds = check_com_feasibility(
             cost_finite, com_x, self.exercise_type, self.inner_heel, self.inner_toe
@@ -365,7 +366,7 @@ class TrajectoryOptimizer:
         return cost_finite and com_in_bounds, n_viol
 
     def _package_results(
-        self, res: object, elapsed: float = 0.0, n_evals: int = 0
+        self, res: _OptimizeResult, elapsed: float = 0.0, n_evals: int = 0
     ) -> OptimizationResult:
         """Evaluate trajectories, assess feasibility, and build the result.
 
