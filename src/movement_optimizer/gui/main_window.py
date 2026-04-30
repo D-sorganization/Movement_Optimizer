@@ -95,7 +95,8 @@ class MainWindow(
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Movement Optimizer")
-        self.setMinimumSize(1280, 830)
+        self.setMinimumSize(800, 600)
+        self.resize(1100, 700)
 
         self.results: list[OptimizationResult | None] = [None] * len(self.EXERCISE_CONFIGS)
         self.dynamics_list: list[Any] = [None] * len(self.EXERCISE_CONFIGS)
@@ -132,9 +133,17 @@ class MainWindow(
             self.exercise_tabs,
             self.controls,
             self.status_label,
+            self._sidebar_toggle_btn,
         ) = build_central_widget(self, self.EXERCISE_CONFIGS)
+        self._sidebar_toggle_btn.clicked.connect(self._toggle_sidebar)
         self.setCentralWidget(central)
         self._connect_signals()
+
+    def _toggle_sidebar(self) -> None:
+        """Collapse or expand the parameter sidebar."""
+        visible = self.sidebar.isVisible()
+        self.sidebar.setVisible(not visible)
+        self._sidebar_toggle_btn.setText("▶" if visible else "◀")
 
     def _connect_signals(self) -> None:
         self.sidebar.connect_action_handlers(

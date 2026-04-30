@@ -44,6 +44,7 @@ class PlaybackControls(QWidget):
         self.btn_fwd.clicked.connect(self.step_fwd.emit)
 
         for btn in (self.btn_rewind, self.btn_back, self.btn_play, self.btn_fwd):
+            btn.setMinimumSize(36, 36)
             layout.addWidget(btn)
 
         layout.addSpacing(12)
