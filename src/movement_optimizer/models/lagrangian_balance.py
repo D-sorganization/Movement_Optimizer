@@ -11,14 +11,41 @@ lives here.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Protocol
+
 import numpy as np
 from numpy.typing import NDArray
 
 from ..constants import JOINT_LIMITS, STANDING_DEG
 
+if TYPE_CHECKING:
+    pass
+
+
+class _DynamicsWithBody(Protocol):
+    """Structural protocol for the dynamics object used in balance helpers.
+
+    Any object providing ``body.inner_center`` and a ``com_position`` method
+    satisfies this protocol at type-check time.
+    """
+
+    @property
+    def body(self) -> object:
+        """Anthropometric body model (must have ``inner_center`` attribute)."""
+        ...
+
+    def com_position(
+        self,
+        q: NDArray,
+        exercise_type: str,
+        bar_mass: float,
+    ) -> NDArray:
+        """Return (x, y) whole-body centre of mass."""
+        ...
+
 
 def balance_pose(
-    dyn: object,
+    dyn: _DynamicsWithBody,
     q_init: NDArray,
     exercise_type: str,
     bar_mass: float,
@@ -41,8 +68,8 @@ def balance_pose(
     """
     from scipy.optimize import brentq
 
-    body = dyn.body  # type: ignore[attr-defined]
-    target_x = body.inner_center
+    body = dyn.body
+    target_x = body.inner_center  # type: ignore[union-attr]  # body is typed as object in Protocol; inner_center is guaranteed by LagrangianDynamics
     # Use actual joint limits from JOINT_LIMITS for the bracket bounds
     # instead of hardcoded values.  For non-monotonic residuals (e.g. hip
     # in a deep squat), scan the bracket to find the first sign change so
@@ -53,7 +80,7 @@ def balance_pose(
     def residual(angle: float) -> float:
         q = q_init.copy()
         q[adjust_joint] = angle
-        return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x  # type: ignore[attr-defined]
+        return dyn.com_position(q, exercise_type, bar_mass)[0] - target_x
 
     # Scan for the first sign change within the bracket.  The residual
     # may be non-monotonic (e.g. hip COM_x peaks mid-range then falls),
@@ -84,7 +111,7 @@ def balance_pose(
     return q
 
 
-def _standing_balanced(dyn: object, bar_mass: float, exercise_type: str) -> NDArray:
+def _standing_balanced(dyn: _DynamicsWithBody, bar_mass: float, exercise_type: str) -> NDArray:
     """Find a near-standing pose with COM at inner BOS center.
 
     Adjusts shin angle (joint 0) to shift COM forward over mid-foot.

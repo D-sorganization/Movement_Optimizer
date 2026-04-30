@@ -23,7 +23,7 @@ from typing import Any
 
 import matplotlib
 from PyQt6.QtCore import QSettings, QTimer, pyqtSignal
-from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtGui import QAction, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
@@ -37,8 +37,10 @@ from ..trajectory import (
     SolutionCache,
 )
 from .animation_control import AnimationControlMixin
+from .commands import SliderChangeCommand, UndoStack
 from .comparison_mixin import ComparisonMixin
 from .file_operations import FileOperationsMixin
+from .help_dialog import ParameterHelpDialog
 from .optimization_mixin import OptimizationMixin
 from .session_state import collect_results, collect_slider_values, restore_slider_values
 from .stylesheet import QSS
@@ -96,7 +98,8 @@ class MainWindow(
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Movement Optimizer")
-        self.setMinimumSize(1280, 830)
+        self.setMinimumSize(800, 600)
+        self.resize(1100, 700)
 
         self.results: list[OptimizationResult | None] = [None] * len(self.EXERCISE_CONFIGS)
         self.dynamics_list: list[Any] = [None] * len(self.EXERCISE_CONFIGS)
@@ -123,9 +126,12 @@ class MainWindow(
 
         self._settings = QSettings("D-sorganization", "Movement-Optimizer")
 
+        self._undo_stack = UndoStack()
+
         self._build_ui()
         self.setStyleSheet(QSS)
         self._restore_layout()
+        self._connect_slider_undo()
         self._install_shortcuts()
 
     def _build_ui(self) -> None:
@@ -136,9 +142,56 @@ class MainWindow(
             self.exercise_tabs,
             self.controls,
             self.status_label,
+            self._sidebar_toggle_btn,
         ) = build_central_widget(self, self.EXERCISE_CONFIGS)
+        self._sidebar_toggle_btn.clicked.connect(self._toggle_sidebar)
         self.setCentralWidget(central)
+        self._build_menu_bar()
         self._connect_signals()
+
+    def _toggle_sidebar(self) -> None:
+        """Collapse or expand the parameter sidebar."""
+        visible = self.sidebar.isVisible()
+        self.sidebar.setVisible(not visible)
+        self._sidebar_toggle_btn.setText("▶" if visible else "◀")
+
+    def _build_menu_bar(self) -> None:
+        """Add the Help menu to the application menu bar."""
+        menu_bar = self.menuBar()
+
+        help_menu = menu_bar.addMenu("&Help")
+
+        about_action = QAction("&About", self)
+        about_action.setStatusTip("Show information about Movement Optimizer")
+        about_action.triggered.connect(self._show_about)
+        help_menu.addAction(about_action)
+
+        guide_action = QAction("&Parameter Guide", self)
+        guide_action.setShortcut(QKeySequence("F1"))
+        guide_action.setStatusTip("Open the parameter reference guide")
+        guide_action.triggered.connect(self._show_parameter_guide)
+        help_menu.addAction(guide_action)
+
+    def _show_about(self) -> None:
+        """Display an About dialog with app name, version, and description."""
+        from .. import __version__
+
+        QMessageBox.about(
+            self,
+            "About Movement Optimizer",
+            f"<b>Movement Optimizer</b> v{__version__}<br><br>"
+            "Computes optimal barbell exercise trajectories using Lagrangian "
+            "inverse dynamics in the sagittal plane.<br><br>"
+            "The body is modelled as a 3-link planar chain (shank, thigh, trunk) "
+            "with a barbell load at the top. Trajectories are found via multi-start "
+            "parallel SLSQP optimisation subject to balance and joint constraints.<br><br>"
+            "&#169; 2026 D-Sorganization. All rights reserved.",
+        )
+
+    def _show_parameter_guide(self) -> None:
+        """Open the parameter guide dialog."""
+        dlg = ParameterHelpDialog(self)
+        dlg.exec()
 
     def _connect_signals(self) -> None:
         self.sidebar.connect_action_handlers(
@@ -175,6 +228,67 @@ class MainWindow(
         QShortcut(QKeySequence("Home"), self).activated.connect(self._rewind)
         QShortcut(QKeySequence("End"), self).activated.connect(self._jump_to_end)
         QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._save_solution)
+        QShortcut(QKeySequence.StandardKey.Undo, self).activated.connect(self._undo)
+        QShortcut(QKeySequence.StandardKey.Redo, self).activated.connect(self._redo)
+
+    def _connect_slider_undo(self) -> None:
+        """Wire sidebar sliders so value changes are recorded on the undo stack."""
+        slider_names = [
+            "mass_slider",
+            "height_slider",
+            "ll_slider",
+            "ul_slider",
+            "to_slider",
+            "bar_slider",
+            "bar_depth_slider",
+            "bar_height_slider",
+            "dur_slider",
+            "smooth_slider",
+        ]
+        for name in slider_names:
+            labelled = getattr(self.sidebar, name, None)
+            if labelled is None:
+                logger.warning("_connect_slider_undo: sidebar has no attribute %r", name)
+                continue
+            raw = labelled.slider
+
+            def _make_handler(raw_slider):
+                prev: list[int] = [raw_slider.value()]
+
+                def _on_press():
+                    prev[0] = raw_slider.value()
+
+                def _on_release():
+                    new_val = raw_slider.value()
+                    old_val = prev[0]
+                    if new_val != old_val:
+                        cmd = SliderChangeCommand(raw_slider, old_val, new_val)
+                        # execute() would move the slider back then to new_val --
+                        # the slider is already at new_val so push without re-executing.
+                        self._undo_stack._undo.append(cmd)
+                        self._undo_stack._redo.clear()
+                        logger.debug(
+                            "Slider %s: %d -> %d recorded",
+                            raw_slider.accessibleName(),
+                            old_val,
+                            new_val,
+                        )
+
+                return _on_press, _on_release
+
+            on_press, on_release = _make_handler(raw)
+            raw.sliderPressed.connect(on_press)
+            raw.sliderReleased.connect(on_release)
+
+    def _undo(self) -> None:
+        """Undo the last slider change via the undo stack."""
+        if self._undo_stack.undo():
+            logger.debug("Undo triggered")
+
+    def _redo(self) -> None:
+        """Redo the last undone slider change via the undo stack."""
+        if self._undo_stack.redo():
+            logger.debug("Redo triggered")
 
     def closeEvent(self, event: Any) -> None:
         self._save_layout()

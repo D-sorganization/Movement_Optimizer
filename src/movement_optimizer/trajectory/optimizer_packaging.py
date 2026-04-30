@@ -12,12 +12,50 @@ testable and keeps the class focused on orchestration.
 from __future__ import annotations
 
 import logging
+from typing import Protocol
 
 import numpy as np
 from numpy.typing import NDArray
 
 from ..backend import PhysicsBackend
 from .result import OptimizationResult
+
+
+class _OptimizeResult(Protocol):
+    """Structural protocol for scipy.optimize.OptimizeResult.
+
+    Scipy's OptimizeResult is a dict-like object; the stubs expose it as
+    ``object`` in some contexts.  Declaring a minimal Protocol avoids
+    ``type: ignore[attr-defined]`` at every ``res.fun`` and ``res.x``
+    access without importing scipy in type-check-only paths.
+    """
+
+    @property
+    def fun(self) -> float:
+        """Objective function value at the solution."""
+        ...
+
+    @property
+    def x(self) -> NDArray:
+        """Solution array."""
+        ...
+
+
+class _SplineCallable(Protocol):
+    """Protocol for build_splines callable: x -> CubicSpline-like."""
+
+    def __call__(self, x: NDArray) -> object:
+        """Build splines from flat waypoint vector."""
+        ...
+
+
+class _TrajectoryCallable(Protocol):
+    """Protocol for eval_trajectory callable: splines -> (q, qd, qdd, qddd)."""
+
+    def __call__(self, splines: object) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+        """Evaluate trajectory from splines."""
+        ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +68,12 @@ __all__ = [
 
 
 def evaluate_solution(
-    res: object,
+    res: _OptimizeResult,
     dynamics: PhysicsBackend,
     exercise_type: str,
     bar_mass: float,
-    build_splines_fn: object,
-    eval_trajectory_fn: object,
+    build_splines_fn: _SplineCallable,
+    eval_trajectory_fn: _TrajectoryCallable,
 ) -> tuple[
     NDArray[np.float64],
     NDArray[np.float64],
@@ -61,8 +99,8 @@ def evaluate_solution(
         Tuple of (q, qd, qdd, torques, power, com_traj, bar_traj, com_x),
         each as float64 NDArray.
     """
-    splines = build_splines_fn(res.x)  # type: ignore[attr-defined, operator]
-    q, qd, qdd, _ = eval_trajectory_fn(splines)  # type: ignore[operator]
+    splines = build_splines_fn(res.x)
+    q, qd, qdd, _ = eval_trajectory_fn(splines)
 
     torques = dynamics.inverse_dynamics_batch(q, qd, qdd)
     power = torques * qd
@@ -139,7 +177,7 @@ def count_joint_limit_violations(
 def build_result_object(
     *,
     t_eval: NDArray[np.float64],
-    res: object,
+    res: _OptimizeResult,
     q: NDArray[np.float64],
     qd: NDArray[np.float64],
     qdd: NDArray[np.float64],
@@ -159,7 +197,7 @@ def build_result_object(
         t_eval.ndim == 1 and len(t_eval) == q.shape[0]
         elapsed >= 0
     """
-    cost_val = float(res.fun)  # type: ignore[attr-defined]
+    cost_val = float(res.fun)
     com_h_range = float((np.max(com_x) - np.min(com_x)) * 100.0)
     return OptimizationResult(
         t=t_eval,

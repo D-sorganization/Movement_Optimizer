@@ -199,6 +199,8 @@ class ParameterSidebar(QScrollArea):
         self.export_video_btn.setToolTip("Export the current animation to a GIF file")
         self.export_plots_btn.setEnabled(True)
         self.export_plots_btn.setToolTip("Export the current plots to PNG/PDF files")
+        self.export_excel_btn.setEnabled(True)
+        self.export_excel_btn.setToolTip("Export results to an Excel workbook (.xlsx)")
         self.add_compare_btn.setEnabled(True)
         self.add_compare_btn.setToolTip("Add current trial to the comparison set")
 

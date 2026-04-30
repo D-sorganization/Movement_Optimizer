@@ -53,7 +53,7 @@ class LabelledSlider(QWidget):
         self.slider.valueChanged.connect(self._on_change)
         layout.addWidget(self.slider)
 
-        _tip = tooltip if tooltip else f"{label} ({lo:.{decimals}f}–{hi:.{decimals}f} {unit})"
+        _tip = tooltip if tooltip else f"{label} ({lo:.{decimals}f}-{hi:.{decimals}f} {unit})"
         self.slider.setToolTip(_tip)
         self.name_label.setToolTip(_tip)
 

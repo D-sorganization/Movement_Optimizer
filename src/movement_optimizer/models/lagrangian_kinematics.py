@@ -69,12 +69,7 @@ class LagrangianKinematicsMixin:
         c3x = hip_x + d[2] * sq[:, 2]
 
         total_mass = b.body_mass + bar_mass
-        numerator = (
-            b.m_feet * b.foot_com_x
-            + self.m[0] * c1x
-            + self.m[1] * c2x
-            + self.m[2] * c3x
-        )
+        numerator = b.m_feet * b.foot_com_x + self.m[0] * c1x + self.m[1] * c2x + self.m[2] * c3x
 
         if exercise_type in ("squat", "full_squat"):
             if hasattr(b, "squat_bar_depth") and (
@@ -129,7 +124,7 @@ class LagrangianKinematicsMixin:
         Complexity:
             O(1) time and memory for the fixed 3-link model.
         """
-        L = self.L_eff  # type: ignore[attr-defined]
+        L = self.L_eff
 
         # Performance optimization: Calculate shoulder position directly and unroll scalar
         # components for exercise-specific logic to avoid intermediate array allocations.
@@ -147,7 +142,7 @@ class LagrangianKinematicsMixin:
         s_y = p2_y + L[2] * cq2
 
         if exercise_type in ("squat", "full_squat"):
-            b = self.body  # type: ignore[attr-defined]
+            b = self.body
             if hasattr(b, "squat_bar_depth") and (
                 b.squat_bar_depth != 0.0 or b.squat_bar_height != 0.0
             ):
@@ -160,13 +155,13 @@ class LagrangianKinematicsMixin:
             return np.array([s_x, s_y])
         if exercise_type == "deadlift":
             # Bar hangs from hands: arm-length below shoulder
-            return np.array([s_x, s_y - self.body.L_arm])  # type: ignore[attr-defined]
+            return np.array([s_x, s_y - self.body.L_arm])
         if exercise_type in ("clean", "clean_and_jerk"):
             # Front rack: bar sits at shoulder height
             return np.array([s_x, s_y])
         if exercise_type in ("snatch", "jerk"):
             # Overhead: bar is arm-length above shoulder
-            return np.array([s_x, s_y + self.body.L_arm])  # type: ignore[attr-defined]
+            return np.array([s_x, s_y + self.body.L_arm])
         return np.array([s_x, s_y])
 
     def com_position(
@@ -182,9 +177,9 @@ class LagrangianKinematicsMixin:
         """
         from ..constants import COM_FRAC
 
-        b = self.body  # type: ignore[attr-defined]
-        L = self.L_eff  # type: ignore[attr-defined]
-        d = self.d_eff  # type: ignore[attr-defined]
+        b = self.body
+        L = self.L_eff
+        d = self.d_eff
 
         # Performance optimization: Fully unroll scalar components to avoid multiple
         # intermediate array allocations and vector math overhead.
@@ -212,18 +207,8 @@ class LagrangianKinematicsMixin:
 
         total_mass = b.body_mass + bar_mass
 
-        num_x = (
-            b.m_feet * b.foot_com_x
-            + self.m[0] * c1_x  # type: ignore[attr-defined]
-            + self.m[1] * c2_x  # type: ignore[attr-defined]
-            + self.m[2] * c3_x  # type: ignore[attr-defined]
-        )
-        num_y = (
-            b.m_feet * b.foot_com_y
-            + self.m[0] * c1_y  # type: ignore[attr-defined]
-            + self.m[1] * c2_y  # type: ignore[attr-defined]
-            + self.m[2] * c3_y  # type: ignore[attr-defined]
-        )
+        num_x = b.m_feet * b.foot_com_x + self.m[0] * c1_x + self.m[1] * c2_x + self.m[2] * c3_x
+        num_y = b.m_feet * b.foot_com_y + self.m[0] * c1_y + self.m[1] * c2_y + self.m[2] * c3_y
 
         if exercise_type in ("squat", "full_squat"):
             bar_pos = self.bar_position(q, exercise_type)

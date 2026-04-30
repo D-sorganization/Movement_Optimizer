@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+from typing import ClassVar
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -25,65 +26,64 @@ class ParameterHelpDialog(QDialog):
     Precondition: parent must be a QWidget or None.
     """
 
-    PARAMETERS: dict[str, tuple[str, str, str]] = {
+    PARAMETERS: ClassVar[dict[str, tuple[str, str, str]]] = {
         "Body Mass": (
             "Total body mass of the lifter",
             "kg",
-            "50–150",
+            "50-150",
         ),
         "Height": (
             "Standing height of the lifter",
             "m",
-            "1.40–2.10",
+            "1.40-2.10",
         ),
         "Lower Leg": (
             "Multiplier on the base lower-leg segment length (shank). "
             "Values above 1.0 lengthen the segment; below 1.0 shorten it.",
             "x",
-            "0.70–1.30",
+            "0.70-1.30",
         ),
         "Upper Leg": (
             "Multiplier on the base upper-leg segment length (thigh). "
             "Values above 1.0 lengthen the segment; below 1.0 shorten it.",
             "x",
-            "0.70–1.30",
+            "0.70-1.30",
         ),
         "Torso": (
             "Multiplier on the base torso segment length. "
             "Values above 1.0 lengthen the segment; below 1.0 shorten it.",
             "x",
-            "0.70–1.30",
+            "0.70-1.30",
         ),
         "Total Bar + Plates": (
-            "Combined mass of the barbell and any loaded plates. "
-            "An Olympic bar alone is 20 kg.",
+            "Combined mass of the barbell and any loaded plates. An Olympic bar alone is 20 kg.",
             "kg",
-            "0–300",
+            "0-300",
         ),
         "Bar Back Offset": (
             "Horizontal distance by which the bar is displaced behind the "
             "shoulder contact point. Positive values shift the bar rearward.",
             "m",
-            "0.00–0.40",
+            "0.00-0.40",
         ),
         "Bar Drop Offset": (
             "Vertical distance by which the bar sits below the default "
             "shoulder height. Positive values lower the bar.",
             "m",
-            "0.00–0.40",
+            "0.00-0.40",
         ),
         "Duration": (
             "Total time allowed for the movement from start to end position. "
             "Shorter durations produce faster, more dynamic trajectories.",
             "s",
-            "0.5–5.0",
+            "0.5-5.0",
         ),
         "Smoothness": (
             "Penalty weight on joint-torque rate of change. Higher values "
             "encourage smoother, slower torque transitions at the cost of "
             "slightly higher peak torques.",
             "x",
-            "0.1–5.0",
+            "0.1-5.0",
         ),
     }
 

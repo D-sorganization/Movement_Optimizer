@@ -12,7 +12,6 @@ Requires the optional ``openpyxl`` package.  The function raises
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -22,6 +21,88 @@ if TYPE_CHECKING:
     from .trajectory.result import OptimizationResult
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_path(path: str | Path) -> Path:
+    """Normalize and basic-validate the output path.
+
+    Raises:
+        ValueError: If ``path`` contains a null byte.
+    """
+    p = Path(path)
+    if "\x00" in str(p):
+        raise ValueError("path must not contain null bytes")
+    return p
+
+
+def _write_summary_sheet(
+    ws,
+    result: OptimizationResult,
+    exercise_name: str,
+    body_mass_kg: float | None,
+    body_height_m: float | None,
+) -> None:
+    """Populate the Summary worksheet."""
+    rows: list[tuple[str, object]] = [
+        ("Exercise", exercise_name or "-"),
+        ("Converged", "Yes" if result.success else "No"),
+        ("Cost", round(float(result.cost), 6)),
+        ("Duration (s)", round(float(result.t[-1] - result.t[0]), 4)),
+        ("Samples (N)", len(result.t)),
+        ("COM horizontal range (cm)", round(float(result.com_horizontal_range_cm), 4)),
+        ("Elapsed time (s)", round(float(result.elapsed_s), 3)),
+        ("Cost evaluations", int(result.n_evals)),
+        ("Joint limit violations", int(result.n_joint_limit_violations)),
+    ]
+    if body_mass_kg is not None:
+        rows.insert(1, ("Body mass (kg)", round(float(body_mass_kg), 2)))
+    if body_height_m is not None:
+        rows.insert(2, ("Body height (m)", round(float(body_height_m), 3)))
+
+    for label, value in rows:
+        ws.append([label, value])
+
+    ws.append([])  # blank separator
+
+    joint_labels = ["Ankle (joint 1)", "Knee (joint 2)", "Hip (joint 3)"]
+    ws.append(["Joint torque statistics", "Peak |tau| (N*m)", "Mean |tau| (N*m)", "RMS tau (N*m)"])
+    n_dof = result.torques.shape[1]
+    for j in range(n_dof):
+        col = result.torques[:, j]
+        peak = float(np.max(np.abs(col)))
+        mean = float(np.mean(np.abs(col)))
+        rms = float(np.sqrt(np.mean(col**2)))
+        label = joint_labels[j] if j < len(joint_labels) else f"Joint {j + 1}"
+        ws.append([label, round(peak, 3), round(mean, 3), round(rms, 3)])
+
+
+def _write_trajectory_sheet(ws, result: OptimizationResult) -> None:
+    """Populate the Trajectory worksheet with time-series joint kinematics."""
+    n = len(result.t)
+    n_dof = result.q.shape[1]
+    header = (
+        ["time (s)"]
+        + [f"q{j + 1} (deg)" for j in range(n_dof)]
+        + [f"dq{j + 1} (deg/s)" for j in range(n_dof)]
+    )
+    ws.append(header)
+    for i in range(n):
+        row: list[object] = [round(float(result.t[i]), 6)]
+        row += [round(float(np.degrees(result.q[i, j])), 4) for j in range(n_dof)]
+        row += [round(float(np.degrees(result.qd[i, j])), 4) for j in range(n_dof)]
+        ws.append(row)
+
+
+def _write_torques_sheet(ws, result: OptimizationResult) -> None:
+    """Populate the Torques worksheet with time-series joint torques."""
+    n = len(result.t)
+    n_dof = result.torques.shape[1]
+    header = ["time (s)"] + [f"tau{j + 1} (N*m)" for j in range(n_dof)]
+    ws.append(header)
+    for i in range(n):
+        row: list[object] = [round(float(result.t[i]), 6)]
+        row += [round(float(result.torques[i, j]), 4) for j in range(n_dof)]
+        ws.append(row)
 
 
 def export_to_excel(
@@ -35,11 +116,11 @@ def export_to_excel(
 
     Creates three sheets:
 
-    * **Summary** – key parameters and per-joint statistics (peak torque,
+    * **Summary** - key parameters and per-joint statistics (peak torque,
       mean torque, RMS torque) plus convergence status.
-    * **Trajectory** – time-series columns ``time``, ``q1``–``q3`` (degrees),
-      ``dq1``–``dq3`` (deg/s).
-    * **Torques** – time-series columns ``time``, ``tau1``–``tau3`` (N·m).
+    * **Trajectory** - time-series columns ``time``, ``q1``-``q3`` (degrees),
+      ``dq1``-``dq3`` (deg/s).
+    * **Torques** - time-series columns ``time``, ``tau1``-``tau3`` (N*m).
 
     Args:
         result: Completed :class:`~movement_optimizer.trajectory.OptimizationResult`.
@@ -50,26 +131,20 @@ def export_to_excel(
 
     Raises:
         ImportError: If ``openpyxl`` is not installed.
-        ValueError: If ``result`` is ``None``, ``path`` is empty, or the
-            trajectory arrays have incompatible shapes.
+        ValueError: If ``result`` is ``None``, ``path`` contains a null byte, or
+            the trajectory arrays have incompatible shapes.
     """
     try:
-        import openpyxl
         from openpyxl import Workbook
     except ImportError as exc:
         raise ImportError(
-            "openpyxl is required for Excel export. "
-            "Install it with: pip install openpyxl"
+            "openpyxl is required for Excel export. Install it with: pip install openpyxl"
         ) from exc
 
     if result is None:
         raise ValueError("result must not be None")
 
-    path = Path(path)
-    if not str(path):
-        raise ValueError("path must be a non-empty string or Path")
-    if "\x00" in str(path):
-        raise ValueError("path must not contain null bytes")
+    safe_path = _validate_path(path)
 
     n = len(result.t)
     if result.q.shape[0] != n or result.torques.shape[0] != n:
@@ -78,83 +153,23 @@ def export_to_excel(
             f"q has {result.q.shape[0]} and torques has {result.torques.shape[0]}"
         )
 
-    n_dof = result.torques.shape[1]
-
     wb = Workbook()
 
-    # ------------------------------------------------------------------ #
-    # Sheet 1: Summary                                                     #
-    # ------------------------------------------------------------------ #
     ws_summary = wb.active
     ws_summary.title = "Summary"
+    _write_summary_sheet(ws_summary, result, exercise_name, body_mass_kg, body_height_m)
 
-    rows: list[tuple[str, object]] = [
-        ("Exercise", exercise_name or "—"),
-        ("Converged", "Yes" if result.success else "No"),
-        ("Cost", round(float(result.cost), 6)),
-        ("Duration (s)", round(float(result.t[-1] - result.t[0]), 4)),
-        ("Samples (N)", n),
-        ("COM horizontal range (cm)", round(float(result.com_horizontal_range_cm), 4)),
-        ("Elapsed time (s)", round(float(result.elapsed_s), 3)),
-        ("Cost evaluations", int(result.n_evals)),
-        ("Joint limit violations", int(result.n_joint_limit_violations)),
-    ]
-    if body_mass_kg is not None:
-        rows.insert(1, ("Body mass (kg)", round(float(body_mass_kg), 2)))
-    if body_height_m is not None:
-        rows.insert(2, ("Body height (m)", round(float(body_height_m), 3)))
-
-    for label, value in rows:
-        ws_summary.append([label, value])
-
-    # Blank separator
-    ws_summary.append([])
-
-    joint_labels = ["Ankle (joint 1)", "Knee (joint 2)", "Hip (joint 3)"]
-    ws_summary.append(["Joint torque statistics", "Peak |τ| (N·m)", "Mean |τ| (N·m)", "RMS τ (N·m)"])
-    for j in range(n_dof):
-        col = result.torques[:, j]
-        peak = float(np.max(np.abs(col)))
-        mean = float(np.mean(np.abs(col)))
-        rms = float(np.sqrt(np.mean(col**2)))
-        label = joint_labels[j] if j < len(joint_labels) else f"Joint {j + 1}"
-        ws_summary.append([label, round(peak, 3), round(mean, 3), round(rms, 3)])
-
-    # ------------------------------------------------------------------ #
-    # Sheet 2: Trajectory                                                  #
-    # ------------------------------------------------------------------ #
     ws_traj = wb.create_sheet("Trajectory")
-    header = ["time (s)"] + [f"q{j + 1} (deg)" for j in range(n_dof)] + [
-        f"dq{j + 1} (deg/s)" for j in range(n_dof)
-    ]
-    ws_traj.append(header)
-    for i in range(n):
-        row: list[object] = [round(float(result.t[i]), 6)]
-        row += [round(float(np.degrees(result.q[i, j])), 4) for j in range(n_dof)]
-        row += [round(float(np.degrees(result.qd[i, j])), 4) for j in range(n_dof)]
-        ws_traj.append(row)
+    _write_trajectory_sheet(ws_traj, result)
 
-    # ------------------------------------------------------------------ #
-    # Sheet 3: Torques                                                     #
-    # ------------------------------------------------------------------ #
     ws_torques = wb.create_sheet("Torques")
-    torque_header = ["time (s)"] + [f"tau{j + 1} (N·m)" for j in range(n_dof)]
-    ws_torques.append(torque_header)
-    for i in range(n):
-        row = [round(float(result.t[i]), 6)] + [
-            round(float(result.torques[i, j]), 4) for j in range(n_dof)
-        ]
-        ws_torques.append(row)
+    _write_torques_sheet(ws_torques, result)
 
-    # ------------------------------------------------------------------ #
-    # Write file                                                           #
-    # ------------------------------------------------------------------ #
-    path.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(str(path))
+    safe_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(str(safe_path))
     logger.info(
         "Exported Excel workbook to %s (%d samples, %d DOF)",
-        path,
+        safe_path,
         n,
-        n_dof,
+        result.torques.shape[1],
     )
-    _ = openpyxl  # suppress unused-import warning from linters
