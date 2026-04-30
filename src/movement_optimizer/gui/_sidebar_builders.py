@@ -250,6 +250,12 @@ def build_export_buttons(sidebar) -> None:
     sidebar.export_plots_btn.setAccessibleName("Export Plots")
     sidebar.export_plots_btn.clicked.connect(sidebar.export_plots_requested.emit)
     lay.addWidget(sidebar.export_plots_btn)
+    sidebar.export_excel_btn = QPushButton("Save as Excel (.xlsx)")
+    sidebar.export_excel_btn.setEnabled(False)
+    sidebar.export_excel_btn.setToolTip("Run optimization first to enable Excel export")
+    sidebar.export_excel_btn.setAccessibleName("Save as Excel")
+    sidebar.export_excel_btn.clicked.connect(sidebar.export_excel_requested.emit)
+    lay.addWidget(sidebar.export_excel_btn)
     sidebar.main_layout.addWidget(grp)
 
 

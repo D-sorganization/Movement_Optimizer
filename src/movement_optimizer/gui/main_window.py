@@ -150,6 +150,7 @@ class MainWindow(
                 "load_solution_requested": self._load_solution,
                 "export_video_requested": self._export_video,
                 "export_plots_requested": self._export_plots,
+                "export_excel_requested": self._export_excel,
                 "add_comparison_requested": self._add_comparison,
                 "compare_trials_requested": self._compare_trials,
                 "clear_comparison_requested": self._clear_comparison,
