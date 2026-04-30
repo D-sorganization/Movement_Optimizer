@@ -136,9 +136,17 @@ class MainWindow(
             self.exercise_tabs,
             self.controls,
             self.status_label,
+            self._sidebar_toggle_btn,
         ) = build_central_widget(self, self.EXERCISE_CONFIGS)
+        self._sidebar_toggle_btn.clicked.connect(self._toggle_sidebar)
         self.setCentralWidget(central)
         self._connect_signals()
+
+    def _toggle_sidebar(self) -> None:
+        """Collapse or expand the parameter sidebar."""
+        visible = self.sidebar.isVisible()
+        self.sidebar.setVisible(not visible)
+        self._sidebar_toggle_btn.setText("▶" if visible else "◀")
 
     def _connect_signals(self) -> None:
         self.sidebar.connect_action_handlers(
