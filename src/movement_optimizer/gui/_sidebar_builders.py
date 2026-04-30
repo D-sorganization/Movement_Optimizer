@@ -32,8 +32,24 @@ logger = logging.getLogger(__name__)
 def build_body_params(sidebar) -> None:
     grp = QGroupBox("Body Parameters")
     lay = QVBoxLayout(grp)
-    sidebar.mass_slider = LabelledSlider("Body Mass", 40, 150, 75, "kg", 0)
-    sidebar.height_slider = LabelledSlider("Height", 1.40, 2.10, 1.75, "m", 2)
+    sidebar.mass_slider = LabelledSlider(
+        "Body Mass",
+        40,
+        150,
+        75,
+        "kg",
+        0,
+        tooltip="Total body mass in kilograms (40-150 kg)",
+    )
+    sidebar.height_slider = LabelledSlider(
+        "Height",
+        1.40,
+        2.10,
+        1.75,
+        "m",
+        2,
+        tooltip="Standing height in metres (1.40-2.10 m)",
+    )
     lay.addWidget(sidebar.mass_slider)
     lay.addWidget(sidebar.height_slider)
     sidebar.main_layout.addWidget(grp)
@@ -45,9 +61,33 @@ def build_segment_lengths(sidebar) -> None:
     hint = QLabel("Multipliers on base length")
     hint.setProperty("class", "dim")
     lay.addWidget(hint)
-    sidebar.ll_slider = LabelledSlider("Lower Leg", 0.70, 1.30, 1.00, "x", 2)
-    sidebar.ul_slider = LabelledSlider("Upper Leg", 0.70, 1.30, 1.00, "x", 2)
-    sidebar.to_slider = LabelledSlider("Torso", 0.70, 1.30, 1.00, "x", 2)
+    sidebar.ll_slider = LabelledSlider(
+        "Lower Leg",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Lower leg length multiplier relative to base length (0.70-1.30 x)",
+    )
+    sidebar.ul_slider = LabelledSlider(
+        "Upper Leg",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Upper leg length multiplier relative to base length (0.70-1.30 x)",
+    )
+    sidebar.to_slider = LabelledSlider(
+        "Torso",
+        0.70,
+        1.30,
+        1.00,
+        "x",
+        2,
+        tooltip="Torso length multiplier relative to base length (0.70-1.30 x)",
+    )
     lay.addWidget(sidebar.ll_slider)
     lay.addWidget(sidebar.ul_slider)
     lay.addWidget(sidebar.to_slider)
@@ -60,11 +100,35 @@ def build_barbell(sidebar) -> None:
     hint = QLabel(f"Olympic bar = {BAR_MASS_KG:.0f} kg")
     hint.setProperty("class", "dim")
     lay.addWidget(hint)
-    sidebar.bar_slider = LabelledSlider("Total Bar + Plates", 0, 300, 60, "kg", 0)
+    sidebar.bar_slider = LabelledSlider(
+        "Total Bar + Plates",
+        0,
+        300,
+        60,
+        "kg",
+        0,
+        tooltip="Total barbell plus plates mass in kilograms (0-300 kg)",
+    )
     lay.addWidget(sidebar.bar_slider)
-    sidebar.bar_depth_slider = LabelledSlider("Bar Back Offset", 0.0, 0.4, 0.0, "m", 2)
+    sidebar.bar_depth_slider = LabelledSlider(
+        "Bar Back Offset",
+        0.0,
+        0.4,
+        0.0,
+        "m",
+        2,
+        tooltip="Horizontal distance the bar sits behind the shoulder joint (0.00-0.40 m)",
+    )
     lay.addWidget(sidebar.bar_depth_slider)
-    sidebar.bar_height_slider = LabelledSlider("Bar Drop Offset", 0.0, 0.4, 0.0, "m", 2)
+    sidebar.bar_height_slider = LabelledSlider(
+        "Bar Drop Offset",
+        0.0,
+        0.4,
+        0.0,
+        "m",
+        2,
+        tooltip="Vertical distance the bar drops below the shoulder joint (0.00-0.40 m)",
+    )
     lay.addWidget(sidebar.bar_height_slider)
     sidebar.main_layout.addWidget(grp)
 
@@ -93,8 +157,24 @@ def build_optimization(sidebar) -> None:
                 )
     model_row.addWidget(sidebar.model_combo)
     lay.addLayout(model_row)
-    sidebar.dur_slider = LabelledSlider("Duration", 0.5, 5.0, 2.0, "s", 1)
-    sidebar.smooth_slider = LabelledSlider("Smoothness", 0.1, 5.0, 1.0, "x", 1)
+    sidebar.dur_slider = LabelledSlider(
+        "Duration",
+        0.5,
+        5.0,
+        2.0,
+        "s",
+        1,
+        tooltip="Total movement duration in seconds (0.5-5.0 s)",
+    )
+    sidebar.smooth_slider = LabelledSlider(
+        "Smoothness",
+        0.1,
+        5.0,
+        1.0,
+        "x",
+        1,
+        tooltip="Smoothness penalty multiplier - higher values produce smoother joint torques (0.1-5.0 x)",
+    )
     hint = QLabel("Higher = smoother torques")
     hint.setProperty("class", "dim")
     lay.addWidget(sidebar.dur_slider)

@@ -120,5 +120,28 @@ class AnimationControlMixin:
             etype,
         )
 
+    def _jump_to_end(self: MainWindow) -> None:  # type: ignore[override]
+        idx = self.tabs.currentIndex()
+        r = self.results[idx]
+        if r is None:
+            return
+        self._stop_anim()
+        n = len(r.t)
+        last_frame = n - 1
+        self.anim_frames[idx] = last_frame
+        _, etype = self.EXERCISE_CONFIGS[idx]
+        self.exercise_tabs[idx].draw_anim_frame(
+            last_frame,
+            r,
+            self.dynamics_list[idx],
+            self.bodies_list[idx],  # type: ignore[arg-type]
+            etype,
+        )
+        self.controls.set_playback_status(
+            last_frame + 1,
+            n,
+            self.controls.speed_multiplier(),
+        )
+
     def _on_speed(self: MainWindow, speed: float) -> None:  # type: ignore[override]
         self.controls.set_speed_multiplier_text(speed)

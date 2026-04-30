@@ -23,6 +23,7 @@ from typing import Any
 
 import matplotlib
 from PyQt6.QtCore import QSettings, QTimer, pyqtSignal
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
@@ -123,6 +124,7 @@ class MainWindow(
         self._build_ui()
         self.setStyleSheet(QSS)
         self._restore_layout()
+        self._install_shortcuts()
 
     def _build_ui(self) -> None:
         (
@@ -159,9 +161,17 @@ class MainWindow(
                 "step_fwd": self._step_fwd,
                 "step_back": self._step_back,
                 "rewind": self._rewind,
+                "jump_to_end": self._jump_to_end,
                 "speed_changed": self._on_speed,
             }
         )
+
+    def _install_shortcuts(self) -> None:
+        """Install application-wide keyboard shortcuts."""
+        QShortcut(QKeySequence("Space"), self).activated.connect(self._toggle_play)
+        QShortcut(QKeySequence("Home"), self).activated.connect(self._rewind)
+        QShortcut(QKeySequence("End"), self).activated.connect(self._jump_to_end)
+        QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._save_solution)
 
     def closeEvent(self, event: Any) -> None:
         self._save_layout()

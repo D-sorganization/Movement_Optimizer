@@ -21,6 +21,7 @@ class LabelledSlider(QWidget):
         unit: str,
         decimals: int = 1,
         steps: int = 200,
+        tooltip: str = "",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -50,9 +51,11 @@ class LabelledSlider(QWidget):
         self.slider.setRange(0, steps)
         self.slider.setValue(self._to_tick(default))
         self.slider.valueChanged.connect(self._on_change)
-        self.slider.setAccessibleName(label)
-        self.name_label.setBuddy(self.slider)
         layout.addWidget(self.slider)
+
+        _tip = tooltip if tooltip else f"{label} ({lo:.{decimals}f}-{hi:.{decimals}f} {unit})"
+        self.slider.setToolTip(_tip)
+        self.name_label.setToolTip(_tip)
 
     def _fmt(self, val: float) -> str:
         return f"{val:.{self.decimals}f} {self.unit}"
