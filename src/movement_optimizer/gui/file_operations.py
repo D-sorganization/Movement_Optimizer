@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from ..export import export_animation_gif, export_plots_pdf, export_plots_png
-from ..persistence import load_solution, save_solution
+from ..persistence import InvalidStateFileError, load_solution, save_solution
 from ..trajectory import OptimizationResult
 
 if TYPE_CHECKING:
@@ -91,6 +91,8 @@ class FileOperationsMixin:
                 f"Bar mass: {data.get('bar_mass')} kg\n"
                 f"Cost: {data.get('metadata', {}).get('cost', 'N/A')}",
             )
+        except InvalidStateFileError as e:
+            QMessageBox.critical(self, "Invalid Solution File", str(e))
         except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
             QMessageBox.critical(self, "Load Error", str(e))
 
