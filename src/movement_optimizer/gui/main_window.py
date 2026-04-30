@@ -23,6 +23,7 @@ from typing import Any
 
 import matplotlib
 from PyQt6.QtCore import QSettings, QTimer, pyqtSignal
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
@@ -30,7 +31,7 @@ from PyQt6.QtWidgets import (
 
 from ..comparison import ComparisonStore
 from ..models import BodyModel
-from ..persistence import load_app_state, save_app_state
+from ..persistence import InvalidStateFileError, load_app_state, save_app_state
 from ..trajectory import (
     OptimizationResult,
     SolutionCache,
@@ -79,7 +80,7 @@ class MainWindow(
     # to communicate from a background thread to the main thread.
     _sig_done = pyqtSignal(int, object, object, float, object)  # idx, result, body, bar, then_chain
     _sig_cancelled = pyqtSignal()
-    _sig_error = pyqtSignal(str)
+    _sig_error = pyqtSignal(object)  # MovementOptimizerError or str
     _sig_progress = pyqtSignal(object)  # ProgressReport
 
     EXERCISE_CONFIGS = (
@@ -107,7 +108,9 @@ class MainWindow(
 
         self._cancel_event = threading.Event()
         self._opt_running = False
-        self._opt_lock = threading.Lock()
+        # RLock so the same thread may re-enter critical sections without
+        # deadlocking when one locked helper calls another locked helper.
+        self._opt_lock = threading.RLock()
         self._cache = SolutionCache()
         self._comparison_store = ComparisonStore()
         self._last_config: tuple[Any, ...] = ()
@@ -137,6 +140,11 @@ class MainWindow(
         self._connect_signals()
 
     def _connect_signals(self) -> None:
+        # Window-level Escape shortcut for cancel — works even when the cancel
+        # button is hidden (QPushButton.setShortcut is inactive for hidden buttons).
+        self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self._esc_shortcut.activated.connect(self._cancel_optimization)
+
         self.sidebar.connect_action_handlers(
             {
                 "optimize_current": self._run_current,
@@ -179,7 +187,16 @@ class MainWindow(
 
     def try_restore_session(self) -> None:
         """Check for a saved session and offer to restore it."""
-        state = load_app_state()
+        try:
+            state = load_app_state()
+        except InvalidStateFileError as exc:
+            logger.warning("Saved session failed schema validation: %s", exc)
+            QMessageBox.warning(
+                self,
+                "Session State Invalid",
+                f"Saved session could not be restored:\n{exc}",
+            )
+            return
         if state is None:
             return
         reply = QMessageBox.question(
@@ -212,9 +229,12 @@ class MainWindow(
             self.tabs.setCurrentIndex(tab_idx)
 
     def _cancel_optimization(self) -> None:
+        with self._opt_lock:
+            if not self._opt_running:
+                return
         self._cancel_event.set()
         self.status_label.setText("Cancelling...")
-        self.sidebar.set_cancellation_available(False)
+        self.sidebar.set_cancelling()
 
     def _run_current(self) -> None:
         self._run_exercise(self.tabs.currentIndex())
