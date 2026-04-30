@@ -3,6 +3,13 @@
 
 from __future__ import annotations
 
+import os
+
+# Must be set before any PyQt6 import so the offscreen platform plugin is used
+# in CI and other headless environments.  setdefault preserves any value already
+# set by the caller (e.g. a developer running with a real display).
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 import numpy as np
 import pytest
 

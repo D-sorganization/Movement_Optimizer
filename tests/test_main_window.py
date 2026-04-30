@@ -13,18 +13,11 @@ from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import pytest
+from PyQt6.QtWidgets import QApplication
 
-try:
-    from PyQt6.QtWidgets import QApplication
-
-    _QT_AVAILABLE = True
-    _app = QApplication.instance()
-    if _app is None:
-        _app = QApplication([])
-except (ImportError, OSError):
-    _QT_AVAILABLE = False
-
-pytestmark = pytest.mark.skipif(not _QT_AVAILABLE, reason="Qt not available")
+_app = QApplication.instance()
+if _app is None:
+    _app = QApplication([])
 
 
 # ---------------------------------------------------------------------------
