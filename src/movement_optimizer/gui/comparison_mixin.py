@@ -24,7 +24,7 @@ class ComparisonMixin:
 
     def _add_comparison(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         display_name, _etype = self.EXERCISE_CONFIGS[idx]
