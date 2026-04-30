@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,11 @@ logger = logging.getLogger(__name__)
 # changes incompatibly. Loaders reject other versions until a migration
 # is implemented.
 SCHEMA_VERSION = 1
+
+# Public result-format version for saved solution payloads. This is separate
+# from ``SCHEMA_VERSION`` so loaders can reject newer result formats while
+# still keeping app-state schema validation stable.
+RESULT_FORMAT_VERSION = 2
 
 # Known exercise identifiers accepted by ``save_solution``. Keep in sync
 # with ``MainWindow.EXERCISE_CONFIGS`` and the exercise factories.
@@ -200,6 +206,17 @@ def _validate_solution_schema(data: dict[str, Any]) -> None:
     context = "solution file"
     _validate_schema_version(data, context)
 
+    format_version = data.get("format_version", 1)
+    if not isinstance(format_version, int) or isinstance(format_version, bool):
+        raise InvalidStateFileError(
+            f"{context}: 'format_version' must be int, got {type(format_version).__name__}"
+        )
+    if format_version > RESULT_FORMAT_VERSION:
+        raise InvalidStateFileError(
+            f"{context}: unsupported format_version {format_version} "
+            f"(expected <= {RESULT_FORMAT_VERSION})"
+        )
+
     exercise_type = _require_key(data, "exercise_type", context)
     _require_type(exercise_type, str, "exercise_type")
     if exercise_type not in _KNOWN_EXERCISE_TYPES:
@@ -289,6 +306,25 @@ def _dict_to_result(d: dict[str, Any]) -> OptimizationResult:
     )
 
 
+def solution_data_to_result(data: dict[str, Any]) -> OptimizationResult:
+    """Reconstruct an :class:`OptimizationResult` from loaded solution data.
+
+    Args:
+        data: Solution payload returned by :func:`load_solution` or an
+            equivalent dict with ``arrays`` and ``metadata`` blocks.
+
+    Returns:
+        The reconstructed optimization result.
+
+    Raises:
+        InvalidStateFileError: If a full solution payload fails schema
+            validation.
+    """
+    if "schema_version" in data:
+        _validate_solution_schema(data)
+    return _dict_to_result(data)
+
+
 # ---------------------------------------------------------------------------
 # Public save/load API
 # ---------------------------------------------------------------------------
@@ -307,8 +343,13 @@ def save_solution(
         path is a writable file path.
         result is a valid OptimizationResult.
     """
+    from . import __version__
+
     data = {
         "schema_version": SCHEMA_VERSION,
+        "format_version": RESULT_FORMAT_VERSION,
+        "export_timestamp": datetime.now(timezone.utc).isoformat(),
+        "export_app_version": __version__,
         "exercise_type": exercise_type,
         "bar_mass": bar_mass,
         "body_params": body_params,

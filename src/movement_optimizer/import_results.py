@@ -13,6 +13,9 @@ import json
 import logging
 from pathlib import Path
 
+from .persistence import load_solution, solution_data_to_result
+from .trajectory import OptimizationResult
+
 logger = logging.getLogger(__name__)
 
 EXPORT_FORMAT_VERSION = "1.0"
@@ -59,3 +62,29 @@ def import_result_from_json(path: str | Path) -> dict:
 
     logger.info("Loaded result from %s (format_version=%s)", path, version)
     return data
+
+
+def import_results_from_json(path: str | Path) -> OptimizationResult:
+    """Import a saved solution JSON file as an ``OptimizationResult``.
+
+    This is the structured round-trip companion to
+    :func:`movement_optimizer.persistence.save_solution`. It validates the
+    saved solution schema, checks result-format compatibility, and reconstructs
+    NumPy arrays from the JSON payload.
+
+    Args:
+        path: Path to a JSON solution file.
+
+    Returns:
+        The reconstructed optimization result.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+        json.JSONDecodeError: If the file is not valid JSON.
+        InvalidStateFileError: If the solution schema or format version is
+            unsupported.
+    """
+    data = load_solution(path)
+    result = solution_data_to_result(data)
+    logger.info("Imported OptimizationResult from %s", path)
+    return result

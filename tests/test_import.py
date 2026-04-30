@@ -6,13 +6,17 @@ from __future__ import annotations
 import json
 import logging
 
+import numpy as np
 import pytest
+from conftest import make_test_result
 
 from movement_optimizer.export import export_result_json
 from movement_optimizer.import_results import (
     EXPORT_FORMAT_VERSION,
     import_result_from_json,
+    import_results_from_json,
 )
+from movement_optimizer.persistence import save_solution
 
 
 class TestImportResultFromJson:
@@ -92,3 +96,36 @@ class TestImportResultFromJson:
 
         result = import_result_from_json(str(path))
         assert result["value"] == 1
+
+
+class TestImportResultsFromJson:
+    def test_imports_saved_solution_as_optimization_result(self, tmp_path):
+        original = make_test_result()
+        path = tmp_path / "solution.json"
+        save_solution(
+            path,
+            original,
+            {"body_mass": 80.0, "height": 1.8},
+            "squat",
+            60.0,
+        )
+
+        imported = import_results_from_json(path)
+
+        np.testing.assert_allclose(imported.t, original.t)
+        np.testing.assert_allclose(imported.q, original.q)
+        np.testing.assert_allclose(imported.torques, original.torques)
+        assert imported.success is original.success
+        assert imported.cost == pytest.approx(original.cost)
+        assert imported.n_evals == original.n_evals
+
+    def test_rejects_future_saved_solution_format(self, tmp_path):
+        original = make_test_result()
+        path = tmp_path / "future_solution.json"
+        save_solution(path, original, {"body_mass": 80.0}, "squat", 60.0)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["format_version"] = 999
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="unsupported format_version"):
+            import_results_from_json(path)

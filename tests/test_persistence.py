@@ -12,6 +12,7 @@ from conftest import make_test_result
 
 from movement_optimizer.config import load_app_paths
 from movement_optimizer.persistence import (
+    RESULT_FORMAT_VERSION,
     SCHEMA_VERSION,
     InvalidStateFileError,
     load_app_state,
@@ -37,6 +38,9 @@ class TestSaveSolution:
         assert loaded["exercise_type"] == "squat"
         assert loaded["bar_mass"] == 60.0
         assert loaded["body_params"] == body_params
+        assert loaded["format_version"] == RESULT_FORMAT_VERSION
+        assert "export_timestamp" in loaded
+        assert "export_app_version" in loaded
         assert loaded["metadata"]["success"] is True
         assert loaded["metadata"]["cost"] == pytest.approx(42.5)
         assert loaded["metadata"]["com_horizontal_range_cm"] == pytest.approx(3.2)
