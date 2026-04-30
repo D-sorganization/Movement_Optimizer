@@ -28,6 +28,7 @@ class TestUIBuilder:
             exercise_tabs,
             controls,
             status_label,
+            _sidebar_toggle_btn,
         ) = build_central_widget(window, exercise_configs)
 
         assert isinstance(central, QWidget)
@@ -51,6 +52,7 @@ class TestUIBuilder:
             _exercise_tabs,
             controls,
             _status_label,
+            _sidebar_toggle_btn,
         ) = build_central_widget(window, exercise_configs)
 
         controls.speed_slider.setValue(15)
