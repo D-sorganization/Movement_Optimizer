@@ -13,6 +13,7 @@ import numpy as np
 
 from ..cli import EXERCISE_FACTORIES
 from ..constants import trapezoid
+from ..errors import MovementOptimizerError, OptimizationError, PhysicsError, ValidationError
 from ..models import BodyModel
 from ..trajectory import (
     CancelledError,
@@ -184,12 +185,46 @@ class OptimizationMixin:
             self._sig_cancelled.emit()  # type: ignore[attr-defined]
         except NotImplementedError as exc:
             tb = traceback.format_exc()
-            logger.error("Optimisation failed (feature not implemented):\\n%s", tb)
-            self._sig_error.emit(f"Feature not yet implemented: {exc}")  # type: ignore[attr-defined]
-        except (ValueError, RuntimeError, OSError, np.linalg.LinAlgError) as exc:
+            logger.error("Optimisation failed (feature not implemented):\n%s", tb)
+            err: MovementOptimizerError = OptimizationError(
+                f"Feature not yet implemented: {exc}",
+                error_code="OPT_NOT_IMPLEMENTED",
+                recoverable=False,
+                suggestion="This exercise type may not be supported yet. Try a different exercise.",
+            )
+            self._sig_error.emit(err)  # type: ignore[attr-defined]
+        except np.linalg.LinAlgError as exc:
             tb = traceback.format_exc()
-            logger.error("Optimisation failed:\\n%s", tb)
-            self._sig_error.emit(str(exc))  # type: ignore[attr-defined]
+            logger.error("Physics computation failed (linear algebra):\n%s", tb)
+            physics_err = PhysicsError(
+                f"A numerical error occurred in the physics engine: {exc}",
+                error_code="PHYSICS_LINALG_ERROR",
+                suggestion=(
+                    "Verify that the body model parameters are physically plausible "
+                    "and try adjusting the segment multipliers."
+                ),
+            )
+            self._sig_error.emit(physics_err)  # type: ignore[attr-defined]
+        except ValueError as exc:
+            tb = traceback.format_exc()
+            logger.error("Validation or parameter error during optimisation:\n%s", tb)
+            validation_err = ValidationError(
+                f"Invalid parameters: {exc}",
+                error_code="VALIDATION_ERROR",
+                suggestion=("Check that all body and exercise parameters are within valid ranges."),
+            )
+            self._sig_error.emit(validation_err)  # type: ignore[attr-defined]
+        except (RuntimeError, OSError) as exc:
+            tb = traceback.format_exc()
+            logger.error("Optimisation failed:\n%s", tb)
+            err = OptimizationError(
+                f"Optimization failed: {exc}",
+                error_code="OPT_RUNTIME_ERROR",
+                suggestion=(
+                    "Try increasing the movement duration or reducing the range of motion."
+                ),
+            )
+            self._sig_error.emit(err)  # type: ignore[attr-defined]
 
     def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
         def cb(report: ProgressReport) -> None:
@@ -299,14 +334,33 @@ class OptimizationMixin:
             f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J"
         )
 
-    def _on_err(self, msg: str) -> None:
+    def _on_err(self, err: object) -> None:
         """Handle optimizer errors (called from main thread via signal)."""
         from PyQt6.QtWidgets import QMessageBox
 
+        from ..errors import MovementOptimizerError
+
         self._opt_running = False  # type: ignore[attr-defined]
         self.sidebar.show_idle()  # type: ignore[attr-defined]
-        self.status_label.setText(f"Error: {msg}")  # type: ignore[attr-defined]
-        QMessageBox.critical(self, "Error", msg)  # type: ignore[arg-type]
+
+        if isinstance(err, MovementOptimizerError):
+            title = "Optimization Failed"
+            detail = err.message
+            suggestion = err.suggestion
+            status_text = f"Error [{err.error_code}]: {err.message}"
+        else:
+            title = "Optimization Failed"
+            detail = str(err)
+            suggestion = ""
+            status_text = f"Error: {err}"
+
+        self.status_label.setText(status_text)  # type: ignore[attr-defined]
+
+        body = detail
+        if suggestion:
+            body = f"{detail}\n\nSuggestion: {suggestion}"
+
+        QMessageBox.critical(self, title, body)  # type: ignore[arg-type]
 
     def _reset(self) -> None:
         """Reset to defaults and clear the solution cache."""

@@ -80,7 +80,7 @@ class MainWindow(
     # to communicate from a background thread to the main thread.
     _sig_done = pyqtSignal(int, object, object, float, object)  # idx, result, body, bar, then_chain
     _sig_cancelled = pyqtSignal()
-    _sig_error = pyqtSignal(str)
+    _sig_error = pyqtSignal(object)  # MovementOptimizerError or str
     _sig_progress = pyqtSignal(object)  # ProgressReport
 
     EXERCISE_CONFIGS = (
