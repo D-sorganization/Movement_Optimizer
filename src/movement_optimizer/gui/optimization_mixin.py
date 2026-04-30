@@ -29,8 +29,14 @@ logger = logging.getLogger(__name__)
 class OptimizationMixin:
     """Contains logic for preparing and running optimization backgrounds tasks."""
 
-    # These attributes are expected to be present on the MainWindow instance
-    _opt_lock: threading.Lock
+    # These attributes are expected to be present on the MainWindow instance.
+    # ``_opt_lock`` is an RLock so the same thread may re-enter critical
+    # sections (e.g. a locked helper calling another locked helper) without
+    # deadlocking. All writes to ``results``/``anim_frames``/``bodies_list``/
+    # ``dynamics_list`` (and corresponding cross-thread reads) must hold this
+    # lock to prevent torn updates between the worker thread and the GUI
+    # main thread.
+    _opt_lock: threading.RLock
     _opt_running: bool
     _cache: SolutionCache
     _cancel_event: threading.Event
@@ -44,6 +50,28 @@ class OptimizationMixin:
     def __init__(self) -> None:
         """Init."""
         pass
+
+    def _snapshot_idx_state(
+        self, idx: int
+    ) -> tuple[OptimizationResult | None, int, BodyModel | None, Any]:
+        """Return a consistent snapshot of (result, anim_frame, body, dyn) for ``idx``.
+
+        Acquires ``_opt_lock`` briefly to copy the four shared per-index values
+        out so callers can work with the snapshot outside the critical section,
+        avoiding torn reads while the worker thread is publishing a new result.
+        """
+        with self._opt_lock:
+            return (
+                self.results[idx],
+                self.anim_frames[idx],
+                self.bodies_list[idx],
+                self.dynamics_list[idx],
+            )
+
+    def _set_anim_frame(self, idx: int, frame: int) -> None:
+        """Atomically write ``anim_frames[idx]`` under the optimizer lock."""
+        with self._opt_lock:
+            self.anim_frames[idx] = frame
 
     def _resolve_exercise_params(self, idx: int) -> tuple[Any, Any, str, float, float, float]:
         body = self.sidebar.get_body_model()  # type: ignore[attr-defined]
@@ -68,9 +96,10 @@ class OptimizationMixin:
         if etype in _min_durations:
             dur = max(dur, _min_durations[etype])
 
-        self.dynamics_list[idx] = dyn
-        self.bodies_list[idx] = body
-        self._last_config = (dyn, qs, qe, qb, q_via, etype)
+        with self._opt_lock:
+            self.dynamics_list[idx] = dyn
+            self.bodies_list[idx] = body
+            self._last_config = (dyn, qs, qe, qb, q_via, etype)
         return body, dyn, etype, bar, dur, smoothness
 
     def _seg_mults(self) -> dict[str, float]:
@@ -128,8 +157,9 @@ class OptimizationMixin:
             )
             if cached is not None:
                 logger.info("Cache hit for %s", etype)
-                self.results[idx] = cached
-                self.anim_frames[idx] = 0
+                with self._opt_lock:
+                    self.results[idx] = cached
+                    self.anim_frames[idx] = 0
                 self._sig_done.emit(idx, cached, body, bar, then_chain)  # type: ignore[attr-defined]
                 return
 
@@ -220,7 +250,9 @@ class OptimizationMixin:
             self._update_result_summary(name, result, exercise_type=etype)
             tab = self.exercise_tabs[idx]  # type: ignore[attr-defined]
             tab.draw_all_plots(result, body, bar, exercise_type=etype)
-            tab.draw_anim_frame(0, result, self.dynamics_list[idx], body, etype)  # type: ignore[attr-defined]
+            with self._opt_lock:  # type: ignore[attr-defined]
+                dyn = self.dynamics_list[idx]
+            tab.draw_anim_frame(0, result, dyn, body, etype)  # type: ignore[attr-defined]
             elapsed = result.elapsed_s
             t_str = (
                 f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"

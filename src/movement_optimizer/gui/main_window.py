@@ -30,7 +30,7 @@ from PyQt6.QtWidgets import (
 
 from ..comparison import ComparisonStore
 from ..models import BodyModel
-from ..persistence import load_app_state, save_app_state
+from ..persistence import InvalidStateFileError, load_app_state, save_app_state
 from ..trajectory import (
     OptimizationResult,
     SolutionCache,
@@ -107,7 +107,9 @@ class MainWindow(
 
         self._cancel_event = threading.Event()
         self._opt_running = False
-        self._opt_lock = threading.Lock()
+        # RLock so the same thread may re-enter critical sections without
+        # deadlocking when one locked helper calls another locked helper.
+        self._opt_lock = threading.RLock()
         self._cache = SolutionCache()
         self._comparison_store = ComparisonStore()
         self._last_config: tuple[Any, ...] = ()
@@ -179,7 +181,16 @@ class MainWindow(
 
     def try_restore_session(self) -> None:
         """Check for a saved session and offer to restore it."""
-        state = load_app_state()
+        try:
+            state = load_app_state()
+        except InvalidStateFileError as exc:
+            logger.warning("Saved session failed schema validation: %s", exc)
+            QMessageBox.warning(
+                self,
+                "Session State Invalid",
+                f"Saved session could not be restored:\n{exc}",
+            )
+            return
         if state is None:
             return
         reply = QMessageBox.question(

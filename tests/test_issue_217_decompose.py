@@ -197,7 +197,13 @@ class TestUnpackExerciseConfig:
 
 class TestValidateCliArgs:
     def _make_args(self, **overrides: Any) -> argparse.Namespace:
-        defaults = dict(body_mass=75.0, height=1.75, bar_mass=60.0, duration=2.0)
+        defaults = dict(
+            body_mass=75.0,
+            height=1.75,
+            bar_mass=60.0,
+            duration=2.0,
+            smoothness=1.0,
+        )
         defaults.update(overrides)
         return argparse.Namespace(**defaults)
 

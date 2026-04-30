@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from ..errors import FileIOError as MOptFileIOError
 from ..export import export_animation_gif, export_plots_pdf, export_plots_png
-from ..persistence import load_solution, save_solution
+from ..persistence import InvalidStateFileError, load_solution, save_solution
 from ..trajectory import OptimizationResult
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class FileOperationsMixin:
 
     def _export(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
@@ -49,7 +49,7 @@ class FileOperationsMixin:
 
     def _save_solution(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
@@ -106,6 +106,14 @@ class FileOperationsMixin:
                 f"Bar mass: {data.get('bar_mass')} kg\n"
                 f"Cost: {data.get('metadata', {}).get('cost', 'N/A')}",
             )
+        except InvalidStateFileError as e:
+            err = MOptFileIOError(
+                f"Solution file is invalid: {e}",
+                error_code="LOAD_INVALID_STATE_ERROR",
+                suggestion="The file may have been saved by an incompatible version of the application.",
+            )
+            logger.error("Load solution invalid state: %s", err.message)
+            QMessageBox.critical(self, "Load Failed", str(err))
         except OSError as e:
             err = MOptFileIOError(
                 f"Could not read file '{os.path.basename(path)}': {e}",
@@ -133,7 +141,7 @@ class FileOperationsMixin:
 
     def _export_video(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, body, dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
@@ -148,8 +156,6 @@ class FileOperationsMixin:
         try:
             tab = self.exercise_tabs[idx]
             _, etype = self.EXERCISE_CONFIGS[idx]
-            body = self.bodies_list[idx]
-            dyn = self.dynamics_list[idx]
             n_frames = len(r.t)
 
             if body is None:
@@ -180,7 +186,7 @@ class FileOperationsMixin:
 
     def _export_plots(self: MainWindow) -> None:  # type: ignore[misc]
         idx = self.tabs.currentIndex()
-        r = self.results[idx]
+        r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
         if r is None:
             return
         name = self.EXERCISE_CONFIGS[idx][0].lower().replace(" ", "_")
