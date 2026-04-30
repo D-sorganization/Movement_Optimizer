@@ -51,10 +51,10 @@ try:
 
 except ImportError:
     # Fallback if ud-tools isn't installed.
-    # type: ignore[no-redef] is required because mypy treats the two branches of
+    # The type ignore is required because mypy treats the two branches of
     # the try/except as re-defining the same name in the same scope; the branches
     # are mutually exclusive at runtime so the redefinition is intentional.
-    class Palette:  # type: ignore[no-redef]
+    class Palette:  # type: ignore
         """Centralised colour definitions."""
 
         BG = "#1e1e2e"

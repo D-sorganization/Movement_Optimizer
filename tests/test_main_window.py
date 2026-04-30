@@ -177,7 +177,7 @@ class _FakeSidebar:
         )
 
     def set_comparison_available(self, available: bool) -> None:
-        self.compare_btn.enabled = available
+        self.compare_btn.enabled = available  # type: ignore
 
     def set_cancellation_available(self, available: bool) -> None:
         self.cancel_btn.enabled = available
@@ -265,7 +265,7 @@ class TestUpdateResultSummary:
 
         window = self._make_window()
         OptimizationMixin._update_result_summary(
-            window, "Squat", _make_result(), exercise_type="squat"
+            window, "Squat", _make_result(), exercise_type="squat"  # type: ignore
         )  # type: ignore[arg-type]
         text = window.sidebar.result_label.text
         assert "Ankle" in text
@@ -277,7 +277,7 @@ class TestUpdateResultSummary:
 
         window = self._make_window()
         OptimizationMixin._update_result_summary(
-            window, "Bench", _make_result(), exercise_type="bench_press"
+            window, "Bench", _make_result(), exercise_type="bench_press"  # type: ignore
         )  # type: ignore[arg-type]
         text = window.sidebar.result_label.text
         assert "Shoulder" in text
@@ -289,7 +289,7 @@ class TestUpdateResultSummary:
 
         window = self._make_window()
         OptimizationMixin._update_result_summary(
-            window, "Squat", _make_result(), exercise_type="squat"
+            window, "Squat", _make_result(), exercise_type="squat"  # type: ignore
         )  # type: ignore[arg-type]
         text = window.sidebar.result_label.text
         assert "J" in text
@@ -317,7 +317,7 @@ class TestUpdateResultSummary:
 
         window = self._make_window()
         OptimizationMixin._update_result_summary(
-            window, "Deadlift", _make_result(), exercise_type="deadlift"
+            window, "Deadlift", _make_result(), exercise_type="deadlift"  # type: ignore
         )  # type: ignore[arg-type]
         text = window.sidebar.result_label.text
         # The text should contain at least one numeric value followed by "N·m"
@@ -481,7 +481,7 @@ class TestResolveExerciseParams:
 
         window = _FakeWindow()
         _body, _dyn, etype, _bar, _dur, _smoothness = OptimizationMixin._resolve_exercise_params(
-            window, 0
+            window, 0  # type: ignore
         )  # type: ignore[arg-type]
         assert etype == "squat"
 
@@ -490,7 +490,7 @@ class TestResolveExerciseParams:
 
         window = _FakeWindow()
         _body, _dyn, etype, _bar, _dur, _smoothness = OptimizationMixin._resolve_exercise_params(
-            window, 2
+            window, 2  # type: ignore
         )  # type: ignore[arg-type]
         assert etype == "deadlift"
 
@@ -514,7 +514,7 @@ class TestResolveExerciseParams:
         window = _FakeWindow()
         window.sidebar.bar_slider.current = 100.0
         _body, _dyn, _etype, bar, _dur, _smoothness = OptimizationMixin._resolve_exercise_params(
-            window, 0
+            window, 0  # type: ignore
         )  # type: ignore[arg-type]
         assert bar == pytest.approx(100.0)
 
@@ -525,7 +525,7 @@ class TestResolveExerciseParams:
         window = _FakeWindow()
         window.sidebar.dur_slider.current = 1.0
         _body, _dyn, _etype, _bar, dur, _smoothness = OptimizationMixin._resolve_exercise_params(
-            window, 1
+            window, 1  # type: ignore
         )  # type: ignore[arg-type]
         assert dur >= 3.0
 

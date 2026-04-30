@@ -11,7 +11,7 @@ lives here.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -30,7 +30,7 @@ class _DynamicsWithBody(Protocol):
     """
 
     @property
-    def body(self) -> object:
+    def body(self) -> 'Any':
         """Anthropometric body model (must have ``inner_center`` attribute)."""
         ...
 

@@ -118,7 +118,7 @@ class TestExerciseTabDrawAllPlots:
         from movement_optimizer.gui.exercise_tab import ExerciseTab
 
         tab = ExerciseTab("Squat")
-        return tab
+        return tab  # type: ignore
 
     @patch("movement_optimizer.gui.exercise_tab.plot_renderer")
     def test_draw_all_plots_calls_plot_angles(self, mock_renderer) -> None:
@@ -197,7 +197,7 @@ class TestExerciseTabDrawAllPlots:
         result = _make_result()
         body = _make_body()
         tab.draw_all_plots(result, body, 60.0, exercise_type="squat")
-        title = tab.fig._suptitle
+        title = tab.fig._suptitle  # type: ignore
         assert title is not None
         title_text = title.get_text()
         assert "75" in title_text  # body mass

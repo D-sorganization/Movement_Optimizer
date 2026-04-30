@@ -159,18 +159,18 @@ class MainWindow(
         """Add the Help menu to the application menu bar."""
         menu_bar = self.menuBar()
 
-        help_menu = menu_bar.addMenu("&Help")
+        help_menu = menu_bar.addMenu("&Help")  # type: ignore
 
         about_action = QAction("&About", self)
         about_action.setStatusTip("Show information about Movement Optimizer")
         about_action.triggered.connect(self._show_about)
-        help_menu.addAction(about_action)
+        help_menu.addAction(about_action)  # type: ignore
 
         guide_action = QAction("&Parameter Guide", self)
         guide_action.setShortcut(QKeySequence("F1"))
         guide_action.setStatusTip("Open the parameter reference guide")
         guide_action.triggered.connect(self._show_parameter_guide)
-        help_menu.addAction(guide_action)
+        help_menu.addAction(guide_action)  # type: ignore
 
     def _show_about(self) -> None:
         """Display an About dialog with app name, version, and description."""
@@ -194,6 +194,11 @@ class MainWindow(
         dlg.exec()
 
     def _connect_signals(self) -> None:
+        # Window-level Escape shortcut for cancel — works even when the cancel
+        # button is hidden (QPushButton.setShortcut is inactive for hidden buttons).
+        self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self._esc_shortcut.activated.connect(self._cancel_optimization)
+
         self.sidebar.connect_action_handlers(
             {
                 "optimize_current": self._run_current,
@@ -348,9 +353,12 @@ class MainWindow(
             self.tabs.setCurrentIndex(tab_idx)
 
     def _cancel_optimization(self) -> None:
+        with self._opt_lock:
+            if not self._opt_running:
+                return
         self._cancel_event.set()
         self.status_label.setText("Cancelling...")
-        self.sidebar.set_cancellation_available(False)
+        self.sidebar.set_cancelling()
 
     def _run_current(self) -> None:
         self._run_exercise(self.tabs.currentIndex())

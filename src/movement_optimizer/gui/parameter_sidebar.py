@@ -244,3 +244,20 @@ class ParameterSidebar(QScrollArea):
             self.cancel_btn.setToolTip("Cancellation already requested, shutting down safely...")
         else:
             self.cancel_btn.setToolTip("Cancel the currently running optimization (Esc)")
+
+    def set_cancelling(self) -> None:
+        """Immediately reflect cancellation in the UI and flush pending events.
+
+        Disables the Run buttons and changes the cancel button text to
+        "Canceling…" so the user gets instant visual feedback, then calls
+        ``QApplication.processEvents()`` to keep the UI responsive while the
+        background thread winds down.
+        """
+        from PyQt6.QtWidgets import QApplication
+
+        self.opt_btn.setEnabled(False)
+        self.both_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(False)
+        self.cancel_btn.setText("Canceling…")
+        self.cancel_btn.setToolTip("Cancellation already requested, shutting down safely...")
+        QApplication.processEvents()

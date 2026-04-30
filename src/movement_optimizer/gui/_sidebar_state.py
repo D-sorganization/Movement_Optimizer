@@ -38,6 +38,10 @@ def show_idle(sidebar) -> None:
     sidebar.both_btn.setToolTip(
         "Start trajectory optimization sequentially for all exercise tabs (Ctrl+Shift+R)"
     )
+    # Restore cancel button to its default text/state before hiding it so that
+    # the next optimization run starts with a clean button label.
+    sidebar.cancel_btn.setText("✖  Cancel")
+    sidebar.cancel_btn.setEnabled(True)
     sidebar.cancel_btn.setVisible(False)
 
 

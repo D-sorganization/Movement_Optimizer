@@ -79,7 +79,7 @@ class TestForwardLean:
         shear_upright = spinal_shear(q_upright, qd, qdd, default_body, bar_mass, "squat")
         shear_leaned = spinal_shear(q_leaned, qd, qdd, default_body, bar_mass, "squat")
 
-        assert abs(shear_leaned) > abs(shear_upright)
+        assert abs(shear_leaned) > abs(shear_upright)  # type: ignore
 
     def test_shear_proportional_to_sin(self, default_body: BodyModel, squat_dyn) -> None:
         qd = np.zeros(3)
@@ -134,7 +134,7 @@ class TestBatchSpineLoads:
         qdd = rng.normal(0, 0.1, (n, 3))
 
         comp = spinal_compression(q, qd, qdd, default_body, 60.0, "squat")
-        assert comp.shape == (n,)
+        assert comp.shape == (n,)  # type: ignore
 
     def test_batch_shear_shape(self, default_body: BodyModel, squat_dyn) -> None:
         n = 10
@@ -144,7 +144,7 @@ class TestBatchSpineLoads:
         qdd = rng.normal(0, 0.1, (n, 3))
 
         shear = spinal_shear(q, qd, qdd, default_body, 60.0, "squat")
-        assert shear.shape == (n,)
+        assert shear.shape == (n,)  # type: ignore
 
     def test_batch_matches_loop(self, default_body: BodyModel, squat_dyn) -> None:
         n = 5
@@ -229,7 +229,7 @@ class TestShearInertialComponent:
             bar_mass,
             "squat",
         )
-        assert abs(dynamic_shear) > abs(static_shear)
+        assert abs(dynamic_shear) > abs(static_shear)  # type: ignore
 
 
 class TestNIOSHConstant:
