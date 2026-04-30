@@ -13,7 +13,7 @@ import numpy as np
 
 from ..cli import EXERCISE_FACTORIES
 from ..constants import trapezoid
-from ..errors import OptimizationError, PhysicsError, ValidationError
+from ..errors import MovementOptimizerError, OptimizationError, PhysicsError, ValidationError
 from ..models import BodyModel
 from ..trajectory import (
     CancelledError,
@@ -186,7 +186,7 @@ class OptimizationMixin:
         except NotImplementedError as exc:
             tb = traceback.format_exc()
             logger.error("Optimisation failed (feature not implemented):\n%s", tb)
-            err = OptimizationError(
+            err: MovementOptimizerError = OptimizationError(
                 f"Feature not yet implemented: {exc}",
                 error_code="OPT_NOT_IMPLEMENTED",
                 recoverable=False,
