@@ -86,10 +86,15 @@ class BodyModel:
                 leg lengths into the sagittal plane (default 0).
             arm_angle: Arm elevation angle in degrees used for bench press
                 sagittal projection (default 0).
+            squat_bar_depth: Horizontal offset (m) of the bar behind the
+                shoulder for low-bar squat geometry (must be >= 0).
+            squat_bar_height: Vertical offset (m) of the bar below the
+                top of the torso (must be >= 0).
 
         Raises:
-            ValueError: If body_mass or height are not positive, or any
-                segment multiplier is outside [0.5, 2.0].
+            ValueError: If body_mass or height are not positive, any
+                segment multiplier is outside [0.5, 2.0], or either
+                squat-bar offset is negative.
         """
         if body_mass <= 0:
             raise ValueError("body_mass must be positive")
