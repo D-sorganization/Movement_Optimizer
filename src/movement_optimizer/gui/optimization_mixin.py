@@ -196,7 +196,7 @@ class OptimizationMixin:
         except np.linalg.LinAlgError as exc:
             tb = traceback.format_exc()
             logger.error("Physics computation failed (linear algebra):\n%s", tb)
-            err = PhysicsError(
+            physics_err = PhysicsError(
                 f"A numerical error occurred in the physics engine: {exc}",
                 error_code="PHYSICS_LINALG_ERROR",
                 suggestion=(
@@ -204,16 +204,16 @@ class OptimizationMixin:
                     "and try adjusting the segment multipliers."
                 ),
             )
-            self._sig_error.emit(err)  # type: ignore[attr-defined]
+            self._sig_error.emit(physics_err)  # type: ignore[attr-defined]
         except ValueError as exc:
             tb = traceback.format_exc()
             logger.error("Validation or parameter error during optimisation:\n%s", tb)
-            err = ValidationError(
+            validation_err = ValidationError(
                 f"Invalid parameters: {exc}",
                 error_code="VALIDATION_ERROR",
                 suggestion=("Check that all body and exercise parameters are within valid ranges."),
             )
-            self._sig_error.emit(err)  # type: ignore[attr-defined]
+            self._sig_error.emit(validation_err)  # type: ignore[attr-defined]
         except (RuntimeError, OSError) as exc:
             tb = traceback.format_exc()
             logger.error("Optimisation failed:\n%s", tb)
