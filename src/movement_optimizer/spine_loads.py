@@ -54,7 +54,7 @@ def spinal_compression(
     body: BodyModel,
     bar_mass: float,
     exercise_type: str,
-) -> NDArray:
+) -> float | NDArray:
     """Compute axial compression force at L5/S1 (N).
 
     At the L5/S1 joint the compressive force along the spine axis is:
@@ -95,7 +95,7 @@ def spinal_compression(
     result = gravity_comp + inertial_comp
 
     if scalar_input:
-        return float(result[0])  # type: ignore[return-value]
+        return float(result[0])
     return result
 
 
@@ -106,7 +106,7 @@ def spinal_shear(
     body: BodyModel,
     bar_mass: float,
     exercise_type: str,
-) -> NDArray:
+) -> float | NDArray:
     """Compute anterior-posterior shear force at L5/S1 (N).
 
     The shear force perpendicular to the spine axis includes both
@@ -159,5 +159,5 @@ def spinal_shear(
     result = gravity_shear + tangential_shear + centripetal_shear
 
     if scalar_input:
-        return float(result[0])  # type: ignore[return-value]
+        return float(result[0])
     return result

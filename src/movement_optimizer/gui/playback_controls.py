@@ -14,6 +14,7 @@ class PlaybackControls(QWidget):
     step_fwd = pyqtSignal()
     step_back = pyqtSignal()
     rewind = pyqtSignal()
+    jump_to_end = pyqtSignal()
     speed_changed = pyqtSignal(float)
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -21,27 +22,27 @@ class PlaybackControls(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
 
-        self.btn_rewind = QPushButton("\u23ee")
-        self.btn_rewind.setToolTip("Rewind to beginning")
-        self.btn_rewind.setAccessibleName("Rewind to beginning")
+        self.btn_rewind = QPushButton("\u23ea")
+        self.btn_rewind.setAccessibleName("Rewind to start")
+        self.btn_rewind.setToolTip("Rewind to start (Home)")
 
         self.btn_back = QPushButton("\u25c0")
-        self.btn_back.setToolTip("Step backward one frame")
         self.btn_back.setAccessibleName("Step backward one frame")
+        self.btn_back.setToolTip("Step backward one frame")
 
         self.btn_play = QPushButton("\u25b6 Play")
         self.btn_play.setProperty("class", "primary")
-        self.btn_play.setToolTip("Play or pause animation")
-        self.btn_play.setAccessibleName("Play or pause animation")
+        self.btn_play.setAccessibleName("Play")
+        self.btn_play.setToolTip("Play animation (Space)")
 
-        self.btn_fwd = QPushButton("\u25b6")
-        self.btn_fwd.setToolTip("Step forward one frame")
-        self.btn_fwd.setAccessibleName("Step forward one frame")
+        self.btn_fwd = QPushButton("\u23ed")
+        self.btn_fwd.setAccessibleName("Jump to end")
+        self.btn_fwd.setToolTip("Jump to end (End)")
 
         self.btn_rewind.clicked.connect(self.rewind.emit)
         self.btn_back.clicked.connect(self.step_back.emit)
         self.btn_play.clicked.connect(self.play_toggled.emit)
-        self.btn_fwd.clicked.connect(self.step_fwd.emit)
+        self.btn_fwd.clicked.connect(self.jump_to_end.emit)
 
         for btn in (self.btn_rewind, self.btn_back, self.btn_play, self.btn_fwd):
             layout.addWidget(btn)
@@ -73,17 +74,18 @@ class PlaybackControls(QWidget):
         self.step_fwd.connect(handlers["step_fwd"])
         self.step_back.connect(handlers["step_back"])
         self.rewind.connect(handlers["rewind"])
+        self.jump_to_end.connect(handlers["jump_to_end"])
         self.speed_changed.connect(handlers["speed_changed"])
 
     def set_playing(self, playing: bool) -> None:
         if playing:
             self.btn_play.setText("\u23f8 Pause")
-            self.btn_play.setToolTip("Pause animation")
-            self.btn_play.setAccessibleName("Pause animation")
+            self.btn_play.setAccessibleName("Pause")
+            self.btn_play.setToolTip("Pause animation (Space)")
         else:
             self.btn_play.setText("\u25b6 Play")
-            self.btn_play.setToolTip("Play animation")
-            self.btn_play.setAccessibleName("Play animation")
+            self.btn_play.setAccessibleName("Play")
+            self.btn_play.setToolTip("Play animation (Space)")
 
     def set_frame_position(self, current_frame: int, total_frames: int) -> None:
         """Display the current animation frame as one-based progress text."""

@@ -1,5 +1,5 @@
 # Copyright (c) 2026 D-Sorganization. All rights reserved.
-"""Export helpers for animation GIFs and plot images.
+"""Export helpers for animation GIFs, plot images, and JSON result data.
 
 Design Principles:
     DBC  -- preconditions checked at function entry.
@@ -17,15 +17,21 @@ Security:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.figure import Figure
 
 logger = logging.getLogger(__name__)
+
+# Version tag embedded in every JSON result file so that importers can
+# detect format changes.  Bump when the on-disk layout changes incompatibly.
+EXPORT_FORMAT_VERSION = "1.0"
 
 
 def _validate_export_path(path: str, base_dir: str | os.PathLike[str] | None) -> Path:
@@ -101,9 +107,9 @@ def export_animation_gif(
     safe_path = _validate_export_path(path, base_dir)
     safe_path.parent.mkdir(parents=True, exist_ok=True)
 
-    anim = FuncAnimation(fig, draw_frame_fn, frames=n_frames, blit=False)  # type: ignore[arg-type]
+    anim = FuncAnimation(fig, draw_frame_fn, frames=n_frames, blit=False)  # type: ignore[arg-type]  # matplotlib stubs type FuncAnimation callback as (int, ...) -> Iterable but Callable[[int], None] is compatible
     writer = PillowWriter(fps=fps)
-    anim.save(str(safe_path), writer=writer)  # type: ignore[arg-type]
+    anim.save(str(safe_path), writer=writer)  # type: ignore[arg-type]  # matplotlib stubs type AbstractMovieWriter narrowly; PillowWriter is compatible at runtime
     logger.info("Exported GIF animation to %s (%d frames, %d fps)", safe_path, n_frames, fps)
 
 
@@ -147,3 +153,31 @@ def export_plots_pdf(
     safe_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(str(safe_path), format="pdf", bbox_inches="tight")
     logger.info("Exported PDF to %s", safe_path)
+
+
+def export_result_json(
+    data: dict[str, Any],
+    path: str,
+    base_dir: str | os.PathLike[str] | None = None,
+) -> None:
+    """Export an optimization result dict to a JSON file.
+
+    A ``"format_version"`` key is automatically injected so that
+    :func:`movement_optimizer.import_results.import_result_from_json` can
+    verify compatibility when the file is reloaded.
+
+    Args:
+        data: Arbitrary JSON-serializable dict containing result data.
+        path: Output file path (should end in ``.json``).
+        base_dir: Optional directory the resolved ``path`` must be inside.
+
+    Raises:
+        ValueError: If ``data`` is not a dict or ``path`` fails validation.
+    """
+    if not isinstance(data, dict):
+        raise ValueError(f"data must be a dict, got {type(data).__name__}")
+    safe_path = _validate_export_path(path, base_dir)
+    safe_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"format_version": EXPORT_FORMAT_VERSION, **data}
+    safe_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    logger.info("Exported result JSON to %s", safe_path)

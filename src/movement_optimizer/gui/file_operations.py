@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from ..export import export_animation_gif, export_plots_pdf, export_plots_png
+from ..export_excel import export_to_excel
+from ..import_results import import_result_from_json
 from ..persistence import InvalidStateFileError, load_solution, save_solution
 from ..trajectory import OptimizationResult
 
@@ -149,6 +151,32 @@ class FileOperationsMixin:
                 export_plots_png(tab.fig, path)
             self.status_label.setText(f"Exported: {os.path.basename(path)}")
             QMessageBox.information(self, "Exported", f"Plots saved to:\n{path}")
+        except (OSError, ValueError, RuntimeError) as e:
+            QMessageBox.critical(self, "Export Error", str(e))
+
+    def _export_excel(self: MainWindow) -> None:  # type: ignore[misc]
+        idx = self.tabs.currentIndex()
+        r, _fi, body, _dyn = self._snapshot_idx_state(idx)
+        if r is None:
+            return
+        exercise_name = self.EXERCISE_CONFIGS[idx][0]
+        name = exercise_name.lower().replace(" ", "_")
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save as Excel (.xlsx)",
+            f"{name}_results.xlsx",
+            "Excel Files (*.xlsx)",
+        )
+        if not path:
+            return
+        try:
+            mass = getattr(body, "mass", None)
+            height = getattr(body, "height", None)
+            export_to_excel(r, path, exercise_name=exercise_name, body_mass_kg=mass, body_height_m=height)
+            self.status_label.setText(f"Exported: {os.path.basename(path)}")
+            QMessageBox.information(self, "Exported", f"Excel workbook saved to:\n{path}")
+        except ImportError as e:
+            QMessageBox.critical(self, "Missing Dependency", str(e))
         except (OSError, ValueError, RuntimeError) as e:
             QMessageBox.critical(self, "Export Error", str(e))
 

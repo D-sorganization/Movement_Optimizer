@@ -42,6 +42,7 @@ class ParameterSidebar(QScrollArea):
     load_solution_requested = pyqtSignal()
     export_video_requested = pyqtSignal()
     export_plots_requested = pyqtSignal()
+    export_excel_requested = pyqtSignal()
     add_comparison_requested = pyqtSignal()
     compare_trials_requested = pyqtSignal()
     clear_comparison_requested = pyqtSignal()
@@ -78,6 +79,7 @@ class ParameterSidebar(QScrollArea):
     load_btn: QPushButton
     export_video_btn: QPushButton
     export_plots_btn: QPushButton
+    export_excel_btn: QPushButton
     add_compare_btn: QPushButton
     compare_btn: QPushButton
     clear_compare_btn: QPushButton
@@ -118,6 +120,7 @@ class ParameterSidebar(QScrollArea):
         self.load_solution_requested.connect(handlers["load_solution_requested"])
         self.export_video_requested.connect(handlers["export_video_requested"])
         self.export_plots_requested.connect(handlers["export_plots_requested"])
+        self.export_excel_requested.connect(handlers["export_excel_requested"])
         self.add_comparison_requested.connect(handlers["add_comparison_requested"])
         self.compare_trials_requested.connect(handlers["compare_trials_requested"])
         self.clear_comparison_requested.connect(handlers["clear_comparison_requested"])

@@ -10,9 +10,13 @@ physics class stays focused on mass-matrix and torque computation.
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from .body_model import BodyModel
 
 
 class LagrangianKinematicsMixin:
@@ -25,6 +29,15 @@ class LagrangianKinematicsMixin:
         self.d_eff     -- (3,) effective COM distances
         self.joint_names -- list[str] of joint names
     """
+
+    # Declare the expected attributes from the owning class (LagrangianDynamics)
+    # so type checkers can verify access without requiring a full inheritance
+    # relationship in the mixin itself.
+    body: BodyModel
+    m: NDArray
+    L_eff: NDArray
+    d_eff: NDArray
+    joint_names: list[str]
 
     def com_x_batch(
         self,
@@ -42,10 +55,10 @@ class LagrangianKinematicsMixin:
         Complexity:
             O(N) time and O(N) memory for ``N`` trajectory samples.
         """
-        b = self.body  # type: ignore[attr-defined]
+        b = self.body
         sq = np.sin(q)
-        L = self.L_eff  # type: ignore[attr-defined]
-        d = self.d_eff  # type: ignore[attr-defined]
+        L = self.L_eff
+        d = self.d_eff
 
         knee_x = L[0] * sq[:, 0]
         hip_x = knee_x + L[1] * sq[:, 1]
@@ -58,9 +71,9 @@ class LagrangianKinematicsMixin:
         total_mass = b.body_mass + bar_mass
         numerator = (
             b.m_feet * b.foot_com_x
-            + self.m[0] * c1x  # type: ignore[attr-defined]
-            + self.m[1] * c2x  # type: ignore[attr-defined]
-            + self.m[2] * c3x  # type: ignore[attr-defined]
+            + self.m[0] * c1x
+            + self.m[1] * c2x
+            + self.m[2] * c3x
         )
 
         if exercise_type in ("squat", "full_squat"):
@@ -84,8 +97,8 @@ class LagrangianKinematicsMixin:
         Complexity:
             O(1) time and memory for the fixed 3-link model.
         """
-        L = self.L_eff  # type: ignore[attr-defined]
-        names = self.joint_names  # type: ignore[attr-defined]
+        L = self.L_eff
+        names = self.joint_names
 
         # Performance optimization: Fully unroll scalar components and only instantiate
         # the final return vectors to prevent massive memory allocation overhead from
