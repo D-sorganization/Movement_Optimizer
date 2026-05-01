@@ -22,7 +22,7 @@ import logging
 import os
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.figure import Figure
@@ -107,9 +107,13 @@ def export_animation_gif(
     safe_path = _validate_export_path(path, base_dir)
     safe_path.parent.mkdir(parents=True, exist_ok=True)
 
-    anim = FuncAnimation(fig, draw_frame_fn, frames=n_frames, blit=False)  # type: ignore[arg-type]  # matplotlib stubs type FuncAnimation callback as (int, ...) -> Iterable but Callable[[int], None] is compatible
+    # matplotlib stubs type FuncAnimation callback as (int, ...) -> Iterable
+    # but Callable[[int], None] is compatible at runtime.
+    anim = FuncAnimation(fig, cast(Any, draw_frame_fn), frames=n_frames, blit=False)
     writer = PillowWriter(fps=fps)
-    anim.save(str(safe_path), writer=writer)  # type: ignore[arg-type]  # matplotlib stubs type AbstractMovieWriter narrowly; PillowWriter is compatible at runtime
+    # matplotlib stubs type AbstractMovieWriter narrowly; PillowWriter is
+    # compatible at runtime.
+    anim.save(str(safe_path), writer=cast(Any, writer))
     logger.info("Exported GIF animation to %s (%d frames, %d fps)", safe_path, n_frames, fps)
 
 

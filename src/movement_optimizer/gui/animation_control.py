@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 class AnimationControlMixin:
     """Mixin providing animation playback for MainWindow."""
 
+    is_playing: bool
+
     def _toggle_play(self: MainWindow) -> None:  # type: ignore[override]
         idx = self.tabs.currentIndex()
         r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
@@ -79,7 +81,7 @@ class AnimationControlMixin:
             new_frame,
             r,
             dyn,
-            body,  # type: ignore[arg-type]
+            body,
             etype,
         )
         self.controls.set_playback_status(
@@ -102,7 +104,7 @@ class AnimationControlMixin:
             new_frame,
             r,
             dyn,
-            body,  # type: ignore[arg-type]
+            body,
             etype,
         )
 
@@ -118,7 +120,7 @@ class AnimationControlMixin:
             0,
             r,
             dyn,
-            body,  # type: ignore[arg-type]
+            body,
             etype,
         )
 
@@ -136,7 +138,7 @@ class AnimationControlMixin:
             last_frame,
             r,
             dyn,
-            body,  # type: ignore[arg-type]
+            body,
             etype,
         )
         self.controls.set_playback_status(

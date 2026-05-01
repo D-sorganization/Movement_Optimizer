@@ -14,8 +14,10 @@ import logging
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .exercises import make_clean_config, make_jerk_config, make_snatch_config
 from .models import (
@@ -201,7 +203,15 @@ def _resolve_duration(exercise: str, requested: float) -> float:
     return requested
 
 
-def _unpack_exercise_config(config: tuple) -> tuple:
+def _unpack_exercise_config(
+    config: tuple,
+) -> tuple[
+    Any,
+    NDArray[np.float64],
+    NDArray[np.float64],
+    tuple[tuple[float, float], ...],
+    NDArray[np.float64] | None,
+]:
     """Unpack a 4- or 5-tuple factory config into ``(dyn, qs, qe, qb, q_via)``.
 
     Exercise factories return either a 4-tuple ``(dyn, qs, qe, qb)`` for
