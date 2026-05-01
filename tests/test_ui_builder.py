@@ -1,5 +1,10 @@
 # Copyright (c) 2026 D-Sorganization. All rights reserved.
+import os
+
 import pytest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 from PyQt6.QtWidgets import QLabel, QPushButton, QTabWidget, QWidget
 
 from movement_optimizer.gui.ui_builder import build_central_widget
