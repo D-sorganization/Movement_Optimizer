@@ -20,11 +20,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
     from PyQt6.QtWidgets import QApplication

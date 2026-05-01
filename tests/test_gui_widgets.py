@@ -8,7 +8,11 @@ expected attributes/methods without requiring a running QApplication
 
 from __future__ import annotations
 
+import os
+
 import pytest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
     from movement_optimizer.gui import MainWindow  # noqa: F401
