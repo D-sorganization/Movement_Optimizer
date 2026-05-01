@@ -167,7 +167,7 @@ class TestExportExcel:
         export_to_excel(r, str(path))
         assert path.exists()
 
-    def test_has_three_sheets(self, tmp_path):
+    def test_has_expected_sheets(self, tmp_path):
         import openpyxl
 
         from movement_optimizer.export_excel import export_to_excel
@@ -176,7 +176,7 @@ class TestExportExcel:
         path = tmp_path / "test.xlsx"
         export_to_excel(r, str(path))
         wb = openpyxl.load_workbook(str(path))
-        assert set(wb.sheetnames) == {"Summary", "Trajectory", "Torques"}
+        assert set(wb.sheetnames) == {"Summary", "Trajectory", "Torques", "Statistics"}
 
     def test_trajectory_sheet_has_correct_headers(self, tmp_path):
         import openpyxl
@@ -259,6 +259,19 @@ class TestExportExcel:
         ws = wb["Summary"]
         all_values = [str(cell.value) for row in ws.iter_rows() for cell in row if cell.value]
         assert any("Peak" in v for v in all_values)
+
+    def test_statistics_sheet_contains_recommendations(self, tmp_path):
+        import openpyxl
+
+        from movement_optimizer.export_excel import export_to_excel
+
+        r = self._make_result()
+        path = tmp_path / "test.xlsx"
+        export_to_excel(r, str(path))
+        wb = openpyxl.load_workbook(str(path))
+        ws = wb["Statistics"]
+        all_values = [str(cell.value) for row in ws.iter_rows() for cell in row if cell.value]
+        assert "Recommendations" in all_values
 
     def test_raises_on_none_result(self, tmp_path):
         from movement_optimizer.export_excel import export_to_excel
