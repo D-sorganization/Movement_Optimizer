@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 class AnimationControlMixin:
     """Mixin providing animation playback for MainWindow."""
 
+    is_playing: bool
+
     def _toggle_play(self: MainWindow) -> None:  # type: ignore[override]
         idx = self.tabs.currentIndex()
         r, _fi, _body, _dyn = self._snapshot_idx_state(idx)
