@@ -47,6 +47,26 @@ class OptimizationMixin:
     EXERCISE_CONFIGS: tuple[tuple[str, str], ...]
     _last_config: tuple[Any, ...]
 
+    # GUI attributes (provided by MainWindow / ui_builder)
+    sidebar: Any
+    status_label: Any
+    exercise_tabs: list[Any]
+    tabs: Any
+    controls: Any
+    is_playing: bool
+    anim_timer: Any
+    _comparison_store: Any
+
+    # Signals (connected in MainWindow.__init__)
+    _sig_done: Any
+    _sig_cancelled: Any
+    _sig_error: Any
+    _sig_progress: Any
+
+    # Methods defined on MainWindow or sibling mixins
+    _run_exercise: Callable[[int, list[int] | None], None]
+    _stop_anim: Callable[[], None]
+
     def __init__(self) -> None:
         """Init."""
         pass

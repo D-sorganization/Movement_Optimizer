@@ -79,7 +79,7 @@ class AnimationControlMixin:
             new_frame,
             r,
             dyn,
-            body,  # type: ignore[arg-type]
+            body,
             etype,
         )
         self.controls.set_playback_status(
@@ -102,7 +102,7 @@ class AnimationControlMixin:
             new_frame,
             r,
             dyn,
-            body,  # type: ignore[arg-type]
+            body,
             etype,
         )
 
@@ -118,7 +118,7 @@ class AnimationControlMixin:
             0,
             r,
             dyn,
-            body,  # type: ignore[arg-type]
+            body,
             etype,
         )
 
@@ -136,7 +136,7 @@ class AnimationControlMixin:
             last_frame,
             r,
             dyn,
-            body,  # type: ignore[arg-type]
+            body,
             etype,
         )
         self.controls.set_playback_status(
