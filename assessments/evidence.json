@@ -1,0 +1,87 @@
+{
+  "repo": "Movement-Optimizer",
+  "branch": "fix/unstable-edge-case-tests",
+  "head_sha": "f343ce7e0ea292fcf2476b59443b11132bcb0b2f",
+  "head_date": "2026-04-30",
+  "owner_repo": "D-sorganization/Movement-Optimizer",
+  "A": {
+    "src_files": 70,
+    "test_files": 39,
+    "manifests": 1,
+    "gitignore_lines": 22,
+    "has_readme": 1,
+    "clutter_files": 18
+  },
+  "B": {
+    "readme_lines": 180,
+    "readme_headers": 29,
+    "docs_files": 4,
+    "md_files": 7
+  },
+  "C": {
+    "test_py": 39,
+    "test_rs": 0,
+    "src_py": 65,
+    "src_rs": 0,
+    "test_total": 39,
+    "src_total": 65,
+    "has_coverage": 0,
+    "has_pytest_config": 1
+  },
+  "D": {
+    "bare_except": 0,
+    "except_exception": 0,
+    "noqa_suppressions": 31
+  },
+  "E": {
+    "benchmark_files": 0,
+    "cache_decorators": 0
+  },
+  "F": {
+    "todo_fixme": 0,
+    "duplicate_risk": 0
+  },
+  "G": {
+    "req_lockfiles": 1,
+    "req_files": 1
+  },
+  "H": {
+    "secrets_raw": 0,
+    "bandit_cfg": 0,
+    "security_md": 1
+  },
+  "I": {
+    "env_example": 1,
+    "config_files": 3
+  },
+  "J": {
+    "logging_refs": 22,
+    "metrics_refs": 9
+  },
+  "K": {
+    "suppressions": 31,
+    "todo_total": 0
+  },
+  "L": {
+    "workflow_files": 10,
+    "precommit_config": 1
+  },
+  "M": {
+    "dockerfile": 1,
+    "compose_files": 1
+  },
+  "N": {
+    "license": 1,
+    "copyright_headers": 103,
+    "contributing": 1
+  },
+  "O": {
+    "claude_md": 1,
+    "agents_md": 1,
+    "claude_lines": 90,
+    "agents_lines": 110
+  },
+  "code_files": 138,
+  "src_loc": 9852,
+  "test_loc": 8019
+}

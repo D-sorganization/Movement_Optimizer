@@ -1,0 +1,101 @@
+{
+  "date": "2026-05-07",
+  "repo": "Movement-Optimizer",
+  "owner_repo": "D-sorganization/Movement-Optimizer",
+  "branch": "fix/unstable-edge-case-tests",
+  "head_sha": "f343ce7e0ea292fcf2476b59443b11132bcb0b2f",
+  "head_date": "2026-04-30",
+  "assessor": "A-O Comprehensive Health Assessment",
+  "scores": {
+    "A": {
+      "score": 59,
+      "weight": 0.05,
+      "weighted": 2.95
+    },
+    "B": {
+      "score": 100,
+      "weight": 0.08,
+      "weighted": 8.0
+    },
+    "C": {
+      "score": 65,
+      "weight": 0.12,
+      "weighted": 7.8
+    },
+    "D": {
+      "score": 96.9,
+      "weight": 0.1,
+      "weighted": 9.69
+    },
+    "E": {
+      "score": 60,
+      "weight": 0.07,
+      "weighted": 4.2
+    },
+    "F": {
+      "score": 90,
+      "weight": 0.1,
+      "weighted": 9.0
+    },
+    "G": {
+      "score": 90,
+      "weight": 0.08,
+      "weighted": 7.2
+    },
+    "H": {
+      "score": 95,
+      "weight": 0.1,
+      "weighted": 9.5
+    },
+    "I": {
+      "score": 100,
+      "weight": 0.06,
+      "weighted": 6.0
+    },
+    "J": {
+      "score": 60,
+      "weight": 0.07,
+      "weighted": 4.2
+    },
+    "K": {
+      "score": 84.5,
+      "weight": 0.07,
+      "weighted": 5.92
+    },
+    "L": {
+      "score": 90,
+      "weight": 0.08,
+      "weighted": 7.2
+    },
+    "M": {
+      "score": 90,
+      "weight": 0.05,
+      "weighted": 4.5
+    },
+    "N": {
+      "score": 100,
+      "weight": 0.04,
+      "weighted": 4.0
+    },
+    "O": {
+      "score": 100,
+      "weight": 0.03,
+      "weighted": 3.0
+    }
+  },
+  "total_score": 93.16,
+  "findings": [
+    {
+      "criterion": "A",
+      "priority": "P1",
+      "title": "[Movement-Optimizer] Top-level repository clutter (18 files)",
+      "body": "Found 18 files at repo root. Move to appropriate subdirectories (docs/, scripts/, assets/)."
+    },
+    {
+      "criterion": "L",
+      "priority": "P1",
+      "title": "[Movement-Optimizer] No branch protection on main",
+      "body": "Enable branch protection with required status checks, PR reviews, and signed commits."
+    }
+  ]
+}
