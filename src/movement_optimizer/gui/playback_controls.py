@@ -8,6 +8,8 @@ from collections.abc import Callable, Mapping
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSlider, QWidget
 
+from movement_optimizer.gui.wheel_blocker import suppress_wheel_events
+
 
 class PlaybackControls(QWidget):
     play_toggled = pyqtSignal()
@@ -63,6 +65,7 @@ class PlaybackControls(QWidget):
         self.speed_slider.setValue(10)
         self.speed_slider.setFixedWidth(100)
         self.speed_slider.valueChanged.connect(lambda v: self.speed_changed.emit(v / 10.0))
+        suppress_wheel_events(self.speed_slider)
         layout.addWidget(self.speed_slider)
 
         self.speed_label = QLabel("1.0x")

@@ -6,6 +6,8 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QSlider, QVBoxLayout, QWidget
 
+from movement_optimizer.gui.wheel_blocker import suppress_wheel_events
+
 
 class LabelledSlider(QWidget):
     """Slider with label and formatted value display."""
@@ -51,6 +53,7 @@ class LabelledSlider(QWidget):
         self.slider.setRange(0, steps)
         self.slider.setValue(self._to_tick(default))
         self.slider.valueChanged.connect(self._on_change)
+        suppress_wheel_events(self.slider)
         layout.addWidget(self.slider)
 
         _tip = tooltip if tooltip else f"{label} ({lo:.{decimals}f}-{hi:.{decimals}f} {unit})"
