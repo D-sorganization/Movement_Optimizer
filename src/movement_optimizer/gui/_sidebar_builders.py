@@ -26,6 +26,7 @@ from ..constants import BAR_MASS_KG
 from ..i18n import tr
 from ..rendering import Palette
 from .labelled_slider import LabelledSlider
+from .wheel_blocker import suppress_wheel_events
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +144,7 @@ def build_optimization(sidebar) -> None:
     sidebar.model_combo = QComboBox()
     sidebar.model_combo.addItems(["2D Sagittal", "3D Bilateral"])
     sidebar.model_combo.setAccessibleName("Model")
+    suppress_wheel_events(sidebar.model_combo)
     model_label.setBuddy(sidebar.model_combo)
     idx_3d = sidebar.model_combo.findText("3D Bilateral")
     if idx_3d >= 0:
