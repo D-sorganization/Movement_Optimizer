@@ -3,6 +3,26 @@
 
 from __future__ import annotations
 
+# ---------------------------------------------------------------------------
+# Fleet Testing Standards §5: environment setup BEFORE heavy imports.
+# See: D-sorganization/Repository_Management docs/FLEET_TESTING_STANDARDS.md
+# ---------------------------------------------------------------------------
+import os
+
+# C-extension thread safety. Movement-Optimizer uses numpy/scipy (MKL/OpenBLAS)
+# heavily; pin to single-threaded to avoid xdist worker crashes from MKL/
+# OpenBLAS forking. Production code can re-thread itself if needed.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+
+# matplotlib headless backend, set before any matplotlib import.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
+# Qt headless backend, since this repo's GUI is PyQt6.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 import numpy as np
 import pytest
 
