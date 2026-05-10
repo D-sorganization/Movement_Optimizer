@@ -24,15 +24,15 @@ _blocker: WheelEventBlocker | None = None
 
 def suppress_wheel_events(widget: QWidget) -> None:
     """Install a shared event filter to suppress wheel events on a widget.
-    
+
     Args:
         widget: The Qt widget (e.g., QSlider, QComboBox) to protect from wheel scrolling.
     """
     global _blocker
     if _blocker is None:
         _blocker = WheelEventBlocker()
-    
+
     widget.installEventFilter(_blocker)
-    
-    # In PyQt, QComboBox also needs its view to be protected sometimes, but the 
+
+    # In PyQt, QComboBox also needs its view to be protected sometimes, but the
     # combo box itself is the primary target for focus wheel events.
