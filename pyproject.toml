@@ -105,5 +105,11 @@ markers = [
   "smoke: release-blocking smoke; subset of e2e",
 ]
 
+[tool.coverage.report]
+# Fleet testing Phase 4: ratcheting coverage floor toward Applications-tier target of 75%.
+# Actual measured coverage on main is ~79.9% (CI runs against Python 3.10/3.11/3.12).
+# Step 1: 53 -> 58. Refs: D-sorganization/Repository_Management#1140
+fail_under = 58
+
 [tool.mypy]
 ignore_missing_imports = true
