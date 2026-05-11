@@ -5,6 +5,35 @@
 
 A biomechanics tool for optimizing barbell exercise trajectories using Lagrangian inverse dynamics. The body is modeled as a 3-link planar chain (shin, thigh, trunk) in the sagittal plane. An optional Rust-accelerated backend provides high-performance computation for the hot-path inverse dynamics.
 
+## Used by UpstreamDrift
+
+This repository publishes a `tool_pack/v1` manifest (`tool_pack.yaml` at the
+repo root) and a `biomech.tool_pack` entry point
+(`movement_optimizer.tool_pack`) so the UpstreamDrift launcher can spawn this
+optimizer as part of the unified Biomechanics category. See the umbrella
+[D-sorganization/UpstreamDrift#5179](https://github.com/D-sorganization/UpstreamDrift/issues/5179);
+the launcher tile that consumes this manifest is tracked in
+[D-sorganization/UpstreamDrift#5182](https://github.com/D-sorganization/UpstreamDrift/issues/5182).
+
+```python
+from movement_optimizer.tool_pack import manifest, list_exercises, run_headless
+
+manifest()             # parsed tool_pack.yaml as a dict
+list_exercises()       # ['squat', 'full_squat', 'deadlift', ...]
+run_headless("squat", "/tmp/squat.json")
+```
+
+```bash
+movement-optimizer --gui                                  # default
+movement-optimizer --headless --exercise squat \
+                   --output /tmp/squat.json
+movement-optimizer --list-exercises
+```
+
+The `Launch-Movement-Optimizer.bat` and `launch-movement-optimizer.sh`
+shortcuts forward through to the same entry point, so existing users see no
+behavior change.
+
 ## Features
 
 - **Multi-exercise support**: Squat, Full Squat, Deadlift, Bench Press, Clean, Jerk, Snatch
