@@ -12,8 +12,8 @@ from PyQt6.QtWidgets import QWidget
 class WheelEventBlocker(QObject):
     """Event filter that blocks wheel events and lets them propagate to parents."""
 
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        if event.type() == QEvent.Type.Wheel:
+    def eventFilter(self, obj: QObject | None, event: QEvent | None) -> bool:
+        if event is not None and event.type() == QEvent.Type.Wheel:
             event.ignore()
             return True
         return super().eventFilter(obj, event)

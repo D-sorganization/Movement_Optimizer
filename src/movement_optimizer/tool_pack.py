@@ -20,7 +20,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 _MANIFEST_FILENAME: str = "tool_pack.yaml"
 
