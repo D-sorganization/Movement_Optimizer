@@ -103,7 +103,7 @@ echo Launching Movement Optimizer...
 echo.
 cd /d "%~dp0"
 set PYTHONPATH=%~dp0src;%PYTHONPATH%
-%PYTHON% -m movement_optimizer
+%PYTHON% -m movement_optimizer %*
 
 :end
 echo.

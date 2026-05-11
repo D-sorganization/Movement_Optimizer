@@ -15,6 +15,7 @@ dependencies = [
     "matplotlib>=3.7,<4.0",
     "PyQt6>=6.5,<7.0",
     "openpyxl>=3.1",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +35,9 @@ rust = [
 
 [project.scripts]
 movement-optimizer = "movement_optimizer.__main__:main"
+
+[project.entry-points."biomech.tool_pack"]
+movement_optimizer = "movement_optimizer.tool_pack"
 
 [tool.setuptools.packages.find]
 where = ["src"]

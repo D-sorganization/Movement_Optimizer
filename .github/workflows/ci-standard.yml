@@ -174,6 +174,10 @@ jobs:
           pip_retry install -e ".[dev]"
           echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
 
+      - name: Verify tool_pack entry-point surface (issue #456)
+        run: |
+          python -c "from movement_optimizer.tool_pack import manifest, list_exercises; assert manifest()['schema'] == 'tool_pack/v1'; assert len(list_exercises()) >= 7"
+
       - name: Run Tests
         env:
           QT_QPA_PLATFORM: offscreen
