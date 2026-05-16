@@ -176,7 +176,7 @@ d = json.load(sys.stdin)['resources']
 for k in ['core', 'graphql']:
     r = d[k]
     reset = datetime.datetime.fromtimestamp(r['reset']).strftime('%H:%M:%S')
-    print(f'{k}: {r[\"remaining\"]}/{r[\"limit\"]} remaining — resets {reset}')
+    print(f'{k}: {r["remaining"]}/{r["limit"]} remaining — resets {reset}')
 "
 ```
 
@@ -210,3 +210,22 @@ When implementing an issue:
 | Bot + auto-generated label | Only for auto-generated issues closed by bots |
 
 The workflow checks the PR timeline for cross-referenced merged PRs with closing keywords. If none are found and no exempt label is present, the issue is reopened with an explanatory comment.
+
+---
+
+<!-- BEGIN FLEET-MANAGED: repo-context-codemap -->
+
+## 🧭 Repo Context & Codemap Freshness
+
+> This section is managed centrally by Repository_Management and synced fleet-wide.
+> Do NOT edit it directly in individual repositories — edit the source in Repository_Management/AGENTS.md.
+
+Use repo-local context before broad exploration:
+
+- Read `AGENTS.md` first, then check `docs/codemap.md` or `docs/operations/codemap_freshness_runbook.md` when present.
+- If `.codemap/` exists, treat it as a generated local cache for navigation; verify important claims against source files before editing.
+- If `.codemap/` is missing or stale, use source search (`rg`), focused file reads, and tests as the fallback. Report the missing/stale index as a rollout gap instead of blocking unrelated work.
+- Do not commit `.codemap/` or `.codemap/index.db`. Codemap indexes are cache/artifact data and must stay ignored.
+- To audit local fleet posture, run `python -m scripts.codemap_context_inventory --root .. --format markdown` from `Repository_Management`. This is a local, network-free inventory; it is not a substitute for repo-specific validation.
+
+<!-- END FLEET-MANAGED: repo-context-codemap -->
