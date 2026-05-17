@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   local-only-workflows:
+    timeout-minutes: 30
     name: Reject hosted runner routing
     runs-on: d-sorg-fleet
     steps:
