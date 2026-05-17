@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 jobs:
   dco:
+    timeout-minutes: 30
     runs-on: d-sorg-fleet
     steps:
       - name: Checkout
