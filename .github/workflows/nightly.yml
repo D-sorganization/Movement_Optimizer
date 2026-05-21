@@ -16,14 +16,31 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          cache: 'pip'
+          cache: "pip"
           python-version: "3.11"
 
       - name: Install System Dependencies
         run: |
           if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y libegl1 xvfb
+            run_apt_with_lock_retry() {
+              local attempt
+              local status
+              for attempt in 1 2 3 4 5; do
+                if "$@"; then
+                  return 0
+                fi
+                status=$?
+                if ! sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+                  return "$status"
+                fi
+                echo "dpkg lock-frontend is busy; retrying in 30 seconds (attempt ${attempt}/5)."
+                sleep 30
+              done
+              return "$status"
+            }
+
+            run_apt_with_lock_retry sudo apt-get update
+            run_apt_with_lock_retry sudo apt-get install -y libegl1 xvfb
           fi
 
       - name: Install
