@@ -269,9 +269,13 @@ jobs:
         run: cd rust_core && cargo test
     needs: pick-runner
 
+
+
+
   tests-310:
     name: tests (ubuntu-latest, 3.10)
     runs-on: d-sorg-fleet
+    timeout-minutes: 5
     steps:
       - name: Satisfying ruleset
         run: echo "Satisfying ruleset on local runner"
@@ -279,6 +283,7 @@ jobs:
   tests-311:
     name: tests (ubuntu-latest, 3.11)
     runs-on: d-sorg-fleet
+    timeout-minutes: 5
     steps:
       - name: Satisfying ruleset
         run: echo "Satisfying ruleset on local runner"
@@ -286,24 +291,16 @@ jobs:
   tests-312:
     name: tests (ubuntu-latest, 3.12)
     runs-on: d-sorg-fleet
+    timeout-minutes: 5
     steps:
       - name: Satisfying ruleset
         run: echo "Satisfying ruleset on local runner"
 
   ci-complete:
     name: CI Complete
-    needs:
-      [
-        local-only-workflows,
-        pick-runner,
-        quality-gate,
-        rust-quality-gate,
-        tests,
-        tests-310,
-        tests-311,
-        tests-312,
-      ]
+    needs: [local-only-workflows, pick-runner, quality-gate, rust-quality-gate, tests, tests-310, tests-311, tests-312]
     runs-on: d-sorg-fleet
+    timeout-minutes: 5
     if: always()
     steps:
       - name: Verify all jobs succeeded
