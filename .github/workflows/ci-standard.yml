@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/check_local_only_workflows.py
+          python scripts/check_local_only_workflows.py
 
   pick-runner:
     runs-on: d-sorg-fleet
@@ -45,7 +45,7 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: actions/setup-python@v5
         with:
-          cache: 'pip'
+          cache: "pip"
           python-version: "3.12"
 
       - name: Install System Dependencies
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          cache: 'pip'
+          cache: "pip"
           python-version: "${{ matrix.python-version }}"
 
       - name: Install System Dependencies
@@ -268,3 +268,24 @@ jobs:
         if: steps.rust-changes.outputs.has_rust == 'true'
         run: cd rust_core && cargo test
     needs: pick-runner
+
+  ci-complete:
+    name: CI Complete
+    needs:
+      [
+        local-only-workflows,
+        pick-runner,
+        quality-gate,
+        rust-quality-gate,
+        tests,
+      ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify all jobs succeeded
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All jobs completed successfully."

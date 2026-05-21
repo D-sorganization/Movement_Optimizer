@@ -68,13 +68,13 @@ repos:
       - id: pytest-unit
         name: "pytest (unit tests)"
         stages: [pre-push]
-        entry: python3 -m pytest tests/ -x -q --tb=short
+        entry: python -m pytest tests/ -x -q --tb=short
         language: system
         pass_filenames: false
         types: [python]
 
 default_language_version:
-  python: python3
+  python: python
   node: "20.11.0"
 
 exclude: |
