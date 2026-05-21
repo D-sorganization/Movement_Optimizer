@@ -292,7 +292,17 @@ jobs:
 
   ci-complete:
     name: CI Complete
-    needs: [local-only-workflows, pick-runner, quality-gate, rust-quality-gate, tests, tests-310, tests-311, tests-312]
+    needs:
+      [
+        local-only-workflows,
+        pick-runner,
+        quality-gate,
+        rust-quality-gate,
+        tests,
+        tests-310,
+        tests-311,
+        tests-312,
+      ]
     runs-on: d-sorg-fleet
     if: always()
     steps:
