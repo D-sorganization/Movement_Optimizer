@@ -16,6 +16,7 @@ umbrella (``D-sorganization/UpstreamDrift#5179``):
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -27,6 +28,10 @@ from movement_optimizer import tool_pack
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 YAML_PATH = REPO_ROOT / "tool_pack.yaml"
+SUBPROCESS_ENV = {
+    **os.environ,
+    "PYTHONPATH": str(REPO_ROOT / "src") + os.pathsep + os.environ.get("PYTHONPATH", ""),
+}
 
 EXPECTED_EXERCISES = (
     "squat",
@@ -100,6 +105,7 @@ class TestLauncherCli:
         result = subprocess.run(
             [sys.executable, "-m", "movement_optimizer", "--list-exercises"],
             capture_output=True,
+            env=SUBPROCESS_ENV,
             text=True,
             check=False,
         )
@@ -111,6 +117,7 @@ class TestLauncherCli:
         result = subprocess.run(
             [sys.executable, "-m", "movement_optimizer", "--headless"],
             capture_output=True,
+            env=SUBPROCESS_ENV,
             text=True,
             check=False,
         )

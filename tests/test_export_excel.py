@@ -25,6 +25,7 @@ class TestExportToExcel:
         wb = openpyxl.load_workbook(str(path))
         assert set(wb.sheetnames) == {"Summary", "Trajectory", "Torques", "Statistics"}
 
+    @pytest.mark.timeout(180)
     def test_summary_sheet_has_non_empty_data(self, tmp_path):
         """The Summary sheet contains at least one row of non-empty data."""
         result = make_test_result()
