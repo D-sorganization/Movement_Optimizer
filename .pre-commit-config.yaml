@@ -39,6 +39,7 @@ repos:
     hooks:
       - id: prettier
         name: "prettier (yaml/json/md)"
+        args: ["--end-of-line=auto"]
         types_or: [yaml, markdown, json]
         exclude: '(\.py|package-lock\.json|\.ipynb)$'
 
