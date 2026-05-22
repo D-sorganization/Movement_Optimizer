@@ -40,7 +40,7 @@ repos:
       - id: prettier
         name: "prettier (yaml/json/md)"
         types_or: [yaml, markdown, json]
-        exclude: '(\.py|package-lock\.json|\.ipynb)$'
+        exclude: '(\.github/workflows/ci-standard\.yml|\.py|package-lock\.json|\.ipynb)$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.13.0
@@ -68,13 +68,13 @@ repos:
       - id: pytest-unit
         name: "pytest (unit tests)"
         stages: [pre-push]
-        entry: python3 -m pytest tests/ -x -q --tb=short
+        entry: python -m pytest tests/ -x -q --tb=short
         language: system
         pass_filenames: false
         types: [python]
 
 default_language_version:
-  python: python3
+  python: python
   node: "20.11.0"
 
 exclude: |
