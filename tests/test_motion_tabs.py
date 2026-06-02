@@ -12,6 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QAbstractSpinBox, QLabel, QLineEdit, QSlider, QSplitter
 
+from movement_optimizer.gui.app_icon import movement_optimizer_icon, movement_optimizer_icon_path
 from movement_optimizer.gui.main_window import MainWindow
 from movement_optimizer.gui.motion_tabs import ChainDynamicsTab, NumericControl, SwingsetTab
 
@@ -31,6 +32,15 @@ def test_main_window_preserves_barbell_tabs_and_adds_motion_tabs(qapp) -> None:
         "Snatch",
     ]
     assert tab_names[-2:] == ["Swingset Model", "Chain Dynamics"]
+
+
+def test_main_window_uses_packaged_launcher_icon(qapp) -> None:
+    qapp.setWindowIcon(movement_optimizer_icon())
+    window = MainWindow()
+
+    assert movement_optimizer_icon_path().name == "project_map.svg"
+    assert not qapp.windowIcon().isNull()
+    assert not window.windowIcon().isNull()
 
 
 def test_analysis_tabs_disable_barbell_only_controls(qapp) -> None:
@@ -82,6 +92,15 @@ def test_swingset_and_chain_tabs_run_local_simulations(qapp) -> None:
 
     assert "Best height" in swingset.metric_label.text()
     assert "peak tip speed" in chain.metric_label.text()
+
+
+def test_swingset_tab_configures_seat_placement_percent(qapp) -> None:
+    swingset = SwingsetTab()
+
+    swingset._controls["seat_placement"].set_value(62.5)
+    config = swingset._config()
+
+    assert config.seat_placement_thigh_fraction == pytest.approx(0.625)
 
 
 def test_bottom_playback_controls_drive_analysis_tabs(qapp) -> None:

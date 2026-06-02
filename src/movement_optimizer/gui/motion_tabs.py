@@ -261,6 +261,7 @@ class SwingsetTab(QWidget):
         self._add_control(form, "chain_length", "Chain length m", 1.0, 5.0, 2.4)
         self._add_control(form, "link_mass", "Link mass kg", 0.01, 2.0, 0.16)
         self._add_control(form, "seat_mass", "Seat mass kg", 0.5, 25.0, 4.5)
+        self._add_control(form, "seat_placement", "Seat placement %", 1.0, 100.0, 35.0)
         return group
 
     def _build_body_group(self) -> QGroupBox:
@@ -318,6 +319,7 @@ class SwingsetTab(QWidget):
             chain_length_m=self._value("chain_length"),
             chain_link_mass_kg=self._value("link_mass"),
             seat_mass_kg=self._value("seat_mass"),
+            seat_placement_thigh_fraction=self._value("seat_placement") / 100.0,
             torso=HumanSegmentSpec(self._value("torso_len"), self._value("torso_mass")),
             thigh=HumanSegmentSpec(self._value("thigh_len"), self._value("thigh_mass")),
             shank=HumanSegmentSpec(self._value("shank_len"), self._value("shank_mass")),
@@ -345,7 +347,8 @@ class SwingsetTab(QWidget):
         self._render_snapshot(snapshot)
         self.metric_label.setText(
             f"Rider mass {config.rider_mass_kg:.1f} kg | "
-            f"hand constraint {snapshot.hand_chain_error_m:.3f} m"
+            f"hand constraint {snapshot.hand_chain_error_m:.3f} m | "
+            f"seat constraint {snapshot.seat_chain_error_m:.3f} m"
         )
 
     def _optimize_policy(self) -> None:

@@ -24,6 +24,7 @@ DEFAULT_CHAIN_SEGMENTS: Final[int] = 14
 DEFAULT_CHAIN_LENGTH_M: Final[float] = 2.4
 DEFAULT_SEAT_MASS_KG: Final[float] = 4.5
 DEFAULT_LINK_MASS_KG: Final[float] = 0.16
+DEFAULT_SEAT_PLACEMENT_THIGH_FRACTION: Final[float] = 0.35
 DEFAULT_DAMPING: Final[float] = 0.04
 DEFAULT_PUMP_GAIN: Final[float] = 0.65
 MAX_BODY_RATE_RAD_S: Final[float] = 2.4
@@ -73,6 +74,7 @@ class SwingSetConfig:
     chain_length_m: float = DEFAULT_CHAIN_LENGTH_M
     chain_link_mass_kg: float = DEFAULT_LINK_MASS_KG
     seat_mass_kg: float = DEFAULT_SEAT_MASS_KG
+    seat_placement_thigh_fraction: float = DEFAULT_SEAT_PLACEMENT_THIGH_FRACTION
     torso: HumanSegmentSpec = HumanSegmentSpec(0.62, 28.0)
     thigh: HumanSegmentSpec = HumanSegmentSpec(0.46, 8.0)
     shank: HumanSegmentSpec = HumanSegmentSpec(0.45, 5.5)
@@ -88,6 +90,8 @@ class SwingSetConfig:
         _require_positive("chain_length_m", self.chain_length_m)
         _require_positive("chain_link_mass_kg", self.chain_link_mass_kg)
         _require_positive("seat_mass_kg", self.seat_mass_kg)
+        if not 0.0 < self.seat_placement_thigh_fraction <= 1.0:
+            raise ValueError("seat_placement_thigh_fraction must be in (0, 1]")
         _require_positive("gravity_m_s2", self.gravity_m_s2)
         if self.damping < 0.0:
             raise ValueError("damping must be non-negative")
@@ -178,6 +182,7 @@ class SwingSetSnapshot:
     chain_nodes: FloatArray
     center_of_mass_m: FloatArray
     hand_chain_error_m: float
+    seat_chain_error_m: float
 
 
 @dataclass(frozen=True)
@@ -188,6 +193,7 @@ class SwingRolloutMetrics:
     max_height_gain_m: float
     final_energy_proxy_j: float
     mean_hand_chain_error_m: float
+    mean_seat_chain_error_m: float
 
 
 @dataclass(frozen=True)
@@ -250,12 +256,15 @@ def build_swingset_snapshot(
     points = _body_points(config, pose, chain_nodes)
     center = _center_of_mass(config, points)
     grip_point = chain_nodes[max(config.chain_segments - 2, 0)]
+    seat_point = chain_nodes[-1]
     hand_error = float(np.linalg.norm(points["hand"] - grip_point))
+    seat_error = float(np.linalg.norm(points["seat"] - seat_point))
     return SwingSetSnapshot(
         points=points,
         chain_nodes=chain_nodes,
         center_of_mass_m=center,
         hand_chain_error_m=hand_error,
+        seat_chain_error_m=seat_error,
     )
 
 
@@ -267,17 +276,17 @@ def _body_points(
     seat = chain_nodes[-1]
     grip_point = chain_nodes[max(config.chain_segments - 2, 0)]
     hand = grip_point.copy()
-    forearm_angle = pose.swing_angle_rad + np.pi + pose.elbow_angle_rad
-    elbow = hand + _segment_vector(config.forearm.length_m, forearm_angle)
-    upper_arm_angle = forearm_angle + pose.shoulder_angle_rad
-    shoulder = elbow + _segment_vector(config.upper_arm.length_m, upper_arm_angle)
-    torso_angle = pose.swing_angle_rad + pose.torso_lean_rad
-    waist = shoulder + _segment_vector(0.55 * config.torso.length_m, torso_angle)
-    hip = waist + _segment_vector(0.45 * config.torso.length_m, torso_angle)
     thigh_angle = pose.swing_angle_rad + pose.hip_angle_rad
-    knee = hip + _segment_vector(config.thigh.length_m, thigh_angle)
+    thigh_vector = _segment_vector(config.thigh.length_m, thigh_angle)
+    hip = seat - config.seat_placement_thigh_fraction * thigh_vector
+    knee = hip + thigh_vector
     shank_angle = thigh_angle + pose.knee_angle_rad
     foot = knee + _segment_vector(config.shank.length_m, shank_angle)
+    torso_angle = pose.swing_angle_rad + pose.torso_lean_rad
+    torso_vector = _segment_vector(config.torso.length_m, torso_angle)
+    shoulder = hip - torso_vector
+    waist = hip - 0.45 * torso_vector
+    elbow = _arm_elbow_point(config, shoulder, hand, pose.elbow_angle_rad)
     return {
         "seat": seat,
         "hand": hand,
@@ -288,6 +297,29 @@ def _body_points(
         "knee": knee,
         "foot": foot,
     }
+
+
+def _arm_elbow_point(
+    config: SwingSetConfig,
+    shoulder: FloatArray,
+    hand: FloatArray,
+    elbow_bias_rad: float,
+) -> FloatArray:
+    upper_length = config.upper_arm.length_m
+    forearm_length = config.forearm.length_m
+    delta = hand - shoulder
+    distance = float(np.linalg.norm(delta))
+    unit = delta / distance if distance > 1e-9 else np.asarray([0.0, 1.0], dtype=np.float64)
+    minimum_reach = abs(upper_length - forearm_length) + 1e-9
+    maximum_reach = upper_length + forearm_length - 1e-9
+    effective_distance = _clamp(distance, minimum_reach, maximum_reach)
+    along = (upper_length**2 - forearm_length**2 + effective_distance**2) / (
+        2.0 * effective_distance
+    )
+    height = np.sqrt(max(upper_length**2 - along**2, 0.0))
+    normal = np.asarray([-unit[1], unit[0]], dtype=np.float64)
+    bias = 1.0 if elbow_bias_rad >= 0.0 else -1.0
+    return shoulder + along * unit + bias * height * normal
 
 
 def _center_of_mass(
@@ -495,10 +527,12 @@ def _rollout_metrics(
     inertia = total_mass * config.chain_length_m**2
     energy = 0.5 * inertia * final_velocity**2
     errors = np.asarray([snapshot.hand_chain_error_m for snapshot in snapshots])
+    seat_errors = np.asarray([snapshot.seat_chain_error_m for snapshot in snapshots])
     max_abs_angle = float(np.max(np.abs(angles)))
     return SwingRolloutMetrics(
         max_abs_swing_angle_rad=max_abs_angle,
         max_height_gain_m=float(config.chain_length_m * (1.0 - np.cos(max_abs_angle))),
         final_energy_proxy_j=float(energy),
         mean_hand_chain_error_m=float(np.mean(errors)),
+        mean_seat_chain_error_m=float(np.mean(seat_errors)),
     )

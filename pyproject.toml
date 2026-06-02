@@ -48,6 +48,9 @@ movement_optimizer = "movement_optimizer.tool_pack"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+movement_optimizer = ["assets/*.svg"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
