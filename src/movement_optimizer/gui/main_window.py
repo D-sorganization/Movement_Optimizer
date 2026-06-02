@@ -41,6 +41,7 @@ from .commands import SliderChangeCommand, UndoStack
 from .comparison_mixin import ComparisonMixin
 from .file_operations import FileOperationsMixin
 from .help_dialog import HELP_TOPICS, HelpCenterDialog
+from .motion_tabs import create_chain_tab, create_swingset_tab
 from .optimization_mixin import OptimizationMixin
 from .session_state import collect_results, collect_slider_values, restore_slider_values
 from .stylesheet import QSS
@@ -129,10 +130,12 @@ class MainWindow(
         self._undo_stack = UndoStack()
         self.action_undo: QAction | None = None
         self.action_redo: QAction | None = None
+        self._motion_tab_button_states: dict[Any, bool] = {}
 
         self._build_ui()
         self.setStyleSheet(QSS)
         self._restore_layout()
+        self._sync_motion_tab_controls()
         self._connect_slider_undo()
         self._install_shortcuts()
 
@@ -147,6 +150,9 @@ class MainWindow(
             self._sidebar_toggle_btn,
         ) = build_central_widget(self, self.EXERCISE_CONFIGS)
         self._sidebar_toggle_btn.clicked.connect(self._toggle_sidebar)
+        self.tabs.addTab(create_swingset_tab(), "  Swingset Model  ")
+        self.tabs.addTab(create_chain_tab(), "  Chain Dynamics  ")
+        self.tabs.currentChanged.connect(self._sync_motion_tab_controls)
         self.setCentralWidget(central)
         self._build_menu_bar()
         self._connect_signals()
@@ -323,6 +329,107 @@ class MainWindow(
         if self.action_redo is not None:
             self.action_redo.setEnabled(self._undo_stack.can_redo)
 
+    def _is_exercise_tab(self) -> bool:
+        """Return true when the active top-level tab is a barbell exercise."""
+        return self.tabs.currentIndex() < len(self.EXERCISE_CONFIGS)
+
+    def _sync_motion_tab_controls(self, _index: int | None = None) -> None:
+        """Disable barbell-only controls while an analysis tab is selected."""
+        enabled = self._is_exercise_tab()
+        buttons = (
+            self.sidebar.opt_btn,
+            self.sidebar.both_btn,
+            self.sidebar.export_btn,
+            self.sidebar.save_btn,
+            self.sidebar.export_video_btn,
+            self.sidebar.export_plots_btn,
+            self.sidebar.export_excel_btn,
+            self.sidebar.add_compare_btn,
+            self.sidebar.compare_btn,
+        )
+        if enabled:
+            for button, prior_state in self._motion_tab_button_states.items():
+                button.setEnabled(prior_state)
+            self._motion_tab_button_states.clear()
+        else:
+            if not self._motion_tab_button_states:
+                self._motion_tab_button_states = {button: button.isEnabled() for button in buttons}
+            for button in buttons:
+                button.setEnabled(False)
+        self.controls.setEnabled(True)
+        if enabled:
+            self.status_label.setText("Ready")
+        else:
+            self.status_label.setText("Analysis tabs use local and bottom playback controls.")
+
+    def _active_analysis_tab(self) -> Any | None:
+        """Return the active analysis tab widget when one is selected."""
+        if self._is_exercise_tab():
+            return None
+        return self.tabs.currentWidget()
+
+    def _sync_analysis_playback_controls(self) -> None:
+        """Reflect analysis tab playback state in the shared bottom controls."""
+        tab = self._active_analysis_tab()
+        if tab is None or not hasattr(tab, "playback_status"):
+            return
+        current, total, playing = tab.playback_status()
+        self.controls.set_playing(playing)
+        if total:
+            self.controls.set_playback_status(
+                current,
+                total,
+                self.controls.speed_multiplier(),
+            )
+
+    def _toggle_play(self) -> None:
+        tab = self._active_analysis_tab()
+        if tab is not None and hasattr(tab, "playback_toggle"):
+            tab.set_playback_speed(self.controls.speed_multiplier())
+            tab.playback_toggle()
+            self._sync_analysis_playback_controls()
+            return
+        AnimationControlMixin._toggle_play(self)
+
+    def _step_fwd(self) -> None:
+        tab = self._active_analysis_tab()
+        if tab is not None and hasattr(tab, "playback_step_forward"):
+            tab.playback_step_forward()
+            self._sync_analysis_playback_controls()
+            return
+        AnimationControlMixin._step_fwd(self)
+
+    def _step_back(self) -> None:
+        tab = self._active_analysis_tab()
+        if tab is not None and hasattr(tab, "playback_step_back"):
+            tab.playback_step_back()
+            self._sync_analysis_playback_controls()
+            return
+        AnimationControlMixin._step_back(self)
+
+    def _rewind(self) -> None:
+        tab = self._active_analysis_tab()
+        if tab is not None and hasattr(tab, "playback_rewind"):
+            tab.playback_rewind()
+            self._sync_analysis_playback_controls()
+            return
+        AnimationControlMixin._rewind(self)
+
+    def _jump_to_end(self) -> None:
+        tab = self._active_analysis_tab()
+        if tab is not None and hasattr(tab, "playback_jump_to_end"):
+            tab.playback_jump_to_end()
+            self._sync_analysis_playback_controls()
+            return
+        AnimationControlMixin._jump_to_end(self)
+
+    def _on_speed(self, speed: float) -> None:
+        self.controls.set_speed_multiplier_text(speed)
+        tab = self._active_analysis_tab()
+        if tab is not None and hasattr(tab, "set_playback_speed"):
+            tab.set_playback_speed(speed)
+            self._sync_analysis_playback_controls()
+
     def _undo(self) -> None:
         """Undo the last slider change via the undo stack."""
         if self._undo_stack.undo():
@@ -403,6 +510,9 @@ class MainWindow(
         self.sidebar.set_cancelling()
 
     def _run_current(self) -> None:
+        if not self._is_exercise_tab():
+            self.status_label.setText("Select a barbell exercise tab to optimize.")
+            return
         self._run_exercise(self.tabs.currentIndex())
 
     def _run_all(self) -> None:
