@@ -48,7 +48,10 @@ from .body_model import clamp_joint_angles as clamp_joint_angles
 from .body_model import joint_angles_within_limits as joint_angles_within_limits
 from .chain_dynamics import ChainConfig as ChainConfig
 from .chain_dynamics import ChainState as ChainState
+from .chain_dynamics import random_wadded_chain_state as random_wadded_chain_state
 from .chain_dynamics import simulate_chain as simulate_chain
+from .chain_dynamics import simulate_chain_for_duration as simulate_chain_for_duration
+from .chain_dynamics import steps_for_duration as steps_for_duration
 from .exercise_configs import make_deadlift_config as make_deadlift_config
 from .exercise_configs import make_full_squat_config as make_full_squat_config
 from .exercise_configs import make_squat_config as make_squat_config
@@ -58,6 +61,7 @@ from .swingset import CyclicPolicySearchSpace as CyclicPolicySearchSpace
 from .swingset import CyclicPolicyTraceSample as CyclicPolicyTraceSample
 from .swingset import SwingSetConfig as SwingSetConfig
 from .swingset import SwingSetState as SwingSetState
+from .swingset import constrain_swing_pose as constrain_swing_pose
 from .swingset import estimate_swingset_joint_torques as estimate_swingset_joint_torques
 from .swingset import optimize_cyclic_policy as optimize_cyclic_policy
 from .swingset import simulate_swingset as simulate_swingset
@@ -80,6 +84,7 @@ __all__ = [
     "balance_pose",
     "clamp_joint_angles",
     "compute_max_load",
+    "constrain_swing_pose",
     "estimate_swingset_joint_torques",
     "joint_angles_within_limits",
     "make_bench_press_config",
@@ -89,6 +94,9 @@ __all__ = [
     "make_full_squat_config",
     "make_squat_config",
     "optimize_cyclic_policy",
+    "random_wadded_chain_state",
     "simulate_chain",
+    "simulate_chain_for_duration",
     "simulate_swingset",
+    "steps_for_duration",
 ]

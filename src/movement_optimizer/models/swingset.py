@@ -33,6 +33,12 @@ MAX_EXTERNAL_TORQUE_NM: Final[float] = 70.0
 CONTROL_DIMENSION: Final[int] = 5
 DEFAULT_POLICY_STEPS: Final[int] = 300
 DEFAULT_POLICY_DT_S: Final[float] = 0.02
+JOINT_ENDSTOP_MARGIN_FRACTION: Final[float] = 0.20
+SWING_TORSO_LEAN_LIMITS_RAD: Final[tuple[float, float]] = (-1.30, -1.02)
+SWING_HIP_LIMITS_RAD: Final[tuple[float, float]] = (-0.15, 1.25)
+SWING_KNEE_LIMITS_RAD: Final[tuple[float, float]] = (-1.35, 0.10)
+SWING_SHOULDER_LIMITS_RAD: Final[tuple[float, float]] = (-0.45, 0.25)
+SWING_ELBOW_LIMITS_RAD: Final[tuple[float, float]] = (0.0, 0.35)
 SWING_POLICY_JOINT_NAMES: Final[tuple[str, ...]] = (
     "torso",
     "hip",
@@ -177,6 +183,36 @@ class SwingControlAction:
         )
 
 
+def constrain_swing_pose(pose: SwingPose) -> SwingPose:
+    """Clamp rider pose to realistic side-view swingset range of motion.
+
+    Preconditions:
+        All pose fields are finite.
+    """
+
+    values = np.asarray(
+        [
+            pose.swing_angle_rad,
+            pose.torso_lean_rad,
+            pose.hip_angle_rad,
+            pose.knee_angle_rad,
+            pose.shoulder_angle_rad,
+            pose.elbow_angle_rad,
+        ],
+        dtype=np.float64,
+    )
+    if not np.all(np.isfinite(values)):
+        raise ValueError("pose values must be finite")
+    return replace(
+        pose,
+        torso_lean_rad=_clamp(pose.torso_lean_rad, *SWING_TORSO_LEAN_LIMITS_RAD),
+        hip_angle_rad=_clamp(pose.hip_angle_rad, *SWING_HIP_LIMITS_RAD),
+        knee_angle_rad=_clamp(pose.knee_angle_rad, *SWING_KNEE_LIMITS_RAD),
+        shoulder_angle_rad=_clamp(pose.shoulder_angle_rad, *SWING_SHOULDER_LIMITS_RAD),
+        elbow_angle_rad=_clamp(pose.elbow_angle_rad, *SWING_ELBOW_LIMITS_RAD),
+    )
+
+
 @dataclass(frozen=True)
 class SwingSetState:
     """Dynamic state for the swingset rollout."""
@@ -303,6 +339,7 @@ def build_swingset_snapshot(
     config: SwingSetConfig,
     pose: SwingPose,
 ) -> SwingSetSnapshot:
+    pose = constrain_swing_pose(pose)
     chain_config = config.chain_config()
     if config.chain_segments == 1:
         chain_state = ChainState.stationary(chain_config, pose.swing_angle_rad)
@@ -381,7 +418,7 @@ def _arm_elbow_point(
     )
     height = np.sqrt(max(upper_length**2 - along**2, 0.0))
     normal = np.asarray([-unit[1], unit[0]], dtype=np.float64)
-    _ = elbow_bias_rad
+    _ = constrain_swing_pose(SwingPose(elbow_angle_rad=elbow_bias_rad)).elbow_angle_rad
     bias = 1.0
     return shoulder + along * unit + bias * height * normal
 
@@ -408,14 +445,58 @@ def _center_of_mass(
     return weighted / total_mass
 
 
+def _step_joint_with_endstop(
+    value: float,
+    rate_rad_s: float,
+    dt_s: float,
+    limits: tuple[float, float],
+) -> float:
+    lower, upper = limits
+    current = _clamp(value, lower, upper)
+    width = upper - lower
+    margin = max(width * JOINT_ENDSTOP_MARGIN_FRACTION, 1e-6)
+    damped_rate = rate_rad_s
+    if damped_rate > 0.0 and current > upper - margin:
+        damped_rate *= ((upper - current) / margin) ** 2
+    elif damped_rate < 0.0 and current < lower + margin:
+        damped_rate *= ((current - lower) / margin) ** 2
+    return _clamp(current + damped_rate * dt_s, lower, upper)
+
+
 def _step_pose(pose: SwingPose, action: SwingControlAction, dt_s: float) -> SwingPose:
+    bounded = constrain_swing_pose(pose)
     return replace(
-        pose,
-        torso_lean_rad=pose.torso_lean_rad + action.torso_lean_rate_rad_s * dt_s,
-        hip_angle_rad=pose.hip_angle_rad + action.hip_rate_rad_s * dt_s,
-        knee_angle_rad=pose.knee_angle_rad + action.knee_rate_rad_s * dt_s,
-        shoulder_angle_rad=pose.shoulder_angle_rad + action.shoulder_rate_rad_s * dt_s,
-        elbow_angle_rad=pose.elbow_angle_rad + action.elbow_rate_rad_s * dt_s,
+        bounded,
+        torso_lean_rad=_step_joint_with_endstop(
+            bounded.torso_lean_rad,
+            action.torso_lean_rate_rad_s,
+            dt_s,
+            SWING_TORSO_LEAN_LIMITS_RAD,
+        ),
+        hip_angle_rad=_step_joint_with_endstop(
+            bounded.hip_angle_rad,
+            action.hip_rate_rad_s,
+            dt_s,
+            SWING_HIP_LIMITS_RAD,
+        ),
+        knee_angle_rad=_step_joint_with_endstop(
+            bounded.knee_angle_rad,
+            action.knee_rate_rad_s,
+            dt_s,
+            SWING_KNEE_LIMITS_RAD,
+        ),
+        shoulder_angle_rad=_step_joint_with_endstop(
+            bounded.shoulder_angle_rad,
+            action.shoulder_rate_rad_s,
+            dt_s,
+            SWING_SHOULDER_LIMITS_RAD,
+        ),
+        elbow_angle_rad=_step_joint_with_endstop(
+            bounded.elbow_angle_rad,
+            action.elbow_rate_rad_s,
+            dt_s,
+            SWING_ELBOW_LIMITS_RAD,
+        ),
     )
 
 
@@ -510,7 +591,7 @@ def simulate_swingset(
     if steps < 1:
         raise ValueError("steps must be at least 1")
     _require_positive("dt_s", dt_s)
-    states = [initial_state]
+    states = [replace(initial_state, pose=constrain_swing_pose(initial_state.pose))]
     controls: list[FloatArray] = []
     snapshots = [build_swingset_snapshot(config, initial_state.pose)]
     for step_index in range(steps):

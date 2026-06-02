@@ -15,6 +15,7 @@ DEFAULT_SEGMENT_LENGTH_M: Final[float] = 0.18
 DEFAULT_LINK_MASS_KG: Final[float] = 0.12
 DEFAULT_DAMPING: Final[float] = 0.08
 DEFAULT_COUPLING: Final[float] = 18.0
+DEFAULT_BEND_DAMPING: Final[float] = 0.25
 MIN_SEGMENTS_FOR_CATENARY: Final[int] = 2
 INTEGRATION_SUBSTEPS: Final[int] = 32
 
@@ -52,6 +53,7 @@ class ChainConfig:
     gravity_m_s2: float = GRAVITY_M_S2
     damping: float = DEFAULT_DAMPING
     coupling: float = DEFAULT_COUPLING
+    bend_damping: float = DEFAULT_BEND_DAMPING
 
     def __post_init__(self) -> None:
         if self.segment_count < 1:
@@ -63,6 +65,8 @@ class ChainConfig:
             raise ValueError("damping must be non-negative")
         if self.coupling < 0.0:
             raise ValueError("coupling must be non-negative")
+        if self.bend_damping < 0.0:
+            raise ValueError("bend_damping must be non-negative")
 
     @property
     def total_length_m(self) -> float:
@@ -191,6 +195,29 @@ def initial_catenary_angles(segment_count: int, sag_rad: float) -> FloatArray:
     return np.linspace(-sag_rad, sag_rad, segment_count, dtype=np.float64)
 
 
+def random_wadded_chain_state(
+    config: ChainConfig,
+    *,
+    angle_span_rad: float = np.pi,
+    velocity_span_rad_s: float = 0.0,
+    seed: int | None = None,
+) -> ChainState:
+    """Return a deterministic random curled-chain start for analysis.
+
+    Preconditions:
+        ``angle_span_rad`` and ``velocity_span_rad_s`` are non-negative.
+    """
+
+    if angle_span_rad < 0.0:
+        raise ValueError("angle_span_rad must be non-negative")
+    if velocity_span_rad_s < 0.0:
+        raise ValueError("velocity_span_rad_s must be non-negative")
+    rng = np.random.default_rng(seed)
+    angles = rng.uniform(-angle_span_rad, angle_span_rad, config.segment_count)
+    velocities = rng.uniform(-velocity_span_rad_s, velocity_span_rad_s, config.segment_count)
+    return ChainState(angles.astype(np.float64), velocities.astype(np.float64)).validated(config)
+
+
 def _angular_acceleration(
     config: ChainConfig,
     state: ChainState,
@@ -210,7 +237,15 @@ def _angular_acceleration(
     neighbor_sum[:-1] += checked.angles_rad[1:] - checked.angles_rad[:-1]
     neighbor_sum[1:] += checked.angles_rad[:-1] - checked.angles_rad[1:]
     coupling_term = config.coupling * neighbor_sum / config.link_mass_kg
-    return gravity_term + damping_term + coupling_term + torques / inertia
+    neighbor_velocity_sum = np.zeros(config.segment_count, dtype=np.float64)
+    neighbor_velocity_sum[:-1] += (
+        checked.angular_velocities_rad_s[1:] - checked.angular_velocities_rad_s[:-1]
+    )
+    neighbor_velocity_sum[1:] += (
+        checked.angular_velocities_rad_s[:-1] - checked.angular_velocities_rad_s[1:]
+    )
+    bend_damping_term = config.bend_damping * neighbor_velocity_sum
+    return gravity_term + damping_term + coupling_term + bend_damping_term + torques / inertia
 
 
 def step_chain(
@@ -276,3 +311,33 @@ def simulate_chain(
         energy_j=energy,
         tip_speed_m_s=tip_speed,
     )
+
+
+def steps_for_duration(duration_s: float, dt_s: float) -> int:
+    """Return the number of integration steps needed for a requested duration.
+
+    Preconditions:
+        ``duration_s`` and ``dt_s`` are positive.
+    """
+
+    _require_positive("duration_s", duration_s)
+    _require_positive("dt_s", dt_s)
+    return max(1, int(np.ceil(duration_s / dt_s)))
+
+
+def simulate_chain_for_duration(
+    config: ChainConfig,
+    initial_state: ChainState,
+    duration_s: float,
+    dt_s: float,
+    torque_history_nm: FloatArray | None = None,
+) -> ChainRollout:
+    """Simulate a chain for a user-requested physical duration.
+
+    Preconditions:
+        ``duration_s`` and ``dt_s`` are positive. ``torque_history_nm`` has shape
+        ``(steps_for_duration(duration_s, dt_s), segment_count)`` when supplied.
+    """
+
+    steps = steps_for_duration(duration_s, dt_s)
+    return simulate_chain(config, initial_state, steps, dt_s, torque_history_nm)

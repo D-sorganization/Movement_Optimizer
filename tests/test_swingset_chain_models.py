@@ -14,8 +14,11 @@ from movement_optimizer.models.chain_dynamics import (
     ChainState,
     initial_catenary_angles,
     link_midpoints,
+    random_wadded_chain_state,
     simulate_chain,
+    simulate_chain_for_duration,
     step_chain,
+    steps_for_duration,
     total_energy,
 )
 from movement_optimizer.models.swingset import (
@@ -27,6 +30,7 @@ from movement_optimizer.models.swingset import (
     SwingSetConfig,
     SwingSetState,
     build_swingset_snapshot,
+    constrain_swing_pose,
     estimate_swingset_joint_torques,
     heuristic_pumping_policy,
     optimize_cyclic_policy,
@@ -55,6 +59,8 @@ def test_chain_config_validates_physical_inputs() -> None:
         ChainConfig(damping=-0.1)
     with pytest.raises(ValueError, match="coupling"):
         ChainConfig(coupling=-0.1)
+    with pytest.raises(ValueError, match="bend_damping"):
+        ChainConfig(bend_damping=-0.1)
 
 
 def test_chain_state_validation_rejects_bad_arrays() -> None:
@@ -98,6 +104,51 @@ def test_chain_simulation_damps_energy() -> None:
     assert total_energy(config, rollout.states[-1]) == pytest.approx(rollout.energy_j[-1])
     link_lengths = np.linalg.norm(np.diff(rollout.positions, axis=1), axis=2)
     np.testing.assert_allclose(link_lengths, config.segment_length_m)
+
+
+def test_chain_bend_damping_reduces_wadded_chain_tip_speed() -> None:
+    base = ChainConfig(segment_count=8, damping=0.02, bend_damping=0.0)
+    damped = ChainConfig(segment_count=8, damping=0.02, bend_damping=2.5)
+    initial = ChainState(
+        np.asarray([0.9, -1.1, 1.4, -0.8, 1.2, -1.3, 0.7, -0.4], dtype=np.float64),
+        np.full(8, 1.8, dtype=np.float64),
+    )
+
+    base_rollout = simulate_chain(base, initial, steps=80, dt_s=0.01)
+    damped_rollout = simulate_chain(damped, initial, steps=80, dt_s=0.01)
+
+    assert damped_rollout.tip_speed_m_s[-1] < base_rollout.tip_speed_m_s[-1]
+    assert damped_rollout.energy_j[-1] < base_rollout.energy_j[-1]
+
+
+def test_chain_random_wadded_start_is_deterministic_and_validated() -> None:
+    config = ChainConfig(segment_count=5)
+
+    first = random_wadded_chain_state(config, angle_span_rad=np.pi, velocity_span_rad_s=0.4, seed=7)
+    second = random_wadded_chain_state(
+        config, angle_span_rad=np.pi, velocity_span_rad_s=0.4, seed=7
+    )
+
+    np.testing.assert_allclose(first.angles_rad, second.angles_rad)
+    np.testing.assert_allclose(first.angular_velocities_rad_s, second.angular_velocities_rad_s)
+    assert first.angles_rad.shape == (5,)
+    assert np.max(np.abs(first.angles_rad)) <= np.pi
+    with pytest.raises(ValueError, match="angle_span_rad"):
+        random_wadded_chain_state(config, angle_span_rad=-0.1)
+    with pytest.raises(ValueError, match="velocity_span_rad_s"):
+        random_wadded_chain_state(config, velocity_span_rad_s=-0.1)
+
+
+def test_chain_duration_simulation_uses_requested_time() -> None:
+    config = ChainConfig(segment_count=3)
+    initial = ChainState.stationary(config, angle_rad=0.25)
+
+    assert steps_for_duration(1.0, 0.25) == 4
+    rollout = simulate_chain_for_duration(config, initial, duration_s=1.0, dt_s=0.25)
+
+    assert len(rollout.states) == 5
+    with pytest.raises(ValueError, match="duration_s"):
+        steps_for_duration(0.0, 0.01)
 
 
 def test_chain_simulation_validates_rollout_inputs() -> None:
@@ -158,6 +209,55 @@ def test_swingset_elbow_branch_does_not_mirror_when_control_crosses_zero() -> No
     assert min(branch_signs) > 0.0
     max_step = max(float(np.linalg.norm(end - start)) for start, end in pairwise(elbow_points))
     assert max_step < 0.02
+
+
+def test_swingset_pose_constraints_keep_rider_facing_right_and_arms_nearly_straight() -> None:
+    constrained = constrain_swing_pose(
+        SwingPose(
+            swing_angle_rad=0.0,
+            torso_lean_rad=2.0,
+            hip_angle_rad=-3.0,
+            knee_angle_rad=2.0,
+            shoulder_angle_rad=2.0,
+            elbow_angle_rad=2.0,
+        )
+    )
+    snapshot = build_swingset_snapshot(SwingSetConfig(chain_segments=10), constrained)
+
+    assert constrained.torso_lean_rad < 0.0
+    assert constrained.elbow_angle_rad <= 0.35
+    assert snapshot.points["shoulder"][0] > snapshot.points["hip"][0]
+
+    shoulder = snapshot.points["shoulder"]
+    elbow = snapshot.points["elbow"]
+    hand = snapshot.points["hand"]
+    upper = shoulder - elbow
+    forearm = hand - elbow
+    elbow_interior_rad = np.arccos(
+        np.dot(upper, forearm) / (np.linalg.norm(upper) * np.linalg.norm(forearm))
+    )
+    elbow_flexion_rad = np.pi - elbow_interior_rad
+    assert elbow_flexion_rad <= 0.40
+
+
+def test_swingset_joint_end_range_damping_prevents_limit_overshoot() -> None:
+    config = SwingSetConfig()
+    near_limit = SwingSetState(
+        pose=SwingPose(torso_lean_rad=-1.021, elbow_angle_rad=0.349),
+        swing_angular_velocity_rad_s=0.0,
+    )
+    full_rate = SwingControlAction(torso_lean_rate_rad_s=2.0, elbow_rate_rad_s=2.0)
+
+    stepped = step_swingset(config, near_limit, full_rate, dt_s=0.1)
+
+    assert stepped.pose.torso_lean_rad < -1.02
+    assert stepped.pose.elbow_angle_rad <= 0.35
+    assert stepped.pose.elbow_angle_rad - near_limit.pose.elbow_angle_rad < 0.01
+
+
+def test_swingset_pose_constraints_reject_nonfinite_inputs() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        constrain_swing_pose(SwingPose(torso_lean_rad=float("nan")))
 
 
 def test_swingset_config_validates_inputs() -> None:
