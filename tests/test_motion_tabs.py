@@ -381,6 +381,7 @@ def test_chain_tab_supports_free_segment_angles_and_realtime_speed(qapp) -> None
     chain._controls["segments"].set_value(3)
     chain.angle_edit.setText("9999.0, 0.1, -9999.0")
     chain._controls["dt"].set_value(0.02)
+    chain._controls["duration"].set_value(0.6)
     chain._controls["speed"].set_value(2.0)
 
     chain._simulate()
@@ -401,6 +402,30 @@ def test_chain_tab_converts_typed_degrees(qapp) -> None:
     assert state.angles_rad[0] == pytest.approx(np.pi)
     assert state.angles_rad[1] == pytest.approx(-np.pi / 2.0)
     assert "degrees" in chain.angle_edit.placeholderText()
+
+
+def test_chain_tab_exposes_damping_duration_and_random_wadded_start(qapp) -> None:
+    chain = ChainDynamicsTab()
+    chain._controls["segments"].set_value(5)
+    chain._controls["damping"].set_value(0.42)
+    chain._controls["bend_damping"].set_value(1.4)
+    chain._controls["coupling"].set_value(22.0)
+    chain._controls["duration"].set_value(1.2)
+    chain._controls["dt"].set_value(0.2)
+    chain._controls["random_seed"].set_value(11)
+
+    config = chain._config()
+    chain._randomize_wadded_start()
+    chain._simulate()
+
+    assert config.damping == pytest.approx(0.42)
+    assert config.bend_damping == pytest.approx(1.4)
+    assert config.coupling == pytest.approx(22.0)
+    assert not chain.tie_segments.isChecked()
+    assert len(chain.angle_edit.text().split(",")) == 5
+    assert chain._rollout is not None
+    assert len(chain._rollout.states) == 7
+    assert "real time 1.20 s" in chain.metric_label.text()
 
 
 def test_canvas_keeps_anchor_projection_fixed(qapp) -> None:

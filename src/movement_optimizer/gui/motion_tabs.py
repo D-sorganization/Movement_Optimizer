@@ -32,7 +32,9 @@ from movement_optimizer.models.chain_dynamics import (
     ChainRollout,
     ChainState,
     initial_catenary_angles,
-    simulate_chain,
+    random_wadded_chain_state,
+    simulate_chain_for_duration,
+    steps_for_duration,
 )
 from movement_optimizer.models.swingset import (
     DEFAULT_POLICY_DT_S,
@@ -558,11 +560,11 @@ class SwingsetTab(QWidget):
         config = self._config()
         pose = SwingPose(
             swing_angle_rad=0.12,
-            torso_lean_rad=0.1,
+            torso_lean_rad=-1.05,
             hip_angle_rad=0.2,
             knee_angle_rad=-0.2,
             shoulder_angle_rad=-0.35,
-            elbow_angle_rad=0.45,
+            elbow_angle_rad=0.08,
         )
         snapshot = build_swingset_snapshot(config, pose)
         self._render_snapshot(snapshot)
@@ -795,10 +797,25 @@ class ChainDynamicsTab(QWidget):
         self._add_control(form, "segments", "Segments", 2, 60, 16, integer=True)
         self._add_control(form, "length", "Link length m", 0.03, 1.0, 0.18)
         self._add_control(form, "mass", "Link mass kg", 0.01, 4.0, 0.12)
+        self._add_control(form, "damping", "Joint damping", 0.0, 5.0, 0.08)
+        self._add_control(form, "bend_damping", "Bend damping", 0.0, 5.0, 0.25)
+        self._add_control(form, "coupling", "Bend stiffness", 0.0, 60.0, 18.0)
         self._add_control(form, "sag", "Tied sag", 0.0, 180.0, 0.35)
         self._add_control(form, "kick", "Initial velocity", 0.0, 2.0, 0.6)
-        self._add_control(form, "steps", "Simulation steps", 30, 600, 180, integer=True)
-        self._add_control(form, "dt", "Time step s", 0.002, 0.05, 0.01)
+        self._add_control(
+            form,
+            "steps",
+            "Computed steps",
+            1,
+            10000,
+            180,
+            integer=True,
+            refresh=False,
+        )
+        self._add_control(form, "duration", "Simulation time s", 0.05, 20.0, 1.8)
+        self._add_control(form, "dt", "Time step s", 0.002, 0.2, 0.01)
+        self._add_control(form, "random_span", "Random angle span", 0.0, 360.0, np.pi)
+        self._add_control(form, "random_seed", "Random seed", 0, 9999, 7, integer=True)
         self._add_control(form, "speed", "Playback speed", 0.25, 4.0, 1.0, refresh=False)
         self.tie_segments.stateChanged.connect(self._refresh)
         form.addRow("", self.tie_segments)
@@ -812,9 +829,12 @@ class ChainDynamicsTab(QWidget):
         row = QHBoxLayout()
         simulate_button = QPushButton("Simulate Whip")
         simulate_button.clicked.connect(self._simulate)
+        randomize_button = QPushButton("Randomize Start")
+        randomize_button.clicked.connect(self._randomize_wadded_start)
         self.play_button = QPushButton("Play")
         self.play_button.clicked.connect(self._toggle_playback)
         row.addWidget(simulate_button)
+        row.addWidget(randomize_button)
         row.addWidget(self.play_button)
         control_layout.addLayout(row)
         control_layout.addWidget(self.metric_label)
@@ -846,6 +866,9 @@ class ChainDynamicsTab(QWidget):
             segment_count=int(self._value("segments")),
             segment_length_m=self._value("length"),
             link_mass_kg=self._value("mass"),
+            damping=self._value("damping"),
+            coupling=self._value("coupling"),
+            bend_damping=self._value("bend_damping"),
         )
 
     def _state(self) -> ChainState:
@@ -870,9 +893,23 @@ class ChainDynamicsTab(QWidget):
     def _angle_to_rad(self, value: float) -> float:
         return float(np.deg2rad(value)) if self.use_degrees.isChecked() else value
 
+    def _randomize_wadded_start(self) -> None:
+        config = self._config()
+        state = random_wadded_chain_state(
+            config,
+            angle_span_rad=self._angle_to_rad(self._value("random_span")),
+            velocity_span_rad_s=self._value("kick"),
+            seed=int(self._value("random_seed")),
+        )
+        self.tie_segments.setChecked(False)
+        values = np.rad2deg(state.angles_rad) if self.use_degrees.isChecked() else state.angles_rad
+        self.angle_edit.setText(", ".join(f"{value:.4f}" for value in values))
+        self._refresh()
+
     def _refresh_angle_placeholder(self) -> None:
         unit = "degrees" if self.use_degrees.isChecked() else "radians"
         self._controls["sag"].set_value(20.0 if self.use_degrees.isChecked() else 0.35)
+        self._controls["random_span"].set_value(180.0 if self.use_degrees.isChecked() else np.pi)
         self.angle_edit.setPlaceholderText(f"comma-separated {unit}, one per segment")
 
     def _value(self, key: str) -> float:
@@ -903,10 +940,12 @@ class ChainDynamicsTab(QWidget):
     def _simulate(self) -> None:
         try:
             self._dt_s = self._value("dt")
-            self._rollout = simulate_chain(
+            duration = self._value("duration")
+            self._controls["steps"].set_value(steps_for_duration(duration, self._dt_s))
+            self._rollout = simulate_chain_for_duration(
                 self._config(),
                 self._state(),
-                steps=int(self._value("steps")),
+                duration_s=duration,
                 dt_s=self._dt_s,
             )
         except ValueError as exc:
@@ -917,7 +956,7 @@ class ChainDynamicsTab(QWidget):
         self.metric_label.setText(
             f"Frames {len(self._rollout.states)} | "
             f"peak tip speed {self._rollout.tip_speed_m_s.max():.3f} m/s | "
-            f"real time {self._dt_s * (len(self._rollout.states) - 1):.2f} s"
+            f"real time {self._value('duration'):.2f} s"
         )
 
     def _toggle_playback(self) -> None:
