@@ -55,8 +55,10 @@ from .exercise_configs import make_squat_config as make_squat_config
 from .lagrangian_dynamics import LagrangianDynamics as LagrangianDynamics
 from .lagrangian_dynamics import balance_pose as balance_pose
 from .swingset import CyclicPolicySearchSpace as CyclicPolicySearchSpace
+from .swingset import CyclicPolicyTraceSample as CyclicPolicyTraceSample
 from .swingset import SwingSetConfig as SwingSetConfig
 from .swingset import SwingSetState as SwingSetState
+from .swingset import estimate_swingset_joint_torques as estimate_swingset_joint_torques
 from .swingset import optimize_cyclic_policy as optimize_cyclic_policy
 from .swingset import simulate_swingset as simulate_swingset
 
@@ -69,6 +71,7 @@ __all__ = [
     "ChainGeometry",
     "ChainState",
     "CyclicPolicySearchSpace",
+    "CyclicPolicyTraceSample",
     "HillTorqueModel",
     "JointTorqueSet",
     "LagrangianDynamics",
@@ -77,6 +80,7 @@ __all__ = [
     "balance_pose",
     "clamp_joint_angles",
     "compute_max_load",
+    "estimate_swingset_joint_torques",
     "joint_angles_within_limits",
     "make_bench_press_config",
     "make_bench_press_torque_set",
