@@ -10,6 +10,7 @@ import numpy as np
 from PyQt6.QtCore import QPointF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QFormLayout,
     QGridLayout,
@@ -17,7 +18,9 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QProgressBar,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSlider,
     QVBoxLayout,
@@ -34,6 +37,7 @@ from movement_optimizer.models.chain_dynamics import (
 from movement_optimizer.models.swingset import (
     DEFAULT_POLICY_DT_S,
     CyclicPolicySearchResult,
+    CyclicPolicySearchSpace,
     HumanSegmentSpec,
     SwingPose,
     SwingRollout,
@@ -78,11 +82,15 @@ class NumericControl(QWidget):
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        self.setMinimumHeight(32)
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setRange(0, self._steps)
+        self.slider.setMinimumHeight(28)
         self.slider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.edit = QLineEdit()
-        self.edit.setFixedWidth(72)
+        self.edit.setFixedWidth(88)
+        self.edit.setMinimumHeight(28)
         self.edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self.slider, stretch=1)
         layout.addWidget(self.edit)
@@ -174,11 +182,12 @@ class MotionCanvas(QWidget):
             painter.drawEllipse(point, 5, 5)
 
     def _projector(self) -> Callable[[tuple[float, float]], QPointF]:
-        all_points = self._chain_nodes + list(self._body_points.values())
         anchor_x, anchor_y = self._chain_nodes[0]
-        span_x = max(max(abs(point[0] - anchor_x) for point in all_points) * 2.0, 0.5)
-        span_y = max(max(abs(point[1] - anchor_y) for point in all_points), 0.5)
-        scale = 0.84 * min(self.width() / span_x, self.height() / span_y)
+        chain_length = self._chain_path_length()
+        scale = 0.84 * min(
+            self.width() / max(2.0 * chain_length, 0.5),
+            self.height() / max(1.12 * chain_length, 0.5),
+        )
         offset_x = 0.5 * self.width() - scale * anchor_x
         offset_y = 32.0 - scale * anchor_y
 
@@ -187,6 +196,13 @@ class MotionCanvas(QWidget):
             return QPointF(offset_x + scale * x, offset_y + scale * y)
 
         return _project
+
+    def _chain_path_length(self) -> float:
+        distances = [
+            np.hypot(end[0] - start[0], end[1] - start[1])
+            for start, end in pairwise(self._chain_nodes)
+        ]
+        return max(float(sum(distances)), 0.5)
 
     def _draw_grid(self, painter: QPainter) -> None:
         painter.setPen(QPen(GRID, 1))
@@ -230,6 +246,16 @@ class MotionCanvas(QWidget):
             )
 
 
+def _scrollable_control_panel(panel: QWidget) -> QScrollArea:
+    scroll_area = QScrollArea()
+    scroll_area.setWidget(panel)
+    scroll_area.setWidgetResizable(True)
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    scroll_area.setMinimumWidth(340)
+    scroll_area.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+    return scroll_area
+
+
 class SwingsetTab(QWidget):
     """Interactive swingset model tab with cyclic policy optimization."""
 
@@ -237,9 +263,13 @@ class SwingsetTab(QWidget):
         super().__init__()
         self.canvas = MotionCanvas()
         self.metric_label = QLabel()
+        self.policy_status_label = QLabel()
+        self.progress_bar = QProgressBar()
         self._controls: dict[str, NumericControl] = {}
         self._rollout: SwingRollout | None = None
         self._frame_index = 0
+        self._control_panel_visible = True
+        self._control_scroll: QScrollArea | None = None
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._advance_frame)
         self._build_ui()
@@ -247,16 +277,24 @@ class SwingsetTab(QWidget):
 
     def _build_ui(self) -> None:
         layout = QGridLayout(self)
-        layout.addWidget(self.canvas, 0, 0, 4, 1)
-        layout.addWidget(self._build_chain_group(), 0, 1)
-        layout.addWidget(self._build_body_group(), 1, 1)
-        layout.addWidget(self._build_policy_group(), 2, 1)
-        layout.addWidget(self.metric_label, 4, 0, 1, 2)
+        layout.addWidget(self.canvas, 0, 0, 1, 1)
+        control_panel = QWidget()
+        control_layout = QVBoxLayout(control_panel)
+        control_layout.setContentsMargins(8, 0, 8, 0)
+        control_layout.setSpacing(10)
+        control_layout.addWidget(self._build_chain_group())
+        control_layout.addWidget(self._build_body_group())
+        control_layout.addWidget(self._build_policy_group())
+        control_layout.addStretch()
+        self._control_scroll = _scrollable_control_panel(control_panel)
+        layout.addWidget(self._control_scroll, 0, 1, 1, 1)
+        layout.addWidget(self.metric_label, 1, 0, 1, 2)
         layout.setColumnStretch(0, 1)
 
     def _build_chain_group(self) -> QGroupBox:
         group = QGroupBox("Swingset")
         form = QFormLayout(group)
+        form.setVerticalSpacing(8)
         self._add_control(form, "segments", "Chain segments", 3, 40, 14, integer=True)
         self._add_control(form, "chain_length", "Chain length m", 1.0, 5.0, 2.4)
         self._add_control(form, "link_mass", "Link mass kg", 0.01, 2.0, 0.16)
@@ -267,6 +305,7 @@ class SwingsetTab(QWidget):
     def _build_body_group(self) -> QGroupBox:
         group = QGroupBox("Rider")
         form = QFormLayout(group)
+        form.setVerticalSpacing(8)
         self._add_control(form, "torso_len", "Torso length m", 0.2, 1.2, 0.62)
         self._add_control(form, "torso_mass", "Torso mass kg", 5.0, 80.0, 28.0)
         self._add_control(form, "thigh_len", "Thigh length m", 0.15, 0.9, 0.46)
@@ -280,12 +319,47 @@ class SwingsetTab(QWidget):
     def _build_policy_group(self) -> QGroupBox:
         group = QGroupBox("Policy")
         layout = QVBoxLayout(group)
+        layout.setSpacing(8)
         form = QFormLayout()
-        self._add_control(form, "policy_steps", "Search steps", 60, 500, 220, integer=True)
+        form.setVerticalSpacing(8)
+        self._add_control(form, "cycles", "Swing cycles", 1, 12, 2, integer=True, refresh=False)
+        self._add_control(form, "policy_steps", "Fallback steps", 60, 500, 220, integer=True)
+        self._add_control(form, "freq_min", "Freq min Hz", 0.2, 2.0, 0.45, refresh=False)
+        self._add_control(form, "freq_max", "Freq max Hz", 0.2, 2.0, 0.75, refresh=False)
+        self._add_control(
+            form, "freq_samples", "Freq samples", 1, 8, 3, integer=True, refresh=False
+        )
+        self._add_control(form, "hip_rate_min", "Hip min rad/s", 0.0, 3.0, 0.5, refresh=False)
+        self._add_control(form, "hip_rate_max", "Hip max rad/s", 0.0, 3.0, 1.3, refresh=False)
+        self._add_control(form, "hip_samples", "Hip samples", 1, 8, 2, integer=True, refresh=False)
+        self._add_control(form, "torso_rate_min", "Torso min rad/s", 0.0, 3.0, 0.3, refresh=False)
+        self._add_control(form, "torso_rate_max", "Torso max rad/s", 0.0, 3.0, 1.1, refresh=False)
+        self._add_control(
+            form,
+            "torso_samples",
+            "Torso samples",
+            1,
+            8,
+            2,
+            integer=True,
+            refresh=False,
+        )
+        self._add_control(form, "knee_ratio_min", "Knee ratio min", 0.0, 1.5, 0.25, refresh=False)
+        self._add_control(form, "knee_ratio_max", "Knee ratio max", 0.0, 1.5, 0.65, refresh=False)
+        self._add_control(
+            form, "knee_samples", "Knee samples", 1, 8, 2, integer=True, refresh=False
+        )
+        self._add_control(
+            form, "phase_samples", "Phase samples", 1, 12, 2, integer=True, refresh=False
+        )
         self._add_control(form, "speed", "Playback speed", 0.25, 4.0, 1.0, refresh=False)
         layout.addLayout(form)
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(0)
+        layout.addWidget(self.progress_bar)
+        layout.addWidget(self.policy_status_label)
         row = QHBoxLayout()
-        optimize_button = QPushButton("Optimize Cyclic Policy")
+        optimize_button = QPushButton("Optimize Swing Policy")
         optimize_button.clicked.connect(self._optimize_policy)
         self.play_button = QPushButton("Play")
         self.play_button.clicked.connect(self._toggle_playback)
@@ -351,11 +425,51 @@ class SwingsetTab(QWidget):
             f"seat constraint {snapshot.seat_chain_error_m:.3f} m"
         )
 
+    def _search_space(self) -> CyclicPolicySearchSpace:
+        return CyclicPolicySearchSpace(
+            frequency_hz_min=self._value("freq_min"),
+            frequency_hz_max=self._value("freq_max"),
+            frequency_samples=int(self._value("freq_samples")),
+            hip_rate_min_rad_s=self._value("hip_rate_min"),
+            hip_rate_max_rad_s=self._value("hip_rate_max"),
+            hip_rate_samples=int(self._value("hip_samples")),
+            torso_rate_min_rad_s=self._value("torso_rate_min"),
+            torso_rate_max_rad_s=self._value("torso_rate_max"),
+            torso_rate_samples=int(self._value("torso_samples")),
+            knee_ratio_min=self._value("knee_ratio_min"),
+            knee_ratio_max=self._value("knee_ratio_max"),
+            knee_ratio_samples=int(self._value("knee_samples")),
+            phase_samples=int(self._value("phase_samples")),
+        )
+
     def _optimize_policy(self) -> None:
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(0)
+        self.policy_status_label.setText("Evaluating swing-policy candidates")
+
+        def _progress(
+            completed: int,
+            total: int,
+            best_score: float,
+            params,
+        ) -> None:
+            self.progress_bar.setRange(0, total)
+            self.progress_bar.setValue(completed)
+            self.policy_status_label.setText(
+                f"{completed}/{total} candidates | best {best_score:.3f} m | "
+                f"{params.frequency_hz:.2f} Hz"
+            )
+            app = QApplication.instance()
+            if app is not None:
+                app.processEvents()
+
         result = optimize_cyclic_policy(
             self._config(),
             steps=int(self._value("policy_steps")),
             dt_s=DEFAULT_POLICY_DT_S,
+            cycles=self._value("cycles"),
+            search_space=self._search_space(),
+            progress_callback=_progress,
         )
         self._set_policy_result(result)
 
@@ -364,10 +478,17 @@ class SwingsetTab(QWidget):
         self._frame_index = 0
         self._render_snapshot(result.rollout.snapshots[0])
         params = result.parameters
+        cycle_text = (
+            f"{result.optimized_cycles:.1f} cycles"
+            if result.optimized_cycles is not None
+            else f"{len(result.rollout.states) - 1} steps"
+        )
         self.metric_label.setText(
             f"Best height {result.objective_height_m:.3f} m | "
             f"peak angle {np.rad2deg(result.rollout.metrics.max_abs_swing_angle_rad):.1f} deg | "
-            f"freq {params.frequency_hz:.2f} Hz"
+            f"freq {params.frequency_hz:.2f} Hz | "
+            f"{result.evaluated_candidates} candidates | "
+            f"{cycle_text}"
         )
 
     def _render_snapshot(self, snapshot) -> None:
@@ -449,6 +570,17 @@ class SwingsetTab(QWidget):
         speed = max(0.05, self._value("speed"))
         return max(10, round(1000.0 * dt_s / speed))
 
+    def set_control_panel_visible(self, visible: bool) -> None:
+        """Show or hide the right-side swingset parameter panel."""
+        if self._control_scroll is None:
+            raise RuntimeError("Swingset controls have not been built")
+        self._control_panel_visible = bool(visible)
+        self._control_scroll.setVisible(self._control_panel_visible)
+
+    def control_panel_visible(self) -> bool:
+        """Return whether the right-side swingset parameter panel is expanded."""
+        return self._control_panel_visible
+
 
 class ChainDynamicsTab(QWidget):
     """Interactive chain whip-motion analysis tab."""
@@ -461,20 +593,28 @@ class ChainDynamicsTab(QWidget):
         self.tie_segments = QCheckBox("Tie segment starts with sag profile")
         self.tie_segments.setChecked(True)
         self.use_degrees = QCheckBox("Use degrees for typed segment angles")
+        self.angle_edit.setMinimumHeight(28)
         self._controls: dict[str, NumericControl] = {}
         self._rollout: ChainRollout | None = None
         self._frame_index = 0
         self._dt_s = 0.01
+        self._control_panel_visible = True
+        self._control_scroll: QScrollArea | None = None
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._advance_frame)
         self._build_ui()
         self._refresh()
 
     def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.canvas)
+        layout = QGridLayout(self)
+        layout.addWidget(self.canvas, 0, 0, 1, 1)
+        control_panel = QWidget()
+        control_layout = QVBoxLayout(control_panel)
+        control_layout.setContentsMargins(8, 0, 8, 0)
+        control_layout.setSpacing(10)
         controls = QGroupBox("Chain")
         form = QFormLayout(controls)
+        form.setVerticalSpacing(8)
         self._add_control(form, "segments", "Segments", 2, 60, 16, integer=True)
         self._add_control(form, "length", "Link length m", 0.03, 1.0, 0.18)
         self._add_control(form, "mass", "Link mass kg", 0.01, 4.0, 0.12)
@@ -491,7 +631,7 @@ class ChainDynamicsTab(QWidget):
         self._refresh_angle_placeholder()
         self.angle_edit.editingFinished.connect(self._refresh)
         form.addRow("Segment angles", self.angle_edit)
-        layout.addWidget(controls)
+        control_layout.addWidget(controls)
         row = QHBoxLayout()
         simulate_button = QPushButton("Simulate Whip")
         simulate_button.clicked.connect(self._simulate)
@@ -499,8 +639,12 @@ class ChainDynamicsTab(QWidget):
         self.play_button.clicked.connect(self._toggle_playback)
         row.addWidget(simulate_button)
         row.addWidget(self.play_button)
-        layout.addLayout(row)
-        layout.addWidget(self.metric_label)
+        control_layout.addLayout(row)
+        control_layout.addWidget(self.metric_label)
+        control_layout.addStretch()
+        self._control_scroll = _scrollable_control_panel(control_panel)
+        layout.addWidget(self._control_scroll, 0, 1, 1, 1)
+        layout.setColumnStretch(0, 1)
 
     def _add_control(
         self,
@@ -680,6 +824,17 @@ class ChainDynamicsTab(QWidget):
     def _playback_interval_ms(self) -> int:
         speed = max(0.05, self._value("speed"))
         return max(10, round(1000.0 * self._dt_s / speed))
+
+    def set_control_panel_visible(self, visible: bool) -> None:
+        """Show or hide the right-side chain parameter panel."""
+        if self._control_scroll is None:
+            raise RuntimeError("Chain controls have not been built")
+        self._control_panel_visible = bool(visible)
+        self._control_scroll.setVisible(self._control_panel_visible)
+
+    def control_panel_visible(self) -> bool:
+        """Return whether the right-side chain parameter panel is expanded."""
+        return self._control_panel_visible
 
 
 def create_swingset_tab() -> QWidget:

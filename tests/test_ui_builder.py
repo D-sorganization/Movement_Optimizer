@@ -25,7 +25,8 @@ class TestUIBuilder:
             exercise_tabs,
             controls,
             status_label,
-            _sidebar_toggle_btn,
+            _left_sidebar_toggle_btn,
+            _right_sidebar_toggle_btn,
         ) = build_central_widget(window, exercise_configs)
 
         assert isinstance(central, QWidget)
@@ -34,6 +35,8 @@ class TestUIBuilder:
         assert len(exercise_tabs) == 2
         assert isinstance(controls, PlaybackControls)
         assert isinstance(status_label, QLabel)
+        assert isinstance(_left_sidebar_toggle_btn, QPushButton)
+        assert isinstance(_right_sidebar_toggle_btn, QPushButton)
 
         assert tabs.count() == 2
         assert tabs.tabText(0) == "  Squat  "
@@ -49,7 +52,8 @@ class TestUIBuilder:
             _exercise_tabs,
             controls,
             _status_label,
-            _sidebar_toggle_btn,
+            _left_sidebar_toggle_btn,
+            _right_sidebar_toggle_btn,
         ) = build_central_widget(window, exercise_configs)
 
         controls.speed_slider.setValue(15)
@@ -88,11 +92,13 @@ class TestUIBuilder:
             _exercise_tabs,
             _controls,
             _status_label,
-            sidebar_toggle_btn,
+            left_sidebar_toggle_btn,
+            right_sidebar_toggle_btn,
         ) = build_central_widget(window, (("Squat", "squat"),))
 
         buttons = [
-            sidebar_toggle_btn,
+            left_sidebar_toggle_btn,
+            right_sidebar_toggle_btn,
             sidebar.opt_btn,
             sidebar.both_btn,
             sidebar.cancel_btn,

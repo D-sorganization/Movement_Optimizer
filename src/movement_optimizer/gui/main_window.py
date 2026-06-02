@@ -149,9 +149,11 @@ class MainWindow(
             self.exercise_tabs,
             self.controls,
             self.status_label,
-            self._sidebar_toggle_btn,
+            self._left_sidebar_toggle_btn,
+            self._right_sidebar_toggle_btn,
         ) = build_central_widget(self, self.EXERCISE_CONFIGS)
-        self._sidebar_toggle_btn.clicked.connect(self._toggle_sidebar)
+        self._left_sidebar_toggle_btn.clicked.connect(self._toggle_sidebar)
+        self._right_sidebar_toggle_btn.clicked.connect(self._toggle_right_sidebar)
         self.tabs.addTab(create_swingset_tab(), "  Swingset Model  ")
         self.tabs.addTab(create_chain_tab(), "  Chain Dynamics  ")
         self.tabs.currentChanged.connect(self._sync_motion_tab_controls)
@@ -164,13 +166,63 @@ class MainWindow(
         visible = self.sidebar.isVisible()
         self.sidebar.setVisible(not visible)
         if visible:
-            self._sidebar_toggle_btn.setText("Show sidebar")
-            self._sidebar_toggle_btn.setAccessibleName("Show sidebar")
-            self._sidebar_toggle_btn.setAccessibleDescription("Show the parameter sidebar.")
+            self._left_sidebar_toggle_btn.setText("Show left")
+            self._left_sidebar_toggle_btn.setAccessibleName("Show left sidebar")
+            self._left_sidebar_toggle_btn.setAccessibleDescription(
+                "Show the left parameter sidebar."
+            )
         else:
-            self._sidebar_toggle_btn.setText("Hide sidebar")
-            self._sidebar_toggle_btn.setAccessibleName("Hide sidebar")
-            self._sidebar_toggle_btn.setAccessibleDescription("Hide the parameter sidebar.")
+            self._left_sidebar_toggle_btn.setText("Hide left")
+            self._left_sidebar_toggle_btn.setAccessibleName("Hide left sidebar")
+            self._left_sidebar_toggle_btn.setAccessibleDescription(
+                "Hide the left parameter sidebar."
+            )
+
+    def _toggle_right_sidebar(self) -> None:
+        """Collapse or expand the active analysis tab's right parameter panel."""
+        panel = self._active_right_panel()
+        if panel is None:
+            self._sync_right_sidebar_toggle()
+            return
+        panel.set_control_panel_visible(not panel.control_panel_visible())
+        self._sync_right_sidebar_toggle()
+
+    def _active_right_panel(self) -> Any | None:
+        """Return the active tab if it exposes a right-side control panel."""
+        tab = self._active_analysis_tab()
+        if (
+            tab is None
+            or not hasattr(tab, "set_control_panel_visible")
+            or not hasattr(tab, "control_panel_visible")
+        ):
+            return None
+        return tab
+
+    def _sync_right_sidebar_toggle(self) -> None:
+        """Reflect the active analysis panel state in the top-strip toggle."""
+        panel = self._active_right_panel()
+        if panel is None:
+            self._right_sidebar_toggle_btn.setEnabled(False)
+            self._right_sidebar_toggle_btn.setText("Right panel")
+            self._right_sidebar_toggle_btn.setAccessibleName("Right panel unavailable")
+            self._right_sidebar_toggle_btn.setAccessibleDescription(
+                "No active right parameter panel is available."
+            )
+            return
+        visible = panel.control_panel_visible()
+        if visible:
+            self._right_sidebar_toggle_btn.setText("Hide right")
+            self._right_sidebar_toggle_btn.setAccessibleName("Hide right panel")
+            self._right_sidebar_toggle_btn.setAccessibleDescription(
+                "Hide the active right parameter panel."
+            )
+        else:
+            self._right_sidebar_toggle_btn.setText("Show right")
+            self._right_sidebar_toggle_btn.setAccessibleName("Show right panel")
+            self._right_sidebar_toggle_btn.setAccessibleDescription(
+                "Show the active right parameter panel."
+            )
+        self._right_sidebar_toggle_btn.setEnabled(True)
 
     def _build_menu_bar(self) -> None:
         """Add application menus."""
@@ -363,6 +415,7 @@ class MainWindow(
             self.status_label.setText("Ready")
         else:
             self.status_label.setText("Analysis tabs use local and bottom playback controls.")
+        self._sync_right_sidebar_toggle()
 
     def _active_analysis_tab(self) -> Any | None:
         """Return the active analysis tab widget when one is selected."""
