@@ -54,6 +54,7 @@ from .exercise_configs import make_full_squat_config as make_full_squat_config
 from .exercise_configs import make_squat_config as make_squat_config
 from .lagrangian_dynamics import LagrangianDynamics as LagrangianDynamics
 from .lagrangian_dynamics import balance_pose as balance_pose
+from .swingset import CyclicPolicySearchSpace as CyclicPolicySearchSpace
 from .swingset import SwingSetConfig as SwingSetConfig
 from .swingset import SwingSetState as SwingSetState
 from .swingset import optimize_cyclic_policy as optimize_cyclic_policy
@@ -67,6 +68,7 @@ __all__ = [
     "ChainConfig",
     "ChainGeometry",
     "ChainState",
+    "CyclicPolicySearchSpace",
     "HillTorqueModel",
     "JointTorqueSet",
     "LagrangianDynamics",

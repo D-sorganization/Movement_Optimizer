@@ -19,6 +19,7 @@ from .chain_dynamics import (
 
 FloatArray: TypeAlias = NDArray[np.float64]
 Policy: TypeAlias = Callable[["SwingSetState", float], "SwingControlAction"]
+ProgressCallback: TypeAlias = Callable[[int, int, float, "CyclicPolicyParameters"], None]
 
 DEFAULT_CHAIN_SEGMENTS: Final[int] = 14
 DEFAULT_CHAIN_LENGTH_M: Final[float] = 2.4
@@ -37,6 +38,13 @@ DEFAULT_POLICY_DT_S: Final[float] = 0.02
 def _require_positive(name: str, value: float) -> None:
     if value <= 0.0:
         raise ValueError(f"{name} must be positive")
+
+
+def _require_range(name: str, lower: float, upper: float) -> None:
+    _require_positive(f"{name}_min", lower)
+    _require_positive(f"{name}_max", upper)
+    if upper < lower:
+        raise ValueError(f"{name}_max must be greater than or equal to {name}_min")
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
@@ -228,12 +236,48 @@ class CyclicPolicyParameters:
 
 
 @dataclass(frozen=True)
+class CyclicPolicySearchSpace:
+    """Tunable grid for simple walking-style swingset policy search."""
+
+    frequency_hz_min: float = 0.45
+    frequency_hz_max: float = 0.75
+    frequency_samples: int = 4
+    hip_rate_min_rad_s: float = 0.5
+    hip_rate_max_rad_s: float = 1.3
+    hip_rate_samples: int = 3
+    torso_rate_min_rad_s: float = 0.3
+    torso_rate_max_rad_s: float = 1.1
+    torso_rate_samples: int = 3
+    knee_ratio_min: float = 0.25
+    knee_ratio_max: float = 0.65
+    knee_ratio_samples: int = 3
+    phase_samples: int = 3
+
+    def __post_init__(self) -> None:
+        _require_range("frequency_hz", self.frequency_hz_min, self.frequency_hz_max)
+        _require_range("hip_rate_rad_s", self.hip_rate_min_rad_s, self.hip_rate_max_rad_s)
+        _require_range("torso_rate_rad_s", self.torso_rate_min_rad_s, self.torso_rate_max_rad_s)
+        _require_range("knee_ratio", self.knee_ratio_min, self.knee_ratio_max)
+        for name, value in (
+            ("frequency_samples", self.frequency_samples),
+            ("hip_rate_samples", self.hip_rate_samples),
+            ("torso_rate_samples", self.torso_rate_samples),
+            ("knee_ratio_samples", self.knee_ratio_samples),
+            ("phase_samples", self.phase_samples),
+        ):
+            if value < 1:
+                raise ValueError(f"{name} must be at least 1")
+
+
+@dataclass(frozen=True)
 class CyclicPolicySearchResult:
     """Best cyclic policy and rollout found by deterministic search."""
 
     parameters: CyclicPolicyParameters
     rollout: SwingRollout
     objective_height_m: float
+    evaluated_candidates: int
+    optimized_cycles: float | None
 
 
 def build_swingset_snapshot(
@@ -472,44 +516,107 @@ def optimize_cyclic_policy(
     *,
     steps: int = DEFAULT_POLICY_STEPS,
     dt_s: float = DEFAULT_POLICY_DT_S,
+    cycles: float | None = None,
+    search_space: CyclicPolicySearchSpace | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> CyclicPolicySearchResult:
     """Search deterministic cyclic policies and maximize swing height.
 
     Preconditions:
-        ``steps`` and ``dt_s`` are positive.
+        ``steps`` and ``dt_s`` are positive. ``cycles`` is positive when supplied.
     """
 
     if steps < 1:
         raise ValueError("steps must be at least 1")
     _require_positive("dt_s", dt_s)
+    if cycles is not None:
+        _require_positive("cycles", cycles)
     start = initial_state or SwingSetState(pose=SwingPose(swing_angle_rad=0.06))
-    candidates = _cyclic_policy_candidates()
+    candidates = _cyclic_policy_candidates(search_space or CyclicPolicySearchSpace())
     best_params = candidates[0]
-    best_rollout = simulate_swingset(config, start, steps, dt_s, cyclic_pumping_policy(best_params))
+    first_steps = _steps_for_candidate(steps, dt_s, best_params, cycles)
+    best_rollout = simulate_swingset(
+        config,
+        start,
+        first_steps,
+        dt_s,
+        cyclic_pumping_policy(best_params),
+    )
     best_score = best_rollout.metrics.max_height_gain_m
-    for parameters in candidates[1:]:
-        rollout = simulate_swingset(config, start, steps, dt_s, cyclic_pumping_policy(parameters))
+    if progress_callback is not None:
+        progress_callback(1, len(candidates), best_score, best_params)
+    for index, parameters in enumerate(candidates[1:], start=2):
+        candidate_steps = _steps_for_candidate(steps, dt_s, parameters, cycles)
+        rollout = simulate_swingset(
+            config,
+            start,
+            candidate_steps,
+            dt_s,
+            cyclic_pumping_policy(parameters),
+        )
         score = rollout.metrics.max_height_gain_m
         if score > best_score:
             best_params = parameters
             best_rollout = rollout
             best_score = score
-    return CyclicPolicySearchResult(best_params, best_rollout, best_score)
+        if progress_callback is not None:
+            progress_callback(index, len(candidates), best_score, best_params)
+    return CyclicPolicySearchResult(best_params, best_rollout, best_score, len(candidates), cycles)
 
 
-def _cyclic_policy_candidates() -> tuple[CyclicPolicyParameters, ...]:
+def _steps_for_candidate(
+    default_steps: int,
+    dt_s: float,
+    parameters: CyclicPolicyParameters,
+    cycles: float | None,
+) -> int:
+    if cycles is None:
+        return default_steps
+    return max(1, round(cycles / parameters.frequency_hz / dt_s))
+
+
+def _linspace(lower: float, upper: float, samples: int) -> FloatArray:
+    if samples == 1:
+        return np.asarray([lower], dtype=np.float64)
+    return np.linspace(lower, upper, samples, dtype=np.float64)
+
+
+def _cyclic_policy_candidates(
+    search_space: CyclicPolicySearchSpace,
+) -> tuple[CyclicPolicyParameters, ...]:
     candidates: list[CyclicPolicyParameters] = []
-    for frequency_hz in (0.45, 0.55, 0.65, 0.75):
-        for hip_rate in (0.5, 0.9, 1.3):
-            for torso_rate in (0.3, 0.7, 1.1):
-                for knee_ratio in (0.25, 0.45, 0.65):
-                    for phase in (0.0, np.pi / 2.0, np.pi):
+    phase_values = (
+        np.asarray([0.0], dtype=np.float64)
+        if search_space.phase_samples == 1
+        else np.linspace(0.0, np.pi, search_space.phase_samples, dtype=np.float64)
+    )
+    for frequency_hz in _linspace(
+        search_space.frequency_hz_min,
+        search_space.frequency_hz_max,
+        search_space.frequency_samples,
+    ):
+        for hip_rate in _linspace(
+            search_space.hip_rate_min_rad_s,
+            search_space.hip_rate_max_rad_s,
+            search_space.hip_rate_samples,
+        ):
+            for torso_rate in _linspace(
+                search_space.torso_rate_min_rad_s,
+                search_space.torso_rate_max_rad_s,
+                search_space.torso_rate_samples,
+            ):
+                for knee_ratio in _linspace(
+                    search_space.knee_ratio_min,
+                    search_space.knee_ratio_max,
+                    search_space.knee_ratio_samples,
+                ):
+                    for phase in phase_values:
                         candidates.append(
                             CyclicPolicyParameters(
-                                frequency_hz=frequency_hz,
-                                hip_rate_amplitude_rad_s=hip_rate,
-                                torso_rate_amplitude_rad_s=torso_rate,
-                                knee_rate_ratio=knee_ratio,
+                                frequency_hz=float(frequency_hz),
+                                hip_rate_amplitude_rad_s=float(hip_rate),
+                                torso_rate_amplitude_rad_s=float(torso_rate),
+                                knee_rate_ratio=float(knee_ratio),
                                 phase_rad=float(phase),
                             )
                         )

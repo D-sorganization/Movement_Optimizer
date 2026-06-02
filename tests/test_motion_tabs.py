@@ -10,7 +10,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtWidgets import QAbstractSpinBox, QLabel, QLineEdit, QSlider, QSplitter
+from PyQt6.QtWidgets import QAbstractSpinBox, QLabel, QLineEdit, QProgressBar, QSlider, QSplitter
 
 from movement_optimizer.gui.app_icon import movement_optimizer_icon, movement_optimizer_icon_path
 from movement_optimizer.gui.main_window import MainWindow
@@ -92,6 +92,40 @@ def test_swingset_and_chain_tabs_run_local_simulations(qapp) -> None:
 
     assert "Best height" in swingset.metric_label.text()
     assert "peak tip speed" in chain.metric_label.text()
+
+
+def test_swingset_tab_exposes_policy_tuning_and_progress(qapp) -> None:
+    swingset = SwingsetTab()
+    for key in (
+        "cycles",
+        "freq_min",
+        "freq_max",
+        "freq_samples",
+        "hip_rate_min",
+        "hip_rate_max",
+        "hip_samples",
+        "torso_rate_min",
+        "torso_rate_max",
+        "torso_samples",
+        "knee_ratio_min",
+        "knee_ratio_max",
+        "knee_samples",
+        "phase_samples",
+    ):
+        assert key in swingset._controls
+    swingset._controls["cycles"].set_value(1)
+    swingset._controls["freq_samples"].set_value(2)
+    swingset._controls["hip_samples"].set_value(1)
+    swingset._controls["torso_samples"].set_value(1)
+    swingset._controls["knee_samples"].set_value(1)
+    swingset._controls["phase_samples"].set_value(2)
+
+    swingset._optimize_policy()
+
+    progress = swingset.findChild(QProgressBar)
+    assert progress is not None
+    assert progress.value() == progress.maximum() == 4
+    assert "4 candidates" in swingset.metric_label.text()
 
 
 def test_swingset_tab_configures_seat_placement_percent(qapp) -> None:
@@ -190,6 +224,22 @@ def test_canvas_keeps_anchor_projection_fixed(qapp) -> None:
 
     assert second_anchor.x() == pytest.approx(first_anchor.x())
     assert second_anchor.y() == pytest.approx(first_anchor.y())
+
+
+def test_canvas_keeps_rigid_link_scale_across_chain_poses(qapp) -> None:
+    from movement_optimizer.gui.motion_tabs import MotionCanvas
+
+    canvas = MotionCanvas()
+    canvas.resize(500, 400)
+    canvas.set_scene([(0.0, 0.0), (0.0, 1.0), (0.0, 2.0)])
+    projector = canvas._projector()
+    straight = projector((0.0, 1.0)).y() - projector((0.0, 0.0)).y()
+
+    canvas.set_scene([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)])
+    projector = canvas._projector()
+    curled = projector((1.0, 0.0)).x() - projector((0.0, 0.0)).x()
+
+    assert abs(curled) == pytest.approx(abs(straight))
 
 
 def test_chain_rollout_keeps_physical_anchor_fixed(qapp) -> None:

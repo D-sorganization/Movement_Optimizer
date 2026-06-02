@@ -17,6 +17,7 @@ from movement_optimizer.models.chain_dynamics import (
 )
 from movement_optimizer.models.swingset import (
     CyclicPolicyParameters,
+    CyclicPolicySearchSpace,
     HumanSegmentSpec,
     SwingControlAction,
     SwingPose,
@@ -91,6 +92,8 @@ def test_chain_simulation_damps_energy() -> None:
     assert rollout.positions.shape == (25, 7, 2)
     assert np.all(np.isfinite(rollout.energy_j))
     assert total_energy(config, rollout.states[-1]) == pytest.approx(rollout.energy_j[-1])
+    link_lengths = np.linalg.norm(np.diff(rollout.positions, axis=1), axis=2)
+    np.testing.assert_allclose(link_lengths, config.segment_length_m)
 
 
 def test_chain_simulation_validates_rollout_inputs() -> None:
@@ -204,6 +207,38 @@ def test_swingset_cyclic_policy_search_selects_height_objective() -> None:
     assert result.parameters.frequency_hz > 0.0
 
 
+def test_swingset_policy_search_reports_progress_and_uses_cycles() -> None:
+    progress: list[tuple[int, int, float]] = []
+    search_space = CyclicPolicySearchSpace(
+        frequency_hz_min=0.5,
+        frequency_hz_max=1.0,
+        frequency_samples=2,
+        hip_rate_min_rad_s=0.8,
+        hip_rate_max_rad_s=0.8,
+        hip_rate_samples=1,
+        torso_rate_min_rad_s=0.4,
+        torso_rate_max_rad_s=0.4,
+        torso_rate_samples=1,
+        knee_ratio_min=0.35,
+        knee_ratio_max=0.35,
+        knee_ratio_samples=1,
+        phase_samples=2,
+    )
+
+    result = optimize_cyclic_policy(
+        SwingSetConfig(),
+        cycles=2.0,
+        dt_s=0.02,
+        search_space=search_space,
+        progress_callback=lambda done, total, score, _params: progress.append((done, total, score)),
+    )
+
+    assert result.evaluated_candidates == 4
+    assert result.optimized_cycles == pytest.approx(2.0)
+    assert progress[-1][0] == progress[-1][1] == 4
+    assert progress[-1][2] == pytest.approx(result.objective_height_m)
+
+
 def test_swingset_rollout_validates_inputs() -> None:
     config = SwingSetConfig()
     with pytest.raises(ValueError, match="steps"):
@@ -220,3 +255,9 @@ def test_swingset_rollout_validates_inputs() -> None:
         CyclicPolicyParameters(1.0, 1.0, -1.0, 0.5, 0.0)
     with pytest.raises(ValueError, match="knee_rate"):
         CyclicPolicyParameters(1.0, 1.0, 1.0, -0.5, 0.0)
+    with pytest.raises(ValueError, match="frequency_samples"):
+        CyclicPolicySearchSpace(frequency_samples=0)
+    with pytest.raises(ValueError, match="frequency_hz"):
+        CyclicPolicySearchSpace(frequency_hz_min=1.0, frequency_hz_max=0.5)
+    with pytest.raises(ValueError, match="cycles"):
+        optimize_cyclic_policy(config, cycles=0.0)

@@ -10,6 +10,7 @@ import numpy as np
 from PyQt6.QtCore import QPointF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QFormLayout,
     QGridLayout,
@@ -17,6 +18,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QProgressBar,
     QPushButton,
     QSizePolicy,
     QSlider,
@@ -34,6 +36,7 @@ from movement_optimizer.models.chain_dynamics import (
 from movement_optimizer.models.swingset import (
     DEFAULT_POLICY_DT_S,
     CyclicPolicySearchResult,
+    CyclicPolicySearchSpace,
     HumanSegmentSpec,
     SwingPose,
     SwingRollout,
@@ -174,11 +177,12 @@ class MotionCanvas(QWidget):
             painter.drawEllipse(point, 5, 5)
 
     def _projector(self) -> Callable[[tuple[float, float]], QPointF]:
-        all_points = self._chain_nodes + list(self._body_points.values())
         anchor_x, anchor_y = self._chain_nodes[0]
-        span_x = max(max(abs(point[0] - anchor_x) for point in all_points) * 2.0, 0.5)
-        span_y = max(max(abs(point[1] - anchor_y) for point in all_points), 0.5)
-        scale = 0.84 * min(self.width() / span_x, self.height() / span_y)
+        chain_length = self._chain_path_length()
+        scale = 0.84 * min(
+            self.width() / max(2.0 * chain_length, 0.5),
+            self.height() / max(1.12 * chain_length, 0.5),
+        )
         offset_x = 0.5 * self.width() - scale * anchor_x
         offset_y = 32.0 - scale * anchor_y
 
@@ -187,6 +191,13 @@ class MotionCanvas(QWidget):
             return QPointF(offset_x + scale * x, offset_y + scale * y)
 
         return _project
+
+    def _chain_path_length(self) -> float:
+        distances = [
+            np.hypot(end[0] - start[0], end[1] - start[1])
+            for start, end in pairwise(self._chain_nodes)
+        ]
+        return max(float(sum(distances)), 0.5)
 
     def _draw_grid(self, painter: QPainter) -> None:
         painter.setPen(QPen(GRID, 1))
@@ -237,6 +248,8 @@ class SwingsetTab(QWidget):
         super().__init__()
         self.canvas = MotionCanvas()
         self.metric_label = QLabel()
+        self.policy_status_label = QLabel()
+        self.progress_bar = QProgressBar()
         self._controls: dict[str, NumericControl] = {}
         self._rollout: SwingRollout | None = None
         self._frame_index = 0
@@ -281,11 +294,44 @@ class SwingsetTab(QWidget):
         group = QGroupBox("Policy")
         layout = QVBoxLayout(group)
         form = QFormLayout()
-        self._add_control(form, "policy_steps", "Search steps", 60, 500, 220, integer=True)
+        self._add_control(form, "cycles", "Walking cycles", 1, 12, 2, integer=True, refresh=False)
+        self._add_control(form, "policy_steps", "Fallback steps", 60, 500, 220, integer=True)
+        self._add_control(form, "freq_min", "Freq min Hz", 0.2, 2.0, 0.45, refresh=False)
+        self._add_control(form, "freq_max", "Freq max Hz", 0.2, 2.0, 0.75, refresh=False)
+        self._add_control(
+            form, "freq_samples", "Freq samples", 1, 8, 3, integer=True, refresh=False
+        )
+        self._add_control(form, "hip_rate_min", "Hip min rad/s", 0.0, 3.0, 0.5, refresh=False)
+        self._add_control(form, "hip_rate_max", "Hip max rad/s", 0.0, 3.0, 1.3, refresh=False)
+        self._add_control(form, "hip_samples", "Hip samples", 1, 8, 2, integer=True, refresh=False)
+        self._add_control(form, "torso_rate_min", "Torso min rad/s", 0.0, 3.0, 0.3, refresh=False)
+        self._add_control(form, "torso_rate_max", "Torso max rad/s", 0.0, 3.0, 1.1, refresh=False)
+        self._add_control(
+            form,
+            "torso_samples",
+            "Torso samples",
+            1,
+            8,
+            2,
+            integer=True,
+            refresh=False,
+        )
+        self._add_control(form, "knee_ratio_min", "Knee ratio min", 0.0, 1.5, 0.25, refresh=False)
+        self._add_control(form, "knee_ratio_max", "Knee ratio max", 0.0, 1.5, 0.65, refresh=False)
+        self._add_control(
+            form, "knee_samples", "Knee samples", 1, 8, 2, integer=True, refresh=False
+        )
+        self._add_control(
+            form, "phase_samples", "Phase samples", 1, 12, 2, integer=True, refresh=False
+        )
         self._add_control(form, "speed", "Playback speed", 0.25, 4.0, 1.0, refresh=False)
         layout.addLayout(form)
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(0)
+        layout.addWidget(self.progress_bar)
+        layout.addWidget(self.policy_status_label)
         row = QHBoxLayout()
-        optimize_button = QPushButton("Optimize Cyclic Policy")
+        optimize_button = QPushButton("Optimize Walking Pump")
         optimize_button.clicked.connect(self._optimize_policy)
         self.play_button = QPushButton("Play")
         self.play_button.clicked.connect(self._toggle_playback)
@@ -351,11 +397,51 @@ class SwingsetTab(QWidget):
             f"seat constraint {snapshot.seat_chain_error_m:.3f} m"
         )
 
+    def _search_space(self) -> CyclicPolicySearchSpace:
+        return CyclicPolicySearchSpace(
+            frequency_hz_min=self._value("freq_min"),
+            frequency_hz_max=self._value("freq_max"),
+            frequency_samples=int(self._value("freq_samples")),
+            hip_rate_min_rad_s=self._value("hip_rate_min"),
+            hip_rate_max_rad_s=self._value("hip_rate_max"),
+            hip_rate_samples=int(self._value("hip_samples")),
+            torso_rate_min_rad_s=self._value("torso_rate_min"),
+            torso_rate_max_rad_s=self._value("torso_rate_max"),
+            torso_rate_samples=int(self._value("torso_samples")),
+            knee_ratio_min=self._value("knee_ratio_min"),
+            knee_ratio_max=self._value("knee_ratio_max"),
+            knee_ratio_samples=int(self._value("knee_samples")),
+            phase_samples=int(self._value("phase_samples")),
+        )
+
     def _optimize_policy(self) -> None:
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(0)
+        self.policy_status_label.setText("Evaluating walking-pump candidates")
+
+        def _progress(
+            completed: int,
+            total: int,
+            best_score: float,
+            params,
+        ) -> None:
+            self.progress_bar.setRange(0, total)
+            self.progress_bar.setValue(completed)
+            self.policy_status_label.setText(
+                f"{completed}/{total} candidates | best {best_score:.3f} m | "
+                f"{params.frequency_hz:.2f} Hz"
+            )
+            app = QApplication.instance()
+            if app is not None:
+                app.processEvents()
+
         result = optimize_cyclic_policy(
             self._config(),
             steps=int(self._value("policy_steps")),
             dt_s=DEFAULT_POLICY_DT_S,
+            cycles=self._value("cycles"),
+            search_space=self._search_space(),
+            progress_callback=_progress,
         )
         self._set_policy_result(result)
 
@@ -364,10 +450,17 @@ class SwingsetTab(QWidget):
         self._frame_index = 0
         self._render_snapshot(result.rollout.snapshots[0])
         params = result.parameters
+        cycle_text = (
+            f"{result.optimized_cycles:.1f} cycles"
+            if result.optimized_cycles is not None
+            else f"{len(result.rollout.states) - 1} steps"
+        )
         self.metric_label.setText(
             f"Best height {result.objective_height_m:.3f} m | "
             f"peak angle {np.rad2deg(result.rollout.metrics.max_abs_swing_angle_rad):.1f} deg | "
-            f"freq {params.frequency_hz:.2f} Hz"
+            f"freq {params.frequency_hz:.2f} Hz | "
+            f"{result.evaluated_candidates} candidates | "
+            f"{cycle_text}"
         )
 
     def _render_snapshot(self, snapshot) -> None:
