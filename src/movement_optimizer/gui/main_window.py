@@ -37,6 +37,7 @@ from ..trajectory import (
     SolutionCache,
 )
 from .animation_control import AnimationControlMixin
+from .app_icon import movement_optimizer_icon
 from .commands import SliderChangeCommand, UndoStack
 from .comparison_mixin import ComparisonMixin
 from .file_operations import FileOperationsMixin
@@ -99,6 +100,7 @@ class MainWindow(
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Movement Optimizer")
+        self.setWindowIcon(movement_optimizer_icon())
         self.setMinimumSize(800, 600)
         self.resize(1100, 700)
 

@@ -105,16 +105,23 @@ def test_chain_simulation_validates_rollout_inputs() -> None:
 
 
 def test_swingset_snapshot_models_body_chain_and_mass() -> None:
-    config = SwingSetConfig(chain_segments=8)
+    config = SwingSetConfig(chain_segments=8, seat_placement_thigh_fraction=0.40)
     snapshot = build_swingset_snapshot(
         config,
         SwingPose(swing_angle_rad=0.12, hip_angle_rad=0.2, elbow_angle_rad=0.3),
     )
 
     assert snapshot.chain_nodes.shape == (9, 2)
-    assert {"hand", "elbow", "shoulder", "waist", "hip", "knee", "foot"} <= set(snapshot.points)
+    assert {"seat", "hand", "elbow", "shoulder", "waist", "hip", "knee", "foot"} <= set(
+        snapshot.points
+    )
     assert snapshot.center_of_mass_m.shape == (2,)
     assert snapshot.hand_chain_error_m == pytest.approx(0.0)
+    assert snapshot.seat_chain_error_m == pytest.approx(0.0)
+    thigh_attachment = snapshot.points["hip"] + 0.40 * (
+        snapshot.points["knee"] - snapshot.points["hip"]
+    )
+    np.testing.assert_allclose(thigh_attachment, snapshot.chain_nodes[-1])
     assert np.max(np.abs(np.diff(snapshot.chain_nodes[:, 0]))) > 0.0
 
 
@@ -127,6 +134,10 @@ def test_swingset_config_validates_inputs() -> None:
         SwingSetConfig(damping=-0.1)
     with pytest.raises(ValueError, match="pump_gain"):
         SwingSetConfig(pump_gain=-0.1)
+    with pytest.raises(ValueError, match="seat_placement"):
+        SwingSetConfig(seat_placement_thigh_fraction=0.0)
+    with pytest.raises(ValueError, match="seat_placement"):
+        SwingSetConfig(seat_placement_thigh_fraction=1.1)
     with pytest.raises(ValueError, match="length_m"):
         HumanSegmentSpec(0.0, 1.0)
     with pytest.raises(ValueError, match="mass_kg"):
@@ -180,6 +191,7 @@ def test_swingset_heuristic_policy_builds_amplitude() -> None:
     assert rollout.metrics.max_height_gain_m > 0.0
     assert rollout.metrics.final_energy_proxy_j >= 0.0
     assert rollout.metrics.mean_hand_chain_error_m == pytest.approx(0.0)
+    assert rollout.metrics.mean_seat_chain_error_m == pytest.approx(0.0)
     for snapshot in rollout.snapshots:
         np.testing.assert_allclose(snapshot.chain_nodes[0], 0.0)
 
