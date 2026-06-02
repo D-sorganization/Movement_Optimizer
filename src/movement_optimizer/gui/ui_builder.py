@@ -28,45 +28,61 @@ def build_central_widget(
     PlaybackControls,
     QLabel,
     QPushButton,
+    QPushButton,
 ]:
     """Build the central widget and top-level layout components.
 
     Returns a tuple of:
         (central, sidebar, tabs, exercise_tabs, controls, status_label,
-         sidebar_toggle_btn)
+         left_sidebar_toggle_btn, right_sidebar_toggle_btn)
 
-    The caller is responsible for connecting ``sidebar_toggle_btn.clicked``
-    to the appropriate handler.
+    The caller is responsible for connecting the sidebar toggle buttons.
     """
     central = QWidget()
     outer = QVBoxLayout(central)
     outer.setContentsMargins(8, 8, 8, 8)
 
+    header = QWidget()
+    header_layout = QHBoxLayout(header)
+    header_layout.setContentsMargins(0, 0, 0, 0)
+    header_layout.setSpacing(8)
     title = QLabel("Movement Optimizer")
     title.setProperty("class", "title")
     title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
     title.setFixedHeight(max(28, title.sizeHint().height()))
-    outer.addWidget(title)
+    header_layout.addWidget(title, stretch=1)
 
-    # Horizontal area: toggle button + splitter (sidebar | right panel).
+    left_sidebar_toggle_btn = QPushButton("Hide left")
+    left_sidebar_toggle_btn.setToolTip("Collapse/expand left parameter sidebar")
+    left_sidebar_toggle_btn.setAccessibleName("Hide left sidebar")
+    left_sidebar_toggle_btn.setAccessibleDescription("Hide the left parameter sidebar.")
+    left_sidebar_toggle_btn.setMinimumWidth(84)
+    left_sidebar_toggle_btn.setMinimumHeight(30)
+    header_layout.addWidget(left_sidebar_toggle_btn)
+
+    right_sidebar_toggle_btn = QPushButton("Right panel")
+    right_sidebar_toggle_btn.setToolTip("Collapse/expand active right parameter panel")
+    right_sidebar_toggle_btn.setAccessibleName("Right panel unavailable")
+    right_sidebar_toggle_btn.setAccessibleDescription(
+        "No active right parameter panel is available."
+    )
+    right_sidebar_toggle_btn.setMinimumWidth(92)
+    right_sidebar_toggle_btn.setMinimumHeight(30)
+    right_sidebar_toggle_btn.setEnabled(False)
+    header_layout.addWidget(right_sidebar_toggle_btn)
+
+    outer.addWidget(header)
+
+    # Horizontal area: splitter (sidebar | right panel).
     content_row = QHBoxLayout()
     content_row.setContentsMargins(0, 0, 0, 0)
     content_row.setSpacing(0)
     outer.addLayout(content_row, stretch=1)
 
-    # Sidebar collapse / expand toggle button.
-    sidebar_toggle_btn = QPushButton("Hide sidebar")
-    sidebar_toggle_btn.setToolTip("Collapse/expand sidebar")
-    sidebar_toggle_btn.setAccessibleName("Hide sidebar")
-    sidebar_toggle_btn.setAccessibleDescription("Hide the parameter sidebar.")
-    sidebar_toggle_btn.setMinimumWidth(96)
-    sidebar_toggle_btn.setMinimumHeight(36)
-
     splitter = QSplitter(Qt.Orientation.Horizontal)
     splitter.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     splitter.setMinimumHeight(520)
     content_row.addWidget(splitter, stretch=1)
-    content_row.addWidget(sidebar_toggle_btn)
 
     sidebar = ParameterSidebar()
     splitter.addWidget(sidebar)
@@ -100,4 +116,13 @@ def build_central_widget(
     status_label.setFixedHeight(max(18, status_label.sizeHint().height()))
     outer.addWidget(status_label)
 
-    return central, sidebar, tabs, exercise_tabs, controls, status_label, sidebar_toggle_btn
+    return (
+        central,
+        sidebar,
+        tabs,
+        exercise_tabs,
+        controls,
+        status_label,
+        left_sidebar_toggle_btn,
+        right_sidebar_toggle_btn,
+    )

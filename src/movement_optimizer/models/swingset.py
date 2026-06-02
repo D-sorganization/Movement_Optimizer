@@ -237,7 +237,7 @@ class CyclicPolicyParameters:
 
 @dataclass(frozen=True)
 class CyclicPolicySearchSpace:
-    """Tunable grid for simple walking-style swingset policy search."""
+    """Tunable grid for cyclic swingset policy search."""
 
     frequency_hz_min: float = 0.45
     frequency_hz_max: float = 0.75

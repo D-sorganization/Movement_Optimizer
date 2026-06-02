@@ -10,11 +10,26 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtWidgets import QAbstractSpinBox, QLabel, QLineEdit, QProgressBar, QSlider, QSplitter
+from PyQt6.QtGui import QPainter, QPixmap
+from PyQt6.QtWidgets import (
+    QAbstractSpinBox,
+    QLabel,
+    QLineEdit,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QSlider,
+    QSplitter,
+)
 
 from movement_optimizer.gui.app_icon import movement_optimizer_icon, movement_optimizer_icon_path
 from movement_optimizer.gui.main_window import MainWindow
-from movement_optimizer.gui.motion_tabs import ChainDynamicsTab, NumericControl, SwingsetTab
+from movement_optimizer.gui.motion_tabs import (
+    ChainDynamicsTab,
+    MotionCanvas,
+    NumericControl,
+    SwingsetTab,
+)
 
 
 def test_main_window_preserves_barbell_tabs_and_adds_motion_tabs(qapp) -> None:
@@ -82,6 +97,32 @@ def test_layout_header_status_and_splitter_use_full_height(qapp) -> None:
     assert splitter.geometry().height() > 700
 
 
+def test_main_window_top_toolstrip_controls_left_and_right_sidebars(qapp) -> None:
+    window = MainWindow()
+    window.show()
+    window.tabs.setCurrentIndex(0)
+    qapp.processEvents()
+
+    buttons = window.centralWidget().findChildren(QPushButton)
+    assert all(button.text() != "Hide sidebar" for button in buttons)
+    assert window._left_sidebar_toggle_btn.text() == "Hide left"
+    assert window._right_sidebar_toggle_btn.text() == "Right panel"
+    assert not window._right_sidebar_toggle_btn.isEnabled()
+
+    window._left_sidebar_toggle_btn.click()
+    assert not window.sidebar.isVisible()
+    assert window._left_sidebar_toggle_btn.text() == "Show left"
+
+    window.tabs.setCurrentIndex(window.tabs.count() - 2)
+    swing_tab = window.tabs.currentWidget()
+    assert window._right_sidebar_toggle_btn.isEnabled()
+    assert window._right_sidebar_toggle_btn.text() == "Hide right"
+
+    window._right_sidebar_toggle_btn.click()
+    assert not swing_tab.control_panel_visible()
+    assert window._right_sidebar_toggle_btn.text() == "Show right"
+
+
 def test_swingset_and_chain_tabs_run_local_simulations(qapp) -> None:
     swingset = SwingsetTab()
     chain = ChainDynamicsTab()
@@ -126,6 +167,33 @@ def test_swingset_tab_exposes_policy_tuning_and_progress(qapp) -> None:
     assert progress is not None
     assert progress.value() == progress.maximum() == 4
     assert "4 candidates" in swingset.metric_label.text()
+
+
+def test_swingset_policy_terminology_is_not_walking(qapp) -> None:
+    swingset = SwingsetTab()
+
+    visible_text = " ".join(
+        widget.text() for widget in swingset.findChildren((QLabel, QPushButton)) if widget.text()
+    )
+
+    assert "walking" not in visible_text.lower()
+    assert "swing cycles" in visible_text.lower()
+    assert "Optimize Swing Policy" in visible_text
+
+
+def test_motion_tab_parameter_panels_are_scrollable_and_not_compressed(qapp) -> None:
+    for tab in (SwingsetTab(), ChainDynamicsTab()):
+        scroll_area = tab.findChild(QScrollArea)
+
+        assert scroll_area is not None
+        assert scroll_area.widgetResizable()
+        assert tab.control_panel_visible()
+        assert all(line_edit.minimumHeight() >= 28 for line_edit in tab.findChildren(QLineEdit))
+
+        tab.set_control_panel_visible(False)
+        assert not tab.control_panel_visible()
+        tab.set_control_panel_visible(True)
+        assert tab.control_panel_visible()
 
 
 def test_swingset_tab_configures_seat_placement_percent(qapp) -> None:
@@ -182,6 +250,83 @@ def test_numeric_control_accepts_typed_values(qapp) -> None:
     control.edit.editingFinished.emit()
 
     assert control.value() == 4.25
+
+
+def test_numeric_control_validates_ranges_and_recovers_bad_text(qapp) -> None:
+    with pytest.raises(ValueError, match="upper must be greater"):
+        NumericControl(2.0, 2.0, 2.0)
+
+    control = NumericControl(0.0, 10.0, 1.0)
+    observed: list[float] = []
+    control.valueChanged.connect(observed.append)
+
+    control.slider.setValue(control.slider.maximum())
+    assert control.value() == 10.0
+    assert observed[-1] == 10.0
+
+    control.edit.setText("not numeric")
+    control.edit.editingFinished.emit()
+    assert control.edit.text() == "10.000"
+
+
+def test_motion_canvas_handles_empty_and_bodyless_paints(qapp) -> None:
+    canvas = MotionCanvas()
+    canvas.resize(320, 240)
+
+    canvas.grab()
+
+    canvas.set_scene([(0.0, 0.0), (0.0, 1.0)])
+    image = QPixmap(64, 64)
+    painter = QPainter(image)
+    try:
+        canvas._draw_body(painter, canvas._projector())
+    finally:
+        painter.end()
+
+
+def test_swingset_playback_controls_cover_policy_rollout_branches(qapp) -> None:
+    swingset = SwingsetTab()
+    swingset._controls["cycles"].set_value(1)
+    swingset._controls["policy_steps"].set_value(30)
+    swingset._controls["freq_samples"].set_value(1)
+    swingset._controls["hip_samples"].set_value(1)
+    swingset._controls["torso_samples"].set_value(1)
+    swingset._controls["knee_samples"].set_value(1)
+    swingset._controls["phase_samples"].set_value(1)
+
+    swingset._ensure_rollout()
+    assert swingset._rollout is not None
+
+    swingset._toggle_playback()
+    assert swingset.playback_status()[2]
+    swingset.set_playback_speed(2.0)
+    swingset._advance_frame()
+    swingset._toggle_playback()
+    assert not swingset.playback_status()[2]
+
+    swingset.playback_step_back()
+    swingset.playback_rewind()
+    swingset.playback_jump_to_end()
+    assert swingset.playback_status()[0] == swingset.playback_status()[1]
+
+    swingset._rollout = None
+    swingset._advance_frame()
+    swingset._control_scroll = None
+    with pytest.raises(RuntimeError, match="Swingset controls"):
+        swingset.set_control_panel_visible(True)
+
+
+def test_swingset_playback_methods_return_without_rollout(qapp, monkeypatch) -> None:
+    swingset = SwingsetTab()
+    swingset._rollout = None
+    monkeypatch.setattr(swingset, "_optimize_policy", lambda: None)
+
+    swingset.playback_step_forward()
+    swingset.playback_step_back()
+    swingset.playback_rewind()
+    swingset.playback_jump_to_end()
+
+    assert swingset.playback_status() == (0, 0, False)
 
 
 def test_chain_tab_supports_free_segment_angles_and_realtime_speed(qapp) -> None:
@@ -248,3 +393,46 @@ def test_chain_rollout_keeps_physical_anchor_fixed(qapp) -> None:
 
     assert chain._rollout is not None
     np.testing.assert_allclose(chain._rollout.positions[:, 0, :], 0.0)
+
+
+def test_chain_tab_reports_invalid_inputs_and_covers_playback_branches(qapp, monkeypatch) -> None:
+    chain = ChainDynamicsTab()
+    chain.tie_segments.setChecked(False)
+    chain._controls["segments"].set_value(3)
+    chain.angle_edit.setText("0.0, 1.0")
+
+    chain._refresh()
+    assert "Expected 3 segment angles" in chain.metric_label.text()
+    chain._simulate()
+    assert "Expected 3 segment angles" in chain.metric_label.text()
+
+    chain.angle_edit.setText("0.0, 0.5, 1.0")
+    chain._simulate()
+    assert chain._rollout is not None
+
+    chain._toggle_playback()
+    assert chain.playback_status()[2]
+    chain.set_playback_speed(2.0)
+    chain._advance_frame()
+    chain._toggle_playback()
+    assert not chain.playback_status()[2]
+
+    chain.playback_step_forward()
+    chain.playback_step_back()
+    chain.playback_rewind()
+    chain.playback_jump_to_end()
+    assert chain.playback_status()[0] == chain.playback_status()[1]
+
+    chain._rollout = None
+    monkeypatch.setattr(chain, "_simulate", lambda: None)
+    chain._toggle_playback()
+    chain.playback_step_forward()
+    chain.playback_step_back()
+    chain.playback_rewind()
+    chain.playback_jump_to_end()
+    chain._advance_frame()
+    chain._render_chain_frame()
+
+    chain._control_scroll = None
+    with pytest.raises(RuntimeError, match="Chain controls"):
+        chain.set_control_panel_visible(True)
