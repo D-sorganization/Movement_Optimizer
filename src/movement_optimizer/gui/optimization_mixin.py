@@ -68,8 +68,8 @@ class OptimizationMixin:
     _stop_anim: Callable[[], None]
 
     def __init__(self) -> None:
-        """Init."""
-        pass
+        """Initialise the next class in the cooperative Qt MRO."""
+        super().__init__()
 
     def _snapshot_idx_state(
         self, idx: int
