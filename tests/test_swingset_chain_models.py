@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from itertools import pairwise
+
 import numpy as np
 import pytest
 
@@ -24,6 +27,7 @@ from movement_optimizer.models.swingset import (
     SwingSetConfig,
     SwingSetState,
     build_swingset_snapshot,
+    estimate_swingset_joint_torques,
     heuristic_pumping_policy,
     optimize_cyclic_policy,
     simulate_swingset,
@@ -126,6 +130,34 @@ def test_swingset_snapshot_models_body_chain_and_mass() -> None:
     )
     np.testing.assert_allclose(thigh_attachment, snapshot.chain_nodes[-1])
     assert np.max(np.abs(np.diff(snapshot.chain_nodes[:, 0]))) > 0.0
+
+
+def test_swingset_elbow_branch_does_not_mirror_when_control_crosses_zero() -> None:
+    config = SwingSetConfig(chain_segments=8)
+    branch_signs: list[float] = []
+    elbow_points: list[np.ndarray] = []
+
+    for elbow_angle in np.linspace(-0.5, 0.5, 11):
+        snapshot = build_swingset_snapshot(
+            config,
+            SwingPose(
+                swing_angle_rad=0.12,
+                torso_lean_rad=0.1,
+                hip_angle_rad=0.2,
+                elbow_angle_rad=float(elbow_angle),
+            ),
+        )
+        shoulder = snapshot.points["shoulder"]
+        hand = snapshot.points["hand"]
+        elbow = snapshot.points["elbow"]
+        hand_delta = hand - shoulder
+        elbow_delta = elbow - shoulder
+        branch_signs.append(float(hand_delta[0] * elbow_delta[1] - hand_delta[1] * elbow_delta[0]))
+        elbow_points.append(elbow)
+
+    assert min(branch_signs) > 0.0
+    max_step = max(float(np.linalg.norm(end - start)) for start, end in pairwise(elbow_points))
+    assert max_step < 0.02
 
 
 def test_swingset_config_validates_inputs() -> None:
@@ -237,6 +269,45 @@ def test_swingset_policy_search_reports_progress_and_uses_cycles() -> None:
     assert result.optimized_cycles == pytest.approx(2.0)
     assert progress[-1][0] == progress[-1][1] == 4
     assert progress[-1][2] == pytest.approx(result.objective_height_m)
+    assert len(result.trace) == result.evaluated_candidates
+    assert result.trace[-1].best_score_m == pytest.approx(result.objective_height_m)
+    best_scores = np.asarray([sample.best_score_m for sample in result.trace])
+    assert np.all(np.diff(best_scores) >= 0.0)
+
+
+def test_swingset_joint_torque_estimates_are_reported_per_policy_joint() -> None:
+    config = SwingSetConfig()
+    rollout = simulate_swingset(
+        config,
+        SwingSetState(pose=SwingPose(swing_angle_rad=0.08)),
+        steps=8,
+        dt_s=0.02,
+        policy=heuristic_pumping_policy,
+    )
+
+    torques = estimate_swingset_joint_torques(config, rollout, dt_s=0.02)
+
+    assert torques.shape == (8, 5)
+    assert np.all(np.isfinite(torques))
+    assert np.max(np.abs(torques)) > 0.0
+
+
+def test_swingset_joint_torque_estimator_validates_control_history() -> None:
+    config = SwingSetConfig()
+    rollout = simulate_swingset(
+        config,
+        SwingSetState(pose=SwingPose(swing_angle_rad=0.08)),
+        steps=2,
+        dt_s=0.02,
+        policy=heuristic_pumping_policy,
+    )
+
+    empty = replace(rollout, controls=np.zeros((0, 5), dtype=np.float64))
+    bad_shape = replace(rollout, controls=np.zeros((2, 4), dtype=np.float64))
+
+    assert estimate_swingset_joint_torques(config, empty, dt_s=0.02).shape == (0, 5)
+    with pytest.raises(ValueError, match="shape"):
+        estimate_swingset_joint_torques(config, bad_shape, dt_s=0.02)
 
 
 def test_swingset_rollout_validates_inputs() -> None:

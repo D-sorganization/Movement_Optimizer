@@ -10,7 +10,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtGui import QPainter, QPixmap
+from PyQt6.QtGui import QColor, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QAbstractSpinBox,
     QLabel,
@@ -167,6 +167,9 @@ def test_swingset_tab_exposes_policy_tuning_and_progress(qapp) -> None:
     assert progress is not None
     assert progress.value() == progress.maximum() == 4
     assert "4 candidates" in swingset.metric_label.text()
+    assert swingset.policy_trace_canvas.sample_count() == 4
+    assert "Peak torque" in swingset.policy_detail_label.text()
+    assert "frequency" in swingset.policy_detail_label.text()
 
 
 def test_swingset_policy_terminology_is_not_walking(qapp) -> None:
@@ -194,6 +197,49 @@ def test_motion_tab_parameter_panels_are_scrollable_and_not_compressed(qapp) -> 
         assert not tab.control_panel_visible()
         tab.set_control_panel_visible(True)
         assert tab.control_panel_visible()
+
+
+def test_swingset_optimize_policy_action_is_sticky_above_scroll_area(qapp) -> None:
+    swingset = SwingsetTab()
+    scroll_area = swingset.findChild(QScrollArea)
+
+    assert scroll_area is not None
+    assert swingset.optimize_button.text() == "Optimize Swing Policy"
+    assert swingset.optimize_button not in scroll_area.widget().findChildren(QPushButton)
+
+
+def test_swingset_policy_trace_canvas_accepts_optimization_samples(qapp) -> None:
+    swingset = SwingsetTab()
+    swingset._controls["cycles"].set_value(1)
+    swingset._controls["freq_samples"].set_value(2)
+    swingset._controls["hip_samples"].set_value(1)
+    swingset._controls["torso_samples"].set_value(1)
+    swingset._controls["knee_samples"].set_value(1)
+    swingset._controls["phase_samples"].set_value(2)
+
+    swingset._optimize_policy()
+
+    assert swingset.policy_trace_canvas.sample_count() == 4
+    assert swingset.policy_trace_canvas.has_parameter_series("frequency_hz")
+    swingset.policy_trace_canvas.resize(360, 180)
+    rendered = swingset.policy_trace_canvas.grab()
+    assert not rendered.isNull()
+    assert "knee ratio" in swingset.policy_detail_label.text()
+
+
+def test_swingset_policy_trace_canvas_handles_sparse_series(qapp) -> None:
+    swingset = SwingsetTab()
+
+    swingset.policy_trace_canvas.resize(240, 120)
+    empty_render = swingset.policy_trace_canvas.grab()
+    pixmap = QPixmap(120, 80)
+    painter = QPainter(pixmap)
+    try:
+        swingset.policy_trace_canvas._draw_normalized_series(painter, "missing", QColor("white"), 1)
+    finally:
+        painter.end()
+
+    assert not empty_render.isNull()
 
 
 def test_swingset_tab_configures_seat_placement_percent(qapp) -> None:
@@ -311,7 +357,7 @@ def test_swingset_playback_controls_cover_policy_rollout_branches(qapp) -> None:
 
     swingset._rollout = None
     swingset._advance_frame()
-    swingset._control_scroll = None
+    swingset._control_panel_widget = None
     with pytest.raises(RuntimeError, match="Swingset controls"):
         swingset.set_control_panel_visible(True)
 

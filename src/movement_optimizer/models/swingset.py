@@ -33,6 +33,13 @@ MAX_EXTERNAL_TORQUE_NM: Final[float] = 70.0
 CONTROL_DIMENSION: Final[int] = 5
 DEFAULT_POLICY_STEPS: Final[int] = 300
 DEFAULT_POLICY_DT_S: Final[float] = 0.02
+SWING_POLICY_JOINT_NAMES: Final[tuple[str, ...]] = (
+    "torso",
+    "hip",
+    "knee",
+    "shoulder",
+    "elbow",
+)
 
 
 def _require_positive(name: str, value: float) -> None:
@@ -270,6 +277,17 @@ class CyclicPolicySearchSpace:
 
 
 @dataclass(frozen=True)
+class CyclicPolicyTraceSample:
+    """One candidate evaluation from cyclic policy search."""
+
+    iteration: int
+    score_m: float
+    best_score_m: float
+    parameters: CyclicPolicyParameters
+    best_parameters: CyclicPolicyParameters
+
+
+@dataclass(frozen=True)
 class CyclicPolicySearchResult:
     """Best cyclic policy and rollout found by deterministic search."""
 
@@ -278,6 +296,7 @@ class CyclicPolicySearchResult:
     objective_height_m: float
     evaluated_candidates: int
     optimized_cycles: float | None
+    trace: tuple[CyclicPolicyTraceSample, ...] = ()
 
 
 def build_swingset_snapshot(
@@ -362,7 +381,8 @@ def _arm_elbow_point(
     )
     height = np.sqrt(max(upper_length**2 - along**2, 0.0))
     normal = np.asarray([-unit[1], unit[0]], dtype=np.float64)
-    bias = 1.0 if elbow_bias_rad >= 0.0 else -1.0
+    _ = elbow_bias_rad
+    bias = 1.0
     return shoulder + along * unit + bias * height * normal
 
 
@@ -534,18 +554,10 @@ def optimize_cyclic_policy(
     start = initial_state or SwingSetState(pose=SwingPose(swing_angle_rad=0.06))
     candidates = _cyclic_policy_candidates(search_space or CyclicPolicySearchSpace())
     best_params = candidates[0]
-    first_steps = _steps_for_candidate(steps, dt_s, best_params, cycles)
-    best_rollout = simulate_swingset(
-        config,
-        start,
-        first_steps,
-        dt_s,
-        cyclic_pumping_policy(best_params),
-    )
-    best_score = best_rollout.metrics.max_height_gain_m
-    if progress_callback is not None:
-        progress_callback(1, len(candidates), best_score, best_params)
-    for index, parameters in enumerate(candidates[1:], start=2):
+    best_rollout: SwingRollout | None = None
+    best_score = -np.inf
+    trace: list[CyclicPolicyTraceSample] = []
+    for index, parameters in enumerate(candidates, start=1):
         candidate_steps = _steps_for_candidate(steps, dt_s, parameters, cycles)
         rollout = simulate_swingset(
             config,
@@ -559,9 +571,69 @@ def optimize_cyclic_policy(
             best_params = parameters
             best_rollout = rollout
             best_score = score
+        if best_rollout is None:  # pragma: no cover - defensive guard for malformed searches.
+            raise RuntimeError("Policy search did not evaluate a rollout")
+        trace.append(
+            CyclicPolicyTraceSample(
+                iteration=index,
+                score_m=score,
+                best_score_m=best_score,
+                parameters=parameters,
+                best_parameters=best_params,
+            )
+        )
         if progress_callback is not None:
             progress_callback(index, len(candidates), best_score, best_params)
-    return CyclicPolicySearchResult(best_params, best_rollout, best_score, len(candidates), cycles)
+    if best_rollout is None:  # pragma: no cover - defensive guard for malformed searches.
+        raise RuntimeError("Policy search did not evaluate a rollout")
+    return CyclicPolicySearchResult(
+        best_params,
+        best_rollout,
+        best_score,
+        len(candidates),
+        cycles,
+        tuple(trace),
+    )
+
+
+def estimate_swingset_joint_torques(
+    config: SwingSetConfig,
+    rollout: SwingRollout,
+    dt_s: float,
+) -> FloatArray:
+    """Estimate policy joint torques from controller rates.
+
+    Preconditions:
+        ``dt_s`` is positive and ``rollout.controls`` is shaped ``(N, 5)``.
+    """
+
+    _require_positive("dt_s", dt_s)
+    controls = rollout.controls
+    if controls.ndim != 2 or controls.shape[1] != CONTROL_DIMENSION:
+        raise ValueError("rollout.controls must have shape (N, 5)")
+    if controls.shape[0] == 0:
+        return np.zeros((0, CONTROL_DIMENSION), dtype=np.float64)
+    inertias = _policy_joint_inertias(config)
+    accelerations = (
+        np.gradient(controls, dt_s, axis=0) if controls.shape[0] > 1 else np.zeros_like(controls)
+    )
+    damping = 0.08 * inertias * controls
+    return accelerations * inertias + damping
+
+
+def _policy_joint_inertias(config: SwingSetConfig) -> FloatArray:
+    torso = config.torso.mass_kg * config.torso.length_m**2 / 3.0
+    hip = 2.0 * (
+        config.thigh.mass_kg * config.thigh.length_m**2 / 3.0
+        + config.shank.mass_kg * (config.thigh.length_m + 0.5 * config.shank.length_m) ** 2
+    )
+    knee = 2.0 * config.shank.mass_kg * config.shank.length_m**2 / 3.0
+    shoulder = 2.0 * (
+        config.upper_arm.mass_kg * config.upper_arm.length_m**2 / 3.0
+        + config.forearm.mass_kg * (config.upper_arm.length_m + 0.5 * config.forearm.length_m) ** 2
+    )
+    elbow = 2.0 * config.forearm.mass_kg * config.forearm.length_m**2 / 3.0
+    return np.asarray([torso, hip, knee, shoulder, elbow], dtype=np.float64)
 
 
 def _steps_for_candidate(
