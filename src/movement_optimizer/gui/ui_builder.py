@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QTabWidget,
     QVBoxLayout,
@@ -43,6 +44,8 @@ def build_central_widget(
 
     title = QLabel("Movement Optimizer")
     title.setProperty("class", "title")
+    title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    title.setFixedHeight(max(28, title.sizeHint().height()))
     outer.addWidget(title)
 
     # Horizontal area: toggle button + splitter (sidebar | right panel).
@@ -60,6 +63,8 @@ def build_central_widget(
     sidebar_toggle_btn.setMinimumHeight(36)
 
     splitter = QSplitter(Qt.Orientation.Horizontal)
+    splitter.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    splitter.setMinimumHeight(520)
     content_row.addWidget(splitter, stretch=1)
     content_row.addWidget(sidebar_toggle_btn)
 
@@ -67,10 +72,12 @@ def build_central_widget(
     splitter.addWidget(sidebar)
 
     right = QWidget()
+    right.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     right_lay = QVBoxLayout(right)
     right_lay.setContentsMargins(0, 0, 0, 0)
 
     tabs = QTabWidget()
+    tabs.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     exercise_tabs: list[ExerciseTab] = []
     for i, (display_name, _) in enumerate(exercise_configs):
         tab = ExerciseTab(display_name)
@@ -80,6 +87,7 @@ def build_central_widget(
     right_lay.addWidget(tabs)
 
     controls = PlaybackControls()
+    controls.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
     right_lay.addWidget(controls)
 
     splitter.addWidget(right)
@@ -88,6 +96,8 @@ def build_central_widget(
 
     status_label = QLabel("Ready")
     status_label.setProperty("class", "dim")
+    status_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    status_label.setFixedHeight(max(18, status_label.sizeHint().height()))
     outer.addWidget(status_label)
 
     return central, sidebar, tabs, exercise_tabs, controls, status_label, sidebar_toggle_btn

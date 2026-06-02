@@ -1,0 +1,538 @@
+# Copyright (c) 2026 D-Sorganization. All rights reserved.
+"""Side-view swingset kinematics and trainable policy rollouts."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass, replace
+from typing import Final, TypeAlias
+
+import numpy as np
+from numpy.typing import NDArray
+
+from .chain_dynamics import (
+    GRAVITY_M_S2,
+    ChainConfig,
+    ChainState,
+    initial_catenary_angles,
+)
+
+FloatArray: TypeAlias = NDArray[np.float64]
+Policy: TypeAlias = Callable[["SwingSetState", float], "SwingControlAction"]
+
+DEFAULT_CHAIN_SEGMENTS: Final[int] = 14
+DEFAULT_CHAIN_LENGTH_M: Final[float] = 2.4
+DEFAULT_SEAT_MASS_KG: Final[float] = 4.5
+DEFAULT_LINK_MASS_KG: Final[float] = 0.16
+DEFAULT_SEAT_PLACEMENT_THIGH_FRACTION: Final[float] = 0.35
+DEFAULT_DAMPING: Final[float] = 0.04
+DEFAULT_PUMP_GAIN: Final[float] = 0.65
+MAX_BODY_RATE_RAD_S: Final[float] = 2.4
+MAX_EXTERNAL_TORQUE_NM: Final[float] = 70.0
+CONTROL_DIMENSION: Final[int] = 5
+DEFAULT_POLICY_STEPS: Final[int] = 300
+DEFAULT_POLICY_DT_S: Final[float] = 0.02
+
+
+def _require_positive(name: str, value: float) -> None:
+    if value <= 0.0:
+        raise ValueError(f"{name} must be positive")
+
+
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return min(max(value, lower), upper)
+
+
+def _segment_vector(length_m: float, angle_rad: float) -> FloatArray:
+    return np.asarray(
+        [length_m * np.sin(angle_rad), length_m * np.cos(angle_rad)],
+        dtype=np.float64,
+    )
+
+
+@dataclass(frozen=True)
+class HumanSegmentSpec:
+    """Length and mass for one body segment.
+
+    Preconditions:
+        ``length_m`` and ``mass_kg`` are positive.
+    """
+
+    length_m: float
+    mass_kg: float
+
+    def __post_init__(self) -> None:
+        _require_positive("length_m", self.length_m)
+        _require_positive("mass_kg", self.mass_kg)
+
+
+@dataclass(frozen=True)
+class SwingSetConfig:
+    """Physical configuration for a trainable swingset model."""
+
+    chain_segments: int = DEFAULT_CHAIN_SEGMENTS
+    chain_length_m: float = DEFAULT_CHAIN_LENGTH_M
+    chain_link_mass_kg: float = DEFAULT_LINK_MASS_KG
+    seat_mass_kg: float = DEFAULT_SEAT_MASS_KG
+    seat_placement_thigh_fraction: float = DEFAULT_SEAT_PLACEMENT_THIGH_FRACTION
+    torso: HumanSegmentSpec = HumanSegmentSpec(0.62, 28.0)
+    thigh: HumanSegmentSpec = HumanSegmentSpec(0.46, 8.0)
+    shank: HumanSegmentSpec = HumanSegmentSpec(0.45, 5.5)
+    upper_arm: HumanSegmentSpec = HumanSegmentSpec(0.30, 2.0)
+    forearm: HumanSegmentSpec = HumanSegmentSpec(0.28, 1.6)
+    gravity_m_s2: float = GRAVITY_M_S2
+    damping: float = DEFAULT_DAMPING
+    pump_gain: float = DEFAULT_PUMP_GAIN
+
+    def __post_init__(self) -> None:
+        if self.chain_segments < 1:
+            raise ValueError("chain_segments must be at least 1")
+        _require_positive("chain_length_m", self.chain_length_m)
+        _require_positive("chain_link_mass_kg", self.chain_link_mass_kg)
+        _require_positive("seat_mass_kg", self.seat_mass_kg)
+        if not 0.0 < self.seat_placement_thigh_fraction <= 1.0:
+            raise ValueError("seat_placement_thigh_fraction must be in (0, 1]")
+        _require_positive("gravity_m_s2", self.gravity_m_s2)
+        if self.damping < 0.0:
+            raise ValueError("damping must be non-negative")
+        if self.pump_gain < 0.0:
+            raise ValueError("pump_gain must be non-negative")
+
+    def chain_config(self) -> ChainConfig:
+        return ChainConfig(
+            segment_count=self.chain_segments,
+            segment_length_m=self.chain_length_m / self.chain_segments,
+            link_mass_kg=self.chain_link_mass_kg,
+            gravity_m_s2=self.gravity_m_s2,
+            damping=self.damping,
+        )
+
+    @property
+    def rider_mass_kg(self) -> float:
+        paired_arms = 2.0 * (self.upper_arm.mass_kg + self.forearm.mass_kg)
+        paired_legs = 2.0 * (self.thigh.mass_kg + self.shank.mass_kg)
+        return self.torso.mass_kg + paired_arms + paired_legs
+
+
+@dataclass(frozen=True)
+class SwingPose:
+    """Generalized coordinates for the side-view human and swing."""
+
+    swing_angle_rad: float = 0.0
+    torso_lean_rad: float = 0.0
+    hip_angle_rad: float = 0.0
+    knee_angle_rad: float = 0.0
+    shoulder_angle_rad: float = 0.0
+    elbow_angle_rad: float = 0.0
+
+
+@dataclass(frozen=True)
+class SwingControlAction:
+    """Control rates and external torque applied during one rollout step."""
+
+    torso_lean_rate_rad_s: float = 0.0
+    hip_rate_rad_s: float = 0.0
+    knee_rate_rad_s: float = 0.0
+    shoulder_rate_rad_s: float = 0.0
+    elbow_rate_rad_s: float = 0.0
+    external_torque_nm: float = 0.0
+
+    def clipped(self) -> SwingControlAction:
+        rate = MAX_BODY_RATE_RAD_S
+        torque = MAX_EXTERNAL_TORQUE_NM
+        return SwingControlAction(
+            torso_lean_rate_rad_s=_clamp(self.torso_lean_rate_rad_s, -rate, rate),
+            hip_rate_rad_s=_clamp(self.hip_rate_rad_s, -rate, rate),
+            knee_rate_rad_s=_clamp(self.knee_rate_rad_s, -rate, rate),
+            shoulder_rate_rad_s=_clamp(self.shoulder_rate_rad_s, -rate, rate),
+            elbow_rate_rad_s=_clamp(self.elbow_rate_rad_s, -rate, rate),
+            external_torque_nm=_clamp(self.external_torque_nm, -torque, torque),
+        )
+
+    def vector(self) -> FloatArray:
+        return np.asarray(
+            [
+                self.torso_lean_rate_rad_s,
+                self.hip_rate_rad_s,
+                self.knee_rate_rad_s,
+                self.shoulder_rate_rad_s,
+                self.elbow_rate_rad_s,
+            ],
+            dtype=np.float64,
+        )
+
+
+@dataclass(frozen=True)
+class SwingSetState:
+    """Dynamic state for the swingset rollout."""
+
+    pose: SwingPose
+    swing_angular_velocity_rad_s: float = 0.0
+
+    @classmethod
+    def rest(cls) -> SwingSetState:
+        return cls(pose=SwingPose(), swing_angular_velocity_rad_s=0.0)
+
+
+@dataclass(frozen=True)
+class SwingSetSnapshot:
+    """Kinematic geometry derived from a swingset pose."""
+
+    points: dict[str, FloatArray]
+    chain_nodes: FloatArray
+    center_of_mass_m: FloatArray
+    hand_chain_error_m: float
+    seat_chain_error_m: float
+
+
+@dataclass(frozen=True)
+class SwingRolloutMetrics:
+    """Summary metrics returned after policy rollout."""
+
+    max_abs_swing_angle_rad: float
+    max_height_gain_m: float
+    final_energy_proxy_j: float
+    mean_hand_chain_error_m: float
+    mean_seat_chain_error_m: float
+
+
+@dataclass(frozen=True)
+class SwingRollout:
+    """Time history for a swingset policy simulation."""
+
+    states: tuple[SwingSetState, ...]
+    swing_angles_rad: FloatArray
+    controls: FloatArray
+    snapshots: tuple[SwingSetSnapshot, ...]
+    metrics: SwingRolloutMetrics
+
+
+@dataclass(frozen=True)
+class CyclicPolicyParameters:
+    """Parameters for a cyclic rider pumping policy."""
+
+    frequency_hz: float
+    hip_rate_amplitude_rad_s: float
+    torso_rate_amplitude_rad_s: float
+    knee_rate_ratio: float
+    phase_rad: float
+
+    def __post_init__(self) -> None:
+        _require_positive("frequency_hz", self.frequency_hz)
+        if self.hip_rate_amplitude_rad_s < 0.0:
+            raise ValueError("hip_rate_amplitude_rad_s must be non-negative")
+        if self.torso_rate_amplitude_rad_s < 0.0:
+            raise ValueError("torso_rate_amplitude_rad_s must be non-negative")
+        if self.knee_rate_ratio < 0.0:
+            raise ValueError("knee_rate_ratio must be non-negative")
+
+
+@dataclass(frozen=True)
+class CyclicPolicySearchResult:
+    """Best cyclic policy and rollout found by deterministic search."""
+
+    parameters: CyclicPolicyParameters
+    rollout: SwingRollout
+    objective_height_m: float
+
+
+def build_swingset_snapshot(
+    config: SwingSetConfig,
+    pose: SwingPose,
+) -> SwingSetSnapshot:
+    chain_config = config.chain_config()
+    if config.chain_segments == 1:
+        chain_state = ChainState.stationary(chain_config, pose.swing_angle_rad)
+    else:
+        flexible_angles = pose.swing_angle_rad + initial_catenary_angles(
+            config.chain_segments,
+            0.04,
+        )
+        chain_state = ChainState(
+            flexible_angles,
+            np.zeros(config.chain_segments, dtype=np.float64),
+        )
+    chain_nodes = chain_state.node_positions(chain_config)
+    points = _body_points(config, pose, chain_nodes)
+    center = _center_of_mass(config, points)
+    grip_point = chain_nodes[max(config.chain_segments - 2, 0)]
+    seat_point = chain_nodes[-1]
+    hand_error = float(np.linalg.norm(points["hand"] - grip_point))
+    seat_error = float(np.linalg.norm(points["seat"] - seat_point))
+    return SwingSetSnapshot(
+        points=points,
+        chain_nodes=chain_nodes,
+        center_of_mass_m=center,
+        hand_chain_error_m=hand_error,
+        seat_chain_error_m=seat_error,
+    )
+
+
+def _body_points(
+    config: SwingSetConfig,
+    pose: SwingPose,
+    chain_nodes: FloatArray,
+) -> dict[str, FloatArray]:
+    seat = chain_nodes[-1]
+    grip_point = chain_nodes[max(config.chain_segments - 2, 0)]
+    hand = grip_point.copy()
+    thigh_angle = pose.swing_angle_rad + pose.hip_angle_rad
+    thigh_vector = _segment_vector(config.thigh.length_m, thigh_angle)
+    hip = seat - config.seat_placement_thigh_fraction * thigh_vector
+    knee = hip + thigh_vector
+    shank_angle = thigh_angle + pose.knee_angle_rad
+    foot = knee + _segment_vector(config.shank.length_m, shank_angle)
+    torso_angle = pose.swing_angle_rad + pose.torso_lean_rad
+    torso_vector = _segment_vector(config.torso.length_m, torso_angle)
+    shoulder = hip - torso_vector
+    waist = hip - 0.45 * torso_vector
+    elbow = _arm_elbow_point(config, shoulder, hand, pose.elbow_angle_rad)
+    return {
+        "seat": seat,
+        "hand": hand,
+        "elbow": elbow,
+        "shoulder": shoulder,
+        "waist": waist,
+        "hip": hip,
+        "knee": knee,
+        "foot": foot,
+    }
+
+
+def _arm_elbow_point(
+    config: SwingSetConfig,
+    shoulder: FloatArray,
+    hand: FloatArray,
+    elbow_bias_rad: float,
+) -> FloatArray:
+    upper_length = config.upper_arm.length_m
+    forearm_length = config.forearm.length_m
+    delta = hand - shoulder
+    distance = float(np.linalg.norm(delta))
+    unit = delta / distance if distance > 1e-9 else np.asarray([0.0, 1.0], dtype=np.float64)
+    minimum_reach = abs(upper_length - forearm_length) + 1e-9
+    maximum_reach = upper_length + forearm_length - 1e-9
+    effective_distance = _clamp(distance, minimum_reach, maximum_reach)
+    along = (upper_length**2 - forearm_length**2 + effective_distance**2) / (
+        2.0 * effective_distance
+    )
+    height = np.sqrt(max(upper_length**2 - along**2, 0.0))
+    normal = np.asarray([-unit[1], unit[0]], dtype=np.float64)
+    bias = 1.0 if elbow_bias_rad >= 0.0 else -1.0
+    return shoulder + along * unit + bias * height * normal
+
+
+def _center_of_mass(
+    config: SwingSetConfig,
+    points: dict[str, FloatArray],
+) -> FloatArray:
+    seat = points["seat"]
+    torso_mid = 0.5 * (points["hip"] + points["shoulder"])
+    thigh_mid = 0.5 * (points["hip"] + points["knee"])
+    shank_mid = 0.5 * (points["knee"] + points["foot"])
+    upper_arm_mid = 0.5 * (points["shoulder"] + points["elbow"])
+    forearm_mid = 0.5 * (points["elbow"] + points["hand"])
+    weighted = (
+        config.seat_mass_kg * seat
+        + config.torso.mass_kg * torso_mid
+        + 2.0 * config.thigh.mass_kg * thigh_mid
+        + 2.0 * config.shank.mass_kg * shank_mid
+        + 2.0 * config.upper_arm.mass_kg * upper_arm_mid
+        + 2.0 * config.forearm.mass_kg * forearm_mid
+    )
+    total_mass = config.seat_mass_kg + config.rider_mass_kg
+    return weighted / total_mass
+
+
+def _step_pose(pose: SwingPose, action: SwingControlAction, dt_s: float) -> SwingPose:
+    return replace(
+        pose,
+        torso_lean_rad=pose.torso_lean_rad + action.torso_lean_rate_rad_s * dt_s,
+        hip_angle_rad=pose.hip_angle_rad + action.hip_rate_rad_s * dt_s,
+        knee_angle_rad=pose.knee_angle_rad + action.knee_rate_rad_s * dt_s,
+        shoulder_angle_rad=pose.shoulder_angle_rad + action.shoulder_rate_rad_s * dt_s,
+        elbow_angle_rad=pose.elbow_angle_rad + action.elbow_rate_rad_s * dt_s,
+    )
+
+
+def _swing_acceleration(
+    config: SwingSetConfig,
+    state: SwingSetState,
+    action: SwingControlAction,
+) -> float:
+    length = config.chain_length_m
+    gravity = -(config.gravity_m_s2 / length) * np.sin(state.pose.swing_angle_rad)
+    damping = -config.damping * state.swing_angular_velocity_rad_s
+    inertia = (config.seat_mass_kg + config.rider_mass_kg) * length**2
+    control = action.external_torque_nm / inertia
+    pump = config.pump_gain * _pumping_projection(state, action) / length
+    return float(gravity + damping + control + pump)
+
+
+def _pumping_projection(state: SwingSetState, action: SwingControlAction) -> float:
+    direction = 1.0 if state.swing_angular_velocity_rad_s >= 0.0 else -1.0
+    leg_drive = action.hip_rate_rad_s - 0.35 * action.knee_rate_rad_s
+    torso_drive = -0.5 * action.torso_lean_rate_rad_s
+    return direction * (leg_drive + torso_drive)
+
+
+def step_swingset(
+    config: SwingSetConfig,
+    state: SwingSetState,
+    action: SwingControlAction,
+    dt_s: float,
+) -> SwingSetState:
+    """Advance the swingset by one semi-implicit Euler step.
+
+    Preconditions:
+        ``dt_s`` is positive.
+    """
+
+    _require_positive("dt_s", dt_s)
+    clipped = action.clipped()
+    acceleration = _swing_acceleration(config, state, clipped)
+    next_velocity = state.swing_angular_velocity_rad_s + acceleration * dt_s
+    next_swing = state.pose.swing_angle_rad + next_velocity * dt_s
+    pose = replace(_step_pose(state.pose, clipped, dt_s), swing_angle_rad=next_swing)
+    return SwingSetState(pose=pose, swing_angular_velocity_rad_s=next_velocity)
+
+
+def heuristic_pumping_policy(
+    state: SwingSetState,
+    _time_s: float,
+) -> SwingControlAction:
+    direction = 1.0 if state.swing_angular_velocity_rad_s >= 0.0 else -1.0
+    return SwingControlAction(
+        torso_lean_rate_rad_s=-0.7 * direction,
+        hip_rate_rad_s=0.9 * direction,
+        knee_rate_rad_s=-0.4 * direction,
+        shoulder_rate_rad_s=-0.15 * direction,
+        elbow_rate_rad_s=0.2 * direction,
+    )
+
+
+def cyclic_pumping_policy(parameters: CyclicPolicyParameters) -> Policy:
+    """Return a sinusoidal cyclic policy suitable for policy search."""
+
+    def _policy(_state: SwingSetState, time_s: float) -> SwingControlAction:
+        phase = 2.0 * np.pi * parameters.frequency_hz * time_s + parameters.phase_rad
+        driver = float(np.sin(phase))
+        return SwingControlAction(
+            torso_lean_rate_rad_s=-parameters.torso_rate_amplitude_rad_s * driver,
+            hip_rate_rad_s=parameters.hip_rate_amplitude_rad_s * driver,
+            knee_rate_rad_s=(
+                -parameters.knee_rate_ratio * parameters.hip_rate_amplitude_rad_s * driver
+            ),
+            shoulder_rate_rad_s=-0.1 * driver,
+            elbow_rate_rad_s=0.12 * driver,
+        )
+
+    return _policy
+
+
+def simulate_swingset(
+    config: SwingSetConfig,
+    initial_state: SwingSetState,
+    steps: int,
+    dt_s: float,
+    policy: Policy,
+) -> SwingRollout:
+    """Roll out a control policy for a trainable swingset model.
+
+    Preconditions:
+        ``steps`` and ``dt_s`` are positive.
+    """
+
+    if steps < 1:
+        raise ValueError("steps must be at least 1")
+    _require_positive("dt_s", dt_s)
+    states = [initial_state]
+    controls: list[FloatArray] = []
+    snapshots = [build_swingset_snapshot(config, initial_state.pose)]
+    for step_index in range(steps):
+        action = policy(states[-1], step_index * dt_s).clipped()
+        controls.append(action.vector())
+        states.append(step_swingset(config, states[-1], action, dt_s))
+        snapshots.append(build_swingset_snapshot(config, states[-1].pose))
+    angles = np.asarray([state.pose.swing_angle_rad for state in states])
+    control_array = np.vstack(controls).reshape(steps, CONTROL_DIMENSION)
+    metrics = _rollout_metrics(config, states, snapshots, angles)
+    return SwingRollout(
+        states=tuple(states),
+        swing_angles_rad=angles,
+        controls=control_array,
+        snapshots=tuple(snapshots),
+        metrics=metrics,
+    )
+
+
+def optimize_cyclic_policy(
+    config: SwingSetConfig,
+    initial_state: SwingSetState | None = None,
+    *,
+    steps: int = DEFAULT_POLICY_STEPS,
+    dt_s: float = DEFAULT_POLICY_DT_S,
+) -> CyclicPolicySearchResult:
+    """Search deterministic cyclic policies and maximize swing height.
+
+    Preconditions:
+        ``steps`` and ``dt_s`` are positive.
+    """
+
+    if steps < 1:
+        raise ValueError("steps must be at least 1")
+    _require_positive("dt_s", dt_s)
+    start = initial_state or SwingSetState(pose=SwingPose(swing_angle_rad=0.06))
+    candidates = _cyclic_policy_candidates()
+    best_params = candidates[0]
+    best_rollout = simulate_swingset(config, start, steps, dt_s, cyclic_pumping_policy(best_params))
+    best_score = best_rollout.metrics.max_height_gain_m
+    for parameters in candidates[1:]:
+        rollout = simulate_swingset(config, start, steps, dt_s, cyclic_pumping_policy(parameters))
+        score = rollout.metrics.max_height_gain_m
+        if score > best_score:
+            best_params = parameters
+            best_rollout = rollout
+            best_score = score
+    return CyclicPolicySearchResult(best_params, best_rollout, best_score)
+
+
+def _cyclic_policy_candidates() -> tuple[CyclicPolicyParameters, ...]:
+    candidates: list[CyclicPolicyParameters] = []
+    for frequency_hz in (0.45, 0.55, 0.65, 0.75):
+        for hip_rate in (0.5, 0.9, 1.3):
+            for torso_rate in (0.3, 0.7, 1.1):
+                for knee_ratio in (0.25, 0.45, 0.65):
+                    for phase in (0.0, np.pi / 2.0, np.pi):
+                        candidates.append(
+                            CyclicPolicyParameters(
+                                frequency_hz=frequency_hz,
+                                hip_rate_amplitude_rad_s=hip_rate,
+                                torso_rate_amplitude_rad_s=torso_rate,
+                                knee_rate_ratio=knee_ratio,
+                                phase_rad=float(phase),
+                            )
+                        )
+    return tuple(candidates)
+
+
+def _rollout_metrics(
+    config: SwingSetConfig,
+    states: list[SwingSetState],
+    snapshots: list[SwingSetSnapshot],
+    angles: FloatArray,
+) -> SwingRolloutMetrics:
+    final_velocity = states[-1].swing_angular_velocity_rad_s
+    total_mass = config.seat_mass_kg + config.rider_mass_kg
+    inertia = total_mass * config.chain_length_m**2
+    energy = 0.5 * inertia * final_velocity**2
+    errors = np.asarray([snapshot.hand_chain_error_m for snapshot in snapshots])
+    seat_errors = np.asarray([snapshot.seat_chain_error_m for snapshot in snapshots])
+    max_abs_angle = float(np.max(np.abs(angles)))
+    return SwingRolloutMetrics(
+        max_abs_swing_angle_rad=max_abs_angle,
+        max_height_gain_m=float(config.chain_length_m * (1.0 - np.cos(max_abs_angle))),
+        final_energy_proxy_j=float(energy),
+        mean_hand_chain_error_m=float(np.mean(errors)),
+        mean_seat_chain_error_m=float(np.mean(seat_errors)),
+    )

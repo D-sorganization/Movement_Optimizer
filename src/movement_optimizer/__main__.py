@@ -66,6 +66,7 @@ def _run_gui() -> int:
     from PyQt6.QtWidgets import QApplication
 
     from .gui import MainWindow
+    from .gui.app_icon import movement_optimizer_icon
     from .i18n import setup_translations
 
     logging.basicConfig(
@@ -74,6 +75,7 @@ def _run_gui() -> int:
         datefmt="%H:%M:%S",
     )
     app = QApplication(sys.argv)
+    app.setWindowIcon(movement_optimizer_icon())
     setup_translations()
     window = MainWindow()
     window.show()
