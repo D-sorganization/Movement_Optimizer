@@ -8,6 +8,8 @@ from pathlib import Path
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
 
+from ..rendering import Palette
+
 
 def movement_optimizer_icon_path() -> Path:
     """Return the packaged launcher icon path.
@@ -36,8 +38,8 @@ def _fallback_project_map_pixmap() -> QPixmap:
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    blue = QColor("#4A90D9")
-    pale = QColor("#7AB3E8")
+    blue = QColor(Palette.BLUE)
+    pale = QColor(Palette.ACCENT2)
     painter.setPen(QPen(blue, 2))
     for coordinate in (16, 32, 48):
         painter.drawLine(8, coordinate, 56, coordinate)

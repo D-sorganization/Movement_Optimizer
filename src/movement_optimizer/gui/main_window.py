@@ -27,11 +27,14 @@ from PyQt6.QtGui import QAction, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
+    QWidget,
 )
+from shared.python.theme import ThemedWindowMixin
 
 from ..comparison import ComparisonStore
 from ..models import BodyModel
 from ..persistence import InvalidStateFileError, load_app_state, save_app_state
+from ..rendering import refresh_palette, restyle_figure
 from ..trajectory import (
     OptimizationResult,
     SolutionCache,
@@ -45,7 +48,7 @@ from .help_dialog import HELP_TOPICS, HelpCenterDialog
 from .motion_tabs import create_chain_tab, create_swingset_tab
 from .optimization_mixin import OptimizationMixin
 from .session_state import collect_results, collect_slider_values, restore_slider_values
-from .stylesheet import QSS
+from .stylesheet import build_qss
 from .ui_builder import build_central_widget
 
 try:
@@ -67,6 +70,7 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindow(
+    ThemedWindowMixin,
     FileOperationsMixin,
     AnimationControlMixin,
     ComparisonMixin,
@@ -135,11 +139,37 @@ class MainWindow(
         self._motion_tab_button_states: dict[Any, bool] = {}
 
         self._build_ui()
-        self.setStyleSheet(QSS)
+        # Theme support pulls colours from the fleet shared theme and adds a
+        # Theme menu. The shared base stylesheet is applied first; our
+        # palette-derived stylesheet is layered on top to preserve the app's
+        # bespoke widget styling (primary/cancel buttons, result labels, ...).
+        self.setup_theme_support(add_menu=True, settings_app="Movement-Optimizer")
+        refresh_palette()
+        self.setStyleSheet(build_qss())
         self._restore_layout()
         self._sync_motion_tab_controls()
         self._connect_slider_undo()
         self._install_shortcuts()
+
+    def _on_theme_changed(self, _theme_name: str) -> None:
+        """Recolour the app when the shared theme changes.
+
+        The theme manager applies its base stylesheet before emitting
+        ``themeChanged``; here we refresh the palette-derived stylesheet, the
+        motion-canvas palette, every matplotlib figure, and repaint all widgets.
+        """
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+
+        from .motion_tabs import refresh_motion_palette
+
+        refresh_palette()
+        refresh_motion_palette()
+        self.setStyleSheet(build_qss())
+        for canvas in self.findChildren(FigureCanvasQTAgg):
+            restyle_figure(canvas.figure)
+            canvas.draw_idle()
+        for widget in self.findChildren(QWidget):
+            widget.update()
 
     def _build_ui(self) -> None:
         (

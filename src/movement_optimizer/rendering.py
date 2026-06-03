@@ -11,10 +11,18 @@ Design Principles:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.patches import Circle
 from numpy.typing import NDArray
+
+# Movement-Optimizer sources its colours from the fleet shared theme
+# (``ud-tools`` ``shared.python.theme``). This is a hard dependency: a missing
+# install raises ImportError loudly here rather than silently degrading.
+from shared.python.theme import BUILTIN_THEMES, get_theme_manager
+from shared.python.theme.matplotlib_style import apply_plot_theme, get_chart_color
 
 from .constants import BAR_RADIUS_M, LENGTH_FRAC, PLATE_RADIUS_STD_M
 
@@ -22,57 +30,80 @@ from .constants import BAR_RADIUS_M, LENGTH_FRAC, PLATE_RADIUS_STD_M
 NECK_LENGTH_FRAC: float = LENGTH_FRAC["neck"]
 
 
-try:
-    from plot_theme.themes import DEFAULT_THEME, get_theme
+# Semantic colours (success/error) are not present in every built-in theme's
+# token set, so they fall back to fixed accessible values.
+_FALLBACK_GREEN = "#4ec9b0"
+_FALLBACK_RED = "#f44747"
 
-    theme = get_theme(DEFAULT_THEME)
 
-    class Palette:
-        BG = theme.figure_facecolor
-        BG_PANEL = theme.axes_facecolor
-        BG_INPUT = theme.axes_facecolor
-        BG_PLOT = theme.axes_facecolor
-        FG = theme.text_color
-        FG_DIM = theme.tick_color
-        ACCENT = theme.primary_colors[0] if theme.primary_colors else "#7c6ff7"
-        ACCENT2 = theme.primary_colors[1] if len(theme.primary_colors) > 1 else "#9d93f9"
-        GREEN = theme.accent_color
-        RED = theme.secondary_color
-        BLUE = theme.primary_color
-        ORANGE = theme.accent_colors[1] if len(theme.accent_colors) > 1 else "#ffb74d"
-        YELLOW = theme.accent_colors[2] if len(theme.accent_colors) > 2 else "#ffd54f"
-        SEG_COLORS = (
-            theme.primary_colors[0] if len(theme.primary_colors) > 0 else "#569cd6",
-            theme.secondary_colors[0] if len(theme.secondary_colors) > 0 else "#f44747",
-            theme.accent_colors[0] if len(theme.accent_colors) > 0 else "#4ec9b0",
-        )
-        SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
-        BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
+class Palette:
+    """Centralised colour definitions sourced from the fleet shared theme.
 
-except ImportError:
-    # Fallback if ud-tools isn't installed.
-    # The type ignore is required because mypy treats the two branches of
-    # the try/except as re-defining the same name in the same scope; the branches
-    # are mutually exclusive at runtime so the redefinition is intentional.
-    class Palette:  # type: ignore
-        """Centralised colour definitions."""
+    Class attributes are seeded from the ``Dark`` built-in theme at import time
+    (no ``QApplication`` required) and refreshed in place by
+    :func:`refresh_palette` whenever the active theme changes.
+    """
 
-        BG = "#1e1e2e"
-        BG_PANEL = "#2a2a3d"
-        BG_INPUT = "#363650"
-        BG_PLOT = "#1a1a2e"
-        FG = "#e0e0e0"
-        FG_DIM = "#8888aa"
-        ACCENT = "#7c6ff7"
-        ACCENT2 = "#9d93f9"
-        GREEN = "#4ec9b0"
-        RED = "#f44747"
-        BLUE = "#569cd6"
-        ORANGE = "#ffb74d"
-        YELLOW = "#ffd54f"
-        SEG_COLORS = ("#569cd6", "#f44747", "#4ec9b0")
-        SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
-        BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
+    BG = "#1a1d23"
+    BG_PANEL = "#24272e"
+    BG_INPUT = "#0d1117"
+    BG_PLOT = "#24272e"
+    FG = "#e1e4e8"
+    FG_DIM = "#c9d1d9"
+    ACCENT = "#4a7ba7"
+    ACCENT2 = "#5a8fc4"
+    GREEN = _FALLBACK_GREEN
+    RED = _FALLBACK_RED
+    BLUE = "#58a6ff"
+    ORANGE = "#ffb74d"
+    YELLOW = "#ffd54f"
+    SEG_COLORS = ("#569cd6", "#f44747", "#4ec9b0")
+    SEG_LABELS = ("Lower leg", "Upper leg", "Torso")
+    BENCH_LABELS = ("Shoulder", "Elbow", "Wrist")
+
+
+def _apply_palette_colors(colors: Mapping[str, str]) -> None:
+    """Populate :class:`Palette` class attributes from a theme colour mapping.
+
+    Preconditions:
+        ``colors`` provides the core theme keys (``bg``, ``group_bg``,
+        ``input_bg``, ``text``, ``text_secondary``, ``accent``). Raises
+        ``KeyError`` via direct indexing if a required key is absent.
+    """
+    Palette.BG = colors["bg"]
+    Palette.BG_PANEL = colors["group_bg"]
+    Palette.BG_INPUT = colors["input_bg"]
+    Palette.BG_PLOT = colors.get("group_bg", colors["bg"])
+    Palette.FG = colors["text"]
+    Palette.FG_DIM = colors["text_secondary"]
+    Palette.ACCENT = colors["accent"]
+    Palette.ACCENT2 = colors.get("button_hover", colors["accent"])
+    Palette.GREEN = colors.get("success", _FALLBACK_GREEN)
+    Palette.RED = colors.get("error", _FALLBACK_RED)
+    Palette.BLUE = colors.get("focus", colors["accent"])
+    Palette.ORANGE = get_chart_color(1)
+    Palette.YELLOW = get_chart_color(2)
+    Palette.SEG_COLORS = (get_chart_color(0), get_chart_color(1), get_chart_color(2))
+
+
+def refresh_palette() -> None:
+    """Refresh :class:`Palette` from the live theme manager's current colours."""
+    _apply_palette_colors(get_theme_manager().get_current_colors())
+
+
+def restyle_figure(fig: object) -> None:
+    """Apply the active theme to a matplotlib figure.
+
+    Preconditions:
+        ``fig`` is a matplotlib ``Figure``. Raises ``ValueError`` when ``None``.
+    """
+    if fig is None:
+        raise ValueError("fig must be a matplotlib Figure")
+    apply_plot_theme(fig, get_theme_manager().get_current_colors())
+
+
+# Seed Palette from the Dark theme at import time (QApplication-free).
+_apply_palette_colors(BUILTIN_THEMES["Dark"])
 
 
 class BarbellRenderer:

@@ -1,9 +1,24 @@
 # Copyright (c) 2026 D-Sorganization. All rights reserved.
-"""Application stylesheet."""
+"""Application stylesheet.
+
+The stylesheet is built from the live :class:`~movement_optimizer.rendering.Palette`,
+which sources its colours from the fleet shared theme. Because the palette can
+change at runtime (theme switching), the stylesheet is produced by
+:func:`build_qss` rather than frozen into a module constant.
+"""
+
+from __future__ import annotations
 
 from ..rendering import Palette
 
-QSS = f"""
+# Brightened red used only for the cancel-button hover state; the shared theme
+# token set has no dedicated "hover error" colour.
+_CANCEL_HOVER = "#ff6666"
+
+
+def build_qss() -> str:
+    """Return the application stylesheet for the current theme palette."""
+    return f"""
 QMainWindow {{
     background-color: {Palette.BG};
 }}
@@ -79,7 +94,7 @@ QPushButton[class="cancel"] {{
     padding: 6px 14px;
 }}
 QPushButton[class="cancel"]:hover {{
-    background-color: #ff6666;
+    background-color: {_CANCEL_HOVER};
 }}
 QSlider::groove:horizontal {{
     background: {Palette.BG_INPUT};

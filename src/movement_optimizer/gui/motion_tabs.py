@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from shared.python.theme.matplotlib_style import get_chart_color
 
 from movement_optimizer.models.chain_dynamics import (
     ChainConfig,
@@ -50,17 +51,55 @@ from movement_optimizer.models.swingset import (
     estimate_swingset_joint_torques,
     optimize_cyclic_policy,
 )
+from movement_optimizer.rendering import Palette
 
-ACCENT = QColor("#4ec9b0")
-CHAIN = QColor("#c8d1df")
-BODY = QColor("#7aa2f7")
-LEG = QColor("#f3c969")
-ARM = QColor("#d386f2")
-SURFACE = QColor("#1f242d")
-GRID = QColor("#3a4252")
-TRACE_BEST = QColor("#4ec9b0")
-TRACE_SCORE = QColor("#f3c969")
-TRACE_PARAM = QColor("#7aa2f7")
+
+# Canvas colours are sourced from the fleet shared theme (via rendering.Palette
+# and the shared chart-colour cycle) so the swingset/chain canvases recolour with
+# the rest of the app. ``refresh_motion_palette`` rebinds these on theme change.
+def _build_motion_colors() -> dict[str, QColor]:
+    return {
+        "ACCENT": QColor(Palette.GREEN),
+        "CHAIN": QColor(Palette.FG_DIM),
+        "BODY": QColor(get_chart_color(0)),
+        "LEG": QColor(get_chart_color(1)),
+        "ARM": QColor(get_chart_color(2)),
+        "SURFACE": QColor(Palette.BG),
+        "GRID": QColor(Palette.BG_INPUT),
+        "TRACE_BEST": QColor(Palette.GREEN),
+        "TRACE_SCORE": QColor(get_chart_color(1)),
+        "TRACE_PARAM": QColor(get_chart_color(0)),
+    }
+
+
+_MOTION_COLORS = _build_motion_colors()
+ACCENT = _MOTION_COLORS["ACCENT"]
+CHAIN = _MOTION_COLORS["CHAIN"]
+BODY = _MOTION_COLORS["BODY"]
+LEG = _MOTION_COLORS["LEG"]
+ARM = _MOTION_COLORS["ARM"]
+SURFACE = _MOTION_COLORS["SURFACE"]
+GRID = _MOTION_COLORS["GRID"]
+TRACE_BEST = _MOTION_COLORS["TRACE_BEST"]
+TRACE_SCORE = _MOTION_COLORS["TRACE_SCORE"]
+TRACE_PARAM = _MOTION_COLORS["TRACE_PARAM"]
+
+
+def refresh_motion_palette() -> None:
+    """Rebind the motion-canvas colours from the active theme palette."""
+    global ACCENT, CHAIN, BODY, LEG, ARM, SURFACE, GRID
+    global TRACE_BEST, TRACE_SCORE, TRACE_PARAM
+    colors = _build_motion_colors()
+    ACCENT = colors["ACCENT"]
+    CHAIN = colors["CHAIN"]
+    BODY = colors["BODY"]
+    LEG = colors["LEG"]
+    ARM = colors["ARM"]
+    SURFACE = colors["SURFACE"]
+    GRID = colors["GRID"]
+    TRACE_BEST = colors["TRACE_BEST"]
+    TRACE_SCORE = colors["TRACE_SCORE"]
+    TRACE_PARAM = colors["TRACE_PARAM"]
 
 
 class NumericControl(QWidget):
