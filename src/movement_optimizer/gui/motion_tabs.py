@@ -53,6 +53,8 @@ from movement_optimizer.models.swingset import (
 )
 from movement_optimizer.rendering import Palette
 
+from .vector_overlay import OverlayScene, auto_scale_factor, draw_overlay_scene
+
 
 # Canvas colours are sourced from the fleet shared theme (via rendering.Palette
 # and the shared chart-colour cycle) so the swingset/chain canvases recolour with
@@ -202,6 +204,7 @@ class MotionCanvas(QWidget):
         self.setMinimumHeight(360)
         self._chain_nodes: list[tuple[float, float]] = []
         self._body_points: dict[str, tuple[float, float]] = {}
+        self._overlay = OverlayScene()
 
     def set_scene(
         self,
@@ -210,6 +213,11 @@ class MotionCanvas(QWidget):
     ) -> None:
         self._chain_nodes = chain_nodes
         self._body_points = body_points or {}
+        self.update()
+
+    def set_overlays(self, scene: OverlayScene) -> None:
+        """Set the force/torque overlay primitives and repaint (no recompute)."""
+        self._overlay = scene
         self.update()
 
     def paintEvent(self, _event: object) -> None:
@@ -227,6 +235,29 @@ class MotionCanvas(QWidget):
         painter.setPen(QPen(ACCENT, 1))
         for point in chain_points[:1] + chain_points[-1:]:
             painter.drawEllipse(point, 5, 5)
+        self._draw_overlay(painter, projector)
+
+    def _draw_overlay(
+        self,
+        painter: QPainter,
+        projector: Callable[[tuple[float, float]], QPointF],
+    ) -> None:
+        scene = self._overlay
+        if not (scene.arrows or scene.torque_arcs or scene.com_markers):
+            return
+        target = 0.5 * self._chain_path_length()
+        arrow_scale = auto_scale_factor(scene.arrows, target) if scene.arrows else 1.0
+        torque_reference = max(
+            (abs(arc.magnitude_nm) for arc in scene.torque_arcs),
+            default=1.0,
+        )
+        draw_overlay_scene(
+            painter,
+            projector,
+            scene,
+            arrow_scale=arrow_scale,
+            torque_reference_nm=torque_reference or 1.0,
+        )
 
     def _projector(self) -> Callable[[tuple[float, float]], QPointF]:
         anchor_x, anchor_y = self._chain_nodes[0]
