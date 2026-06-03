@@ -62,6 +62,7 @@ from .exercise_configs import make_full_squat_config as make_full_squat_config
 from .exercise_configs import make_squat_config as make_squat_config
 from .lagrangian_dynamics import LagrangianDynamics as LagrangianDynamics
 from .lagrangian_dynamics import balance_pose as balance_pose
+from .swingset import CyclicPolicyBounds as CyclicPolicyBounds
 from .swingset import CyclicPolicySearchSpace as CyclicPolicySearchSpace
 from .swingset import CyclicPolicyTraceSample as CyclicPolicyTraceSample
 from .swingset import SwingSetConfig as SwingSetConfig
@@ -69,6 +70,7 @@ from .swingset import SwingSetState as SwingSetState
 from .swingset import constrain_swing_pose as constrain_swing_pose
 from .swingset import estimate_swingset_joint_torques as estimate_swingset_joint_torques
 from .swingset import optimize_cyclic_policy as optimize_cyclic_policy
+from .swingset import optimize_cyclic_policy_iterative as optimize_cyclic_policy_iterative
 from .swingset import simulate_swingset as simulate_swingset
 from .swingset_forces import SwingForceField as SwingForceField
 from .swingset_forces import SwingForceHistory as SwingForceHistory
@@ -85,6 +87,7 @@ __all__ = [
     "ChainForceHistory",
     "ChainGeometry",
     "ChainState",
+    "CyclicPolicyBounds",
     "CyclicPolicySearchSpace",
     "CyclicPolicyTraceSample",
     "HillTorqueModel",
@@ -110,6 +113,7 @@ __all__ = [
     "make_full_squat_config",
     "make_squat_config",
     "optimize_cyclic_policy",
+    "optimize_cyclic_policy_iterative",
     "random_wadded_chain_state",
     "simulate_chain",
     "simulate_chain_for_duration",

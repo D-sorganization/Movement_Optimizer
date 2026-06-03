@@ -9,6 +9,7 @@ from typing import Final, TypeAlias
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import differential_evolution, minimize
 
 from .chain_dynamics import (
     GRAVITY_M_S2,
@@ -34,6 +35,12 @@ CONTROL_DIMENSION: Final[int] = 5
 DEFAULT_POLICY_STEPS: Final[int] = 300
 DEFAULT_POLICY_DT_S: Final[float] = 0.02
 JOINT_ENDSTOP_MARGIN_FRACTION: Final[float] = 0.20
+
+# Iterative optimizer (differential evolution + local refine) budget controls.
+DEFAULT_OPTIMIZER_BUDGET: Final[int] = 600
+MAX_OPTIMIZER_BUDGET: Final[int] = 2000
+DEFAULT_OPTIMIZER_SEED: Final[int] = 0
+_OPTIMIZER_POPSIZE: Final[int] = 15
 SWING_TORSO_LEAN_LIMITS_RAD: Final[tuple[float, float]] = (-0.35, 0.20)
 SWING_HIP_LIMITS_RAD: Final[tuple[float, float]] = (-0.15, 1.25)
 SWING_KNEE_LIMITS_RAD: Final[tuple[float, float]] = (-1.35, 0.10)
@@ -310,6 +317,46 @@ class CyclicPolicySearchSpace:
         ):
             if value < 1:
                 raise ValueError(f"{name} must be at least 1")
+
+
+@dataclass(frozen=True)
+class CyclicPolicyBounds:
+    """Per-parameter search bounds for the iterative cyclic-policy optimizer.
+
+    Each field is a ``(min, max)`` pair over the same parameters as
+    :class:`CyclicPolicyParameters`. Defaults match the grid search ranges.
+
+    Preconditions:
+        Rate/frequency/ratio bounds are positive with ``max >= min``; the phase
+        lower bound is non-negative with ``max >= min``.
+    """
+
+    frequency_hz: tuple[float, float] = (0.45, 0.75)
+    hip_rate_rad_s: tuple[float, float] = (0.5, 1.3)
+    torso_rate_rad_s: tuple[float, float] = (0.3, 1.1)
+    knee_ratio: tuple[float, float] = (0.25, 0.65)
+    phase_rad: tuple[float, float] = (0.0, np.pi)
+
+    def __post_init__(self) -> None:
+        _require_range("frequency_hz", *self.frequency_hz)
+        _require_range("hip_rate_rad_s", *self.hip_rate_rad_s)
+        _require_range("torso_rate_rad_s", *self.torso_rate_rad_s)
+        _require_range("knee_ratio", *self.knee_ratio)
+        phase_lower, phase_upper = self.phase_rad
+        if phase_lower < 0.0:
+            raise ValueError("phase_rad_min must be non-negative")
+        if phase_upper < phase_lower:
+            raise ValueError("phase_rad_max must be greater than or equal to phase_rad_min")
+
+    def as_list(self) -> list[tuple[float, float]]:
+        """Return bounds ordered to match the optimizer parameter vector."""
+        return [
+            self.frequency_hz,
+            self.hip_rate_rad_s,
+            self.torso_rate_rad_s,
+            self.knee_ratio,
+            self.phase_rad,
+        ]
 
 
 @dataclass(frozen=True)
@@ -672,6 +719,141 @@ def optimize_cyclic_policy(
         best_rollout,
         best_score,
         len(candidates),
+        cycles,
+        tuple(trace),
+    )
+
+
+def _params_from_vector(vector: FloatArray, bounds: CyclicPolicyBounds) -> CyclicPolicyParameters:
+    """Build clamped policy parameters from an optimizer vector.
+
+    Clamping matters because the local-refinement stage (Nelder-Mead) is not
+    bound-constrained and may probe slightly outside the box.
+    """
+    limits = bounds.as_list()
+    clamped = [
+        _clamp(float(value), low, high) for value, (low, high) in zip(vector, limits, strict=True)
+    ]
+    return CyclicPolicyParameters(
+        frequency_hz=clamped[0],
+        hip_rate_amplitude_rad_s=clamped[1],
+        torso_rate_amplitude_rad_s=clamped[2],
+        knee_rate_ratio=clamped[3],
+        phase_rad=clamped[4],
+    )
+
+
+def optimize_cyclic_policy_iterative(
+    config: SwingSetConfig,
+    initial_state: SwingSetState | None = None,
+    *,
+    steps: int = DEFAULT_POLICY_STEPS,
+    dt_s: float = DEFAULT_POLICY_DT_S,
+    cycles: float | None = None,
+    bounds: CyclicPolicyBounds | None = None,
+    budget: int = DEFAULT_OPTIMIZER_BUDGET,
+    seed: int = DEFAULT_OPTIMIZER_SEED,
+    local_refine: bool = True,
+    progress_callback: ProgressCallback | None = None,
+) -> CyclicPolicySearchResult:
+    """Optimize the cyclic pumping policy to maximize swing height.
+
+    Runs a seeded ``differential_evolution`` global search followed by an
+    optional bound-clamped Nelder-Mead refinement, both sharing one hard
+    evaluation ``budget``. Deterministic: identical ``(config, seed, budget,
+    bounds, steps, dt_s, cycles)`` yields identical results.
+
+    Preconditions:
+        ``steps >= 1``; ``dt_s > 0``; ``cycles > 0`` when supplied;
+        ``1 <= budget <= MAX_OPTIMIZER_BUDGET``.
+    """
+    if steps < 1:
+        raise ValueError("steps must be at least 1")
+    _require_positive("dt_s", dt_s)
+    if cycles is not None:
+        _require_positive("cycles", cycles)
+    if not 1 <= budget <= MAX_OPTIMIZER_BUDGET:
+        raise ValueError(f"budget must be in [1, {MAX_OPTIMIZER_BUDGET}]")
+
+    bounds = bounds or CyclicPolicyBounds()
+    start = initial_state or SwingSetState(pose=SwingPose(swing_angle_rad=0.06))
+    bound_list = bounds.as_list()
+
+    eval_count = 0
+    best_score = -np.inf
+    best_params: CyclicPolicyParameters | None = None
+    best_rollout: SwingRollout | None = None
+    trace: list[CyclicPolicyTraceSample] = []
+
+    def _objective(vector: FloatArray) -> float:
+        nonlocal eval_count, best_score, best_params, best_rollout
+        if eval_count >= budget:
+            return float(np.inf)  # Hard budget reached: stop spending evaluations.
+        params = _params_from_vector(vector, bounds)
+        candidate_steps = _steps_for_candidate(steps, dt_s, params, cycles)
+        rollout = simulate_swingset(
+            config, start, candidate_steps, dt_s, cyclic_pumping_policy(params)
+        )
+        score = rollout.metrics.max_height_gain_m
+        eval_count += 1
+        if score > best_score:
+            best_score = score
+            best_params = params
+            best_rollout = rollout
+        assert best_params is not None  # set on the first (finite-score) evaluation.
+        trace.append(
+            CyclicPolicyTraceSample(
+                iteration=eval_count,
+                score_m=score,
+                best_score_m=best_score,
+                parameters=params,
+                best_parameters=best_params,
+            )
+        )
+        if progress_callback is not None:
+            progress_callback(eval_count, budget, best_score, best_params)
+        return -score
+
+    maxiter = max(1, budget // (_OPTIMIZER_POPSIZE * CONTROL_DIMENSION))
+    differential_evolution(
+        _objective,
+        bound_list,
+        seed=seed,
+        maxiter=maxiter,
+        popsize=_OPTIMIZER_POPSIZE,
+        polish=False,
+        init="sobol",
+        tol=0.0,
+        mutation=(0.5, 1.0),
+        recombination=0.7,
+        updating="deferred",
+    )
+
+    if local_refine and best_params is not None and eval_count < budget:
+        start_vector = np.asarray(
+            [
+                best_params.frequency_hz,
+                best_params.hip_rate_amplitude_rad_s,
+                best_params.torso_rate_amplitude_rad_s,
+                best_params.knee_rate_ratio,
+                best_params.phase_rad,
+            ],
+            dtype=np.float64,
+        )
+        minimize(
+            _objective,
+            start_vector,
+            method="Nelder-Mead",
+            options={"maxfev": budget - eval_count, "xatol": 1e-4, "fatol": 1e-6},
+        )
+
+    if best_rollout is None or best_params is None:  # pragma: no cover - budget>=1 guarantees one.
+        raise RuntimeError("Iterative policy search did not evaluate a rollout")
+    return CyclicPolicySearchResult(
+        best_params,
+        best_rollout,
+        best_score,
+        eval_count,
         cycles,
         tuple(trace),
     )
