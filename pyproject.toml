@@ -125,10 +125,11 @@ markers = [
 ]
 
 [tool.coverage.report]
-# Fleet testing Phase 4: ratcheting coverage floor toward Applications-tier target of 75%.
-# Actual measured coverage on main is ~79.9% (CI runs against Python 3.10/3.11/3.12).
-# Step 1: 53 -> 58. Step 2: 58 -> 63. Refs: D-sorganization/Repository_Management#1140
-fail_under = 63
+# Coverage floor ratcheted up after the swingset/chain forces + theme + optimizer
+# work landed (measured ~90.9% locally; new feature code is ~100%). 88 leaves a
+# small margin for cross-platform variance on the CI Python matrix.
+# Refs: D-sorganization/Repository_Management#1140
+fail_under = 88
 
 [tool.mypy]
 ignore_missing_imports = true

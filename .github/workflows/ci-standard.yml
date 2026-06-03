@@ -205,7 +205,7 @@ jobs:
       - name: Run Tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: xvfb-run -a python -m pytest tests/ -v --tb=short --cov=movement_optimizer --cov-report=xml --cov-fail-under=53
+        run: xvfb-run -a python -m pytest tests/ -v --tb=short --cov=movement_optimizer --cov-report=xml --cov-fail-under=88
 
       - name: Upload Coverage
         if: matrix.python-version == '3.12'
