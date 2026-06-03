@@ -154,6 +154,7 @@ def test_swingset_tab_exposes_policy_tuning_and_progress(qapp) -> None:
         "phase_samples",
     ):
         assert key in swingset._controls
+    swingset.iterative_checkbox.setChecked(False)  # exercise the grid-search fallback path.
     swingset._controls["cycles"].set_value(1)
     swingset._controls["freq_samples"].set_value(2)
     swingset._controls["hip_samples"].set_value(1)
@@ -210,6 +211,7 @@ def test_swingset_optimize_policy_action_is_sticky_above_scroll_area(qapp) -> No
 
 def test_swingset_policy_trace_canvas_accepts_optimization_samples(qapp) -> None:
     swingset = SwingsetTab()
+    swingset.iterative_checkbox.setChecked(False)  # exercise the grid-search fallback path.
     swingset._controls["cycles"].set_value(1)
     swingset._controls["freq_samples"].set_value(2)
     swingset._controls["hip_samples"].set_value(1)
@@ -507,3 +509,95 @@ def test_chain_tab_reports_invalid_inputs_and_covers_playback_branches(qapp, mon
     chain._control_scroll = None
     with pytest.raises(RuntimeError, match="Chain controls"):
         chain.set_control_panel_visible(True)
+
+
+# ---------------------------------------------------------------------------
+# Force overlays, analysis panel, iterative optimizer wiring, tooltips
+# ---------------------------------------------------------------------------
+
+
+def test_swingset_iterative_optimize_populates_panel_and_overlays(qapp) -> None:
+    swingset = SwingsetTab()
+    assert swingset.iterative_checkbox.isChecked()  # iterative is the default
+    swingset._controls["budget"].set_value(50)
+    swingset._controls["cycles"].set_value(1)
+
+    swingset._optimize_policy()
+
+    assert swingset._rollout is not None
+    progress = swingset.findChild(QProgressBar)
+    assert progress.maximum() == 50
+    assert 0 < swingset.policy_trace_canvas.sample_count() <= 50
+    # Analysis plots populated.
+    assert swingset.analysis_panel.axes["torques"].get_lines()
+    # Force overlay drawn (all toggles default-on).
+    assert swingset.canvas._overlay.arrows or swingset.canvas._overlay.com_markers
+
+
+def test_swingset_force_toggle_does_not_recompute(qapp) -> None:
+    swingset = SwingsetTab()
+    swingset._controls["budget"].set_value(50)
+    swingset._controls["cycles"].set_value(1)
+    swingset._optimize_policy()
+
+    rollout_id = id(swingset._rollout)
+    overlay_before = swingset.canvas._overlay
+    swingset._force_toggles["gravity"].setChecked(False)
+
+    assert id(swingset._rollout) == rollout_id  # no resimulation
+    assert swingset.canvas._overlay is not overlay_before  # overlay rebuilt
+
+
+def test_swingset_force_toggle_before_optimize_is_safe(qapp) -> None:
+    swingset = SwingsetTab()
+    swingset._force_toggles["com"].setChecked(False)  # must not raise without a rollout
+    assert not swingset.canvas._overlay.arrows
+
+
+def test_chain_simulate_populates_panel_and_overlays(qapp) -> None:
+    chain = ChainDynamicsTab()
+    chain._controls["segments"].set_value(6)
+    chain._controls["duration"].set_value(0.2)
+    chain._controls["dt"].set_value(0.02)
+
+    chain._simulate()
+
+    assert chain._rollout is not None
+    assert chain.analysis_panel.axes["tension"].get_lines()
+    assert chain.canvas._overlay.arrows
+
+
+def test_chain_force_toggle_does_not_recompute(qapp) -> None:
+    chain = ChainDynamicsTab()
+    chain._controls["segments"].set_value(6)
+    chain._controls["duration"].set_value(0.2)
+    chain._controls["dt"].set_value(0.02)
+    chain._simulate()
+
+    rollout_id = id(chain._rollout)
+    chain._force_toggles["net"].setChecked(False)
+    assert id(chain._rollout) == rollout_id
+
+
+def test_motion_tab_buttons_and_controls_have_tooltips(qapp) -> None:
+    swingset = SwingsetTab()
+    assert swingset.optimize_button.toolTip()
+    assert swingset.play_button.toolTip()
+    assert swingset._controls["budget"].toolTip()
+    assert swingset._force_toggles["gravity"].toolTip()
+
+    chain = ChainDynamicsTab()
+    assert chain._controls["segments"].toolTip()
+    assert chain._force_toggles["tension"].toolTip()
+
+
+def test_motion_tab_analysis_helpers_are_safe_without_rollout(qapp) -> None:
+    swingset = SwingsetTab()
+    swingset._rollout = None
+    swingset._populate_analysis_panel()  # None-guard, no error
+
+    chain = ChainDynamicsTab()
+    chain._rollout = None
+    chain._populate_analysis_panel()  # None-guard
+    chain._refresh_overlays()  # None-guard clears overlays
+    assert not chain.canvas._overlay.arrows

@@ -45,6 +45,14 @@ _BENCH_NECK_X = -0.30
 _BENCH_SHOULDER_X = -0.18
 _BENCH_HIP_X = 0.30
 
+# Naturalistic illustration colours for the anatomical figure. These are
+# physical-material colours (wood bench, skin, neutral hand) rather than UI
+# chrome, so they are intentionally not themed.
+_BENCH_WOOD = "#8B4513"
+_SKIN_TONE = "#d4a574"
+_HEAD_EDGE = "#333333"
+_HAND_GREY = "#b0b0b0"
+
 
 def _draw_bench_press_frame(
     ax: Any,
@@ -73,14 +81,14 @@ def _draw_bench_and_body(ax: Any) -> None:
     hip_x = _BENCH_HIP_X
 
     # Bench surface
-    ax.fill_between([-0.8, 0.5], bh - 0.05, bh, color="#8B4513", alpha=0.6)
+    ax.fill_between([-0.8, 0.5], bh - 0.05, bh, color=_BENCH_WOOD, alpha=0.6)
 
     # Neck
     ax.plot(
         [head_x + 0.08, neck_x],
         [bh + 0.05, bh + 0.02],
         "-",
-        color="#d4a574",
+        color=_SKIN_TONE,
         lw=5,
         solid_capstyle="round",
     )
@@ -89,8 +97,8 @@ def _draw_bench_and_body(ax: Any) -> None:
         MplCircle(
             (head_x, bh + 0.05),
             0.08,
-            facecolor="#d4a574",
-            edgecolor="#333",
+            facecolor=_SKIN_TONE,
+            edgecolor=_HEAD_EDGE,
             lw=1.2,
             alpha=0.85,
             zorder=6,
@@ -136,7 +144,7 @@ def _draw_bench_arm_chain(ax: Any, fk: dict[str, Any]) -> tuple[Any, Any, Any]:
     arm_joints = [arm_base + (pt - fk_points[0]) for pt in fk_points]
 
     # Arm segments: upper arm, forearm, hand/wrist
-    colors = [Palette.SEG_COLORS[0], Palette.SEG_COLORS[1], "#b0b0b0"]
+    colors = [Palette.SEG_COLORS[0], Palette.SEG_COLORS[1], _HAND_GREY]
     lws = [8, 6, 4]
     for k in range(3):
         ax.plot(

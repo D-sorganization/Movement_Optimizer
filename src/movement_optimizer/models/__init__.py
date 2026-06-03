@@ -52,11 +52,17 @@ from .chain_dynamics import random_wadded_chain_state as random_wadded_chain_sta
 from .chain_dynamics import simulate_chain as simulate_chain
 from .chain_dynamics import simulate_chain_for_duration as simulate_chain_for_duration
 from .chain_dynamics import steps_for_duration as steps_for_duration
+from .chain_forces import ChainForceField as ChainForceField
+from .chain_forces import ChainForceHistory as ChainForceHistory
+from .chain_forces import chain_force_field as chain_force_field
+from .chain_forces import chain_force_history as chain_force_history
+from .chain_forces import link_accelerations as link_accelerations
 from .exercise_configs import make_deadlift_config as make_deadlift_config
 from .exercise_configs import make_full_squat_config as make_full_squat_config
 from .exercise_configs import make_squat_config as make_squat_config
 from .lagrangian_dynamics import LagrangianDynamics as LagrangianDynamics
 from .lagrangian_dynamics import balance_pose as balance_pose
+from .swingset import CyclicPolicyBounds as CyclicPolicyBounds
 from .swingset import CyclicPolicySearchSpace as CyclicPolicySearchSpace
 from .swingset import CyclicPolicyTraceSample as CyclicPolicyTraceSample
 from .swingset import SwingSetConfig as SwingSetConfig
@@ -64,7 +70,12 @@ from .swingset import SwingSetState as SwingSetState
 from .swingset import constrain_swing_pose as constrain_swing_pose
 from .swingset import estimate_swingset_joint_torques as estimate_swingset_joint_torques
 from .swingset import optimize_cyclic_policy as optimize_cyclic_policy
+from .swingset import optimize_cyclic_policy_iterative as optimize_cyclic_policy_iterative
 from .swingset import simulate_swingset as simulate_swingset
+from .swingset_forces import SwingForceField as SwingForceField
+from .swingset_forces import SwingForceHistory as SwingForceHistory
+from .swingset_forces import swing_force_field as swing_force_field
+from .swingset_forces import swing_force_history as swing_force_history
 
 __all__ = [
     "BenchPressModel",
@@ -72,21 +83,29 @@ __all__ = [
     "Bilateral3DPose",
     "BodyModel",
     "ChainConfig",
+    "ChainForceField",
+    "ChainForceHistory",
     "ChainGeometry",
     "ChainState",
+    "CyclicPolicyBounds",
     "CyclicPolicySearchSpace",
     "CyclicPolicyTraceSample",
     "HillTorqueModel",
     "JointTorqueSet",
     "LagrangianDynamics",
+    "SwingForceField",
+    "SwingForceHistory",
     "SwingSetConfig",
     "SwingSetState",
     "balance_pose",
+    "chain_force_field",
+    "chain_force_history",
     "clamp_joint_angles",
     "compute_max_load",
     "constrain_swing_pose",
     "estimate_swingset_joint_torques",
     "joint_angles_within_limits",
+    "link_accelerations",
     "make_bench_press_config",
     "make_bench_press_torque_set",
     "make_deadlift_config",
@@ -94,9 +113,12 @@ __all__ = [
     "make_full_squat_config",
     "make_squat_config",
     "optimize_cyclic_policy",
+    "optimize_cyclic_policy_iterative",
     "random_wadded_chain_state",
     "simulate_chain",
     "simulate_chain_for_duration",
     "simulate_swingset",
     "steps_for_duration",
+    "swing_force_field",
+    "swing_force_history",
 ]

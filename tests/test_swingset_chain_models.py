@@ -22,6 +22,9 @@ from movement_optimizer.models.chain_dynamics import (
     total_energy,
 )
 from movement_optimizer.models.swingset import (
+    MAX_OPTIMIZER_BUDGET,
+    SWING_TORSO_LEAN_LIMITS_RAD,
+    CyclicPolicyBounds,
     CyclicPolicyParameters,
     CyclicPolicySearchSpace,
     HumanSegmentSpec,
@@ -34,6 +37,7 @@ from movement_optimizer.models.swingset import (
     estimate_swingset_joint_torques,
     heuristic_pumping_policy,
     optimize_cyclic_policy,
+    optimize_cyclic_policy_iterative,
     simulate_swingset,
     step_swingset,
 )
@@ -211,7 +215,7 @@ def test_swingset_elbow_branch_does_not_mirror_when_control_crosses_zero() -> No
     assert max_step < 0.02
 
 
-def test_swingset_pose_constraints_keep_rider_facing_right_and_arms_nearly_straight() -> None:
+def test_swingset_pose_constraints_keep_torso_upright() -> None:
     constrained = constrain_swing_pose(
         SwingPose(
             swing_angle_rad=0.0,
@@ -224,33 +228,32 @@ def test_swingset_pose_constraints_keep_rider_facing_right_and_arms_nearly_strai
     )
     snapshot = build_swingset_snapshot(SwingSetConfig(chain_segments=10), constrained)
 
-    assert constrained.torso_lean_rad < 0.0
+    lower, upper = SWING_TORSO_LEAN_LIMITS_RAD
+    assert lower <= constrained.torso_lean_rad <= upper
     assert constrained.elbow_angle_rad <= 0.35
-    assert snapshot.points["shoulder"][0] > snapshot.points["hip"][0]
 
     shoulder = snapshot.points["shoulder"]
-    elbow = snapshot.points["elbow"]
-    hand = snapshot.points["hand"]
-    upper = shoulder - elbow
-    forearm = hand - elbow
-    elbow_interior_rad = np.arccos(
-        np.dot(upper, forearm) / (np.linalg.norm(upper) * np.linalg.norm(forearm))
-    )
-    elbow_flexion_rad = np.pi - elbow_interior_rad
-    assert elbow_flexion_rad <= 0.40
+    hip = snapshot.points["hip"]
+    # The rider sits upright: the shoulder rides above the hip (screen-up is
+    # smaller world-y) and the trunk is closer to vertical than horizontal.
+    assert shoulder[1] < hip[1]
+    assert abs(shoulder[0] - hip[0]) < abs(shoulder[1] - hip[1])
 
 
 def test_swingset_joint_end_range_damping_prevents_limit_overshoot() -> None:
     config = SwingSetConfig()
+    torso_upper = SWING_TORSO_LEAN_LIMITS_RAD[1]
     near_limit = SwingSetState(
-        pose=SwingPose(torso_lean_rad=-1.021, elbow_angle_rad=0.349),
+        pose=SwingPose(torso_lean_rad=torso_upper - 0.001, elbow_angle_rad=0.349),
         swing_angular_velocity_rad_s=0.0,
     )
     full_rate = SwingControlAction(torso_lean_rate_rad_s=2.0, elbow_rate_rad_s=2.0)
 
     stepped = step_swingset(config, near_limit, full_rate, dt_s=0.1)
 
-    assert stepped.pose.torso_lean_rad < -1.02
+    # End-range damping keeps the joints from overshooting their hard limits.
+    assert stepped.pose.torso_lean_rad <= torso_upper
+    assert stepped.pose.torso_lean_rad - near_limit.pose.torso_lean_rad < 0.01
     assert stepped.pose.elbow_angle_rad <= 0.35
     assert stepped.pose.elbow_angle_rad - near_limit.pose.elbow_angle_rad < 0.01
 
@@ -432,3 +435,98 @@ def test_swingset_rollout_validates_inputs() -> None:
         CyclicPolicySearchSpace(frequency_hz_min=1.0, frequency_hz_max=0.5)
     with pytest.raises(ValueError, match="cycles"):
         optimize_cyclic_policy(config, cycles=0.0)
+
+
+# ---------------------------------------------------------------------------
+# Iterative optimizer (optimize_cyclic_policy_iterative)
+# ---------------------------------------------------------------------------
+
+
+def test_iterative_optimizer_is_deterministic() -> None:
+    config = SwingSetConfig()
+    first = optimize_cyclic_policy_iterative(config, steps=40, budget=60, seed=7)
+    second = optimize_cyclic_policy_iterative(config, steps=40, budget=60, seed=7)
+    assert first.objective_height_m == pytest.approx(second.objective_height_m)
+    assert first.parameters.frequency_hz == pytest.approx(second.parameters.frequency_hz)
+    assert first.parameters.phase_rad == pytest.approx(second.parameters.phase_rad)
+    assert len(first.trace) == len(second.trace)
+
+
+@pytest.mark.parametrize("budget", [50, 120, 300])
+def test_iterative_optimizer_honors_budget(budget: int) -> None:
+    config = SwingSetConfig()
+    result = optimize_cyclic_policy_iterative(config, steps=40, budget=budget, seed=1)
+    assert result.evaluated_candidates <= budget
+    assert len(result.trace) == result.evaluated_candidates
+
+
+def test_iterative_optimizer_matches_or_beats_grid() -> None:
+    config = SwingSetConfig()
+    grid = optimize_cyclic_policy(config, steps=80, search_space=CyclicPolicySearchSpace())
+    iterative = optimize_cyclic_policy_iterative(config, steps=80, budget=400, seed=0)
+    assert iterative.objective_height_m >= grid.objective_height_m - 0.05
+
+
+def test_iterative_optimizer_trace_best_is_monotonic() -> None:
+    config = SwingSetConfig()
+    result = optimize_cyclic_policy_iterative(config, steps=40, budget=120, seed=3)
+    best = [sample.best_score_m for sample in result.trace]
+    assert all(later >= earlier for earlier, later in pairwise(best))
+    assert result.trace[-1].best_parameters.frequency_hz == pytest.approx(
+        result.parameters.frequency_hz
+    )
+
+
+def test_iterative_optimizer_progress_callback_contract() -> None:
+    config = SwingSetConfig()
+    calls: list[tuple[int, int, float]] = []
+
+    def _record(completed: int, total: int, best: float, params: CyclicPolicyParameters) -> None:
+        calls.append((completed, total, best))
+        assert isinstance(params, CyclicPolicyParameters)
+
+    result = optimize_cyclic_policy_iterative(
+        config, steps=40, budget=80, seed=2, progress_callback=_record
+    )
+    assert calls
+    assert all(total == 80 for _completed, total, _best in calls)
+    best_values = [best for _c, _t, best in calls]
+    assert all(later >= earlier for earlier, later in pairwise(best_values))
+    assert calls[-1][0] <= 80
+    assert result.evaluated_candidates <= 80
+
+
+def test_iterative_optimizer_without_refine_still_valid() -> None:
+    config = SwingSetConfig()
+    result = optimize_cyclic_policy_iterative(
+        config, steps=40, budget=90, seed=0, local_refine=False
+    )
+    assert result.evaluated_candidates <= 90
+    assert np.isfinite(result.objective_height_m)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"budget": 0},
+        {"budget": MAX_OPTIMIZER_BUDGET + 1},
+        {"steps": 0},
+        {"dt_s": 0.0},
+        {"cycles": -1.0},
+    ],
+)
+def test_iterative_optimizer_rejects_bad_inputs(kwargs: dict) -> None:
+    config = SwingSetConfig()
+    call = {"steps": 40, "budget": 40, "seed": 0}
+    call.update(kwargs)
+    with pytest.raises(ValueError):
+        optimize_cyclic_policy_iterative(config, **call)
+
+
+def test_cyclic_policy_bounds_validation() -> None:
+    with pytest.raises(ValueError, match="frequency_hz"):
+        CyclicPolicyBounds(frequency_hz=(0.8, 0.4))
+    with pytest.raises(ValueError, match="phase_rad_min"):
+        CyclicPolicyBounds(phase_rad=(-0.1, 1.0))
+    with pytest.raises(ValueError, match="phase_rad_max"):
+        CyclicPolicyBounds(phase_rad=(1.0, 0.5))

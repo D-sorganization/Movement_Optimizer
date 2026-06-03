@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..comparison import comparison_metrics
-from ..rendering import Palette, style_axis
+from ..rendering import Palette, get_chart_color, style_axis
 
 logger = logging.getLogger(__name__)
 
@@ -25,19 +25,9 @@ logger = logging.getLogger(__name__)
 class ComparisonDialog(QWidget):
     """Dialog showing overlaid plots and metrics table for trial comparison."""
 
-    # Distinct colors for up to 10 trials
-    TRIAL_COLORS = (
-        "#569cd6",
-        "#f44747",
-        "#4ec9b0",
-        "#ffb74d",
-        "#ffd54f",
-        "#c678dd",
-        "#e06c75",
-        "#98c379",
-        "#61afef",
-        "#d19a66",
-    )
+    # Distinct colors for up to 10 trials, drawn from the shared accessible
+    # chart-colour cycle so comparison plots match the rest of the fleet.
+    TRIAL_COLORS = tuple(get_chart_color(i) for i in range(10))
 
     def __init__(self, trials: list[dict], parent: QWidget | None = None) -> None:
         super().__init__(parent)
