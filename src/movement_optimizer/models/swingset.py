@@ -814,7 +814,10 @@ def optimize_cyclic_policy_iterative(
             progress_callback(eval_count, budget, best_score, best_params)
         return -score
 
-    maxiter = max(1, budget // (_OPTIMIZER_POPSIZE * CONTROL_DIMENSION))
+    # Reserve ~30% of the budget for local refinement so it actually runs; the
+    # objective's hard-budget guard still caps total evaluations either way.
+    de_budget = int(budget * 0.7) if local_refine else budget
+    maxiter = max(1, de_budget // (_OPTIMIZER_POPSIZE * CONTROL_DIMENSION) - 1)
     differential_evolution(
         _objective,
         bound_list,

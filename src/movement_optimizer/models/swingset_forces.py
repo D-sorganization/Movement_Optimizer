@@ -87,7 +87,7 @@ def _com_positions(rollout: SwingRollout) -> FloatArray:
 
 def _com_accelerations(rollout: SwingRollout, dt_s: float) -> FloatArray:
     positions = _com_positions(rollout)
-    if positions.shape[0] < 2:
+    if positions.shape[0] < 2:  # pragma: no cover - rollouts always have >= 2 snapshots
         return np.zeros_like(positions)
     return np.gradient(positions, dt_s, axis=0)
 

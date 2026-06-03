@@ -141,3 +141,15 @@ def test_chain_force_history_rejects_nonpositive_dt() -> None:
     config, rollout = _make_rollout()
     with pytest.raises(ValueError, match="dt_s"):
         chain_force_history(config, rollout, 0.0)
+
+
+def test_chain_force_history_rejects_empty_rollout() -> None:
+    config = ChainConfig(segment_count=_SEGMENTS)
+    empty = ChainRollout(
+        states=(),
+        positions=np.zeros((0, _SEGMENTS + 1, 2), dtype=np.float64),
+        energy_j=np.zeros(0, dtype=np.float64),
+        tip_speed_m_s=np.zeros(0, dtype=np.float64),
+    )
+    with pytest.raises(ValueError, match="at least one state"):
+        chain_force_history(config, empty, _DT)

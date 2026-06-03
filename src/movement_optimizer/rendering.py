@@ -317,16 +317,11 @@ class BodyRenderer:
 
 
 def style_axis(ax: Axes) -> None:
-    """Apply the dark-theme styling to a matplotlib Axes."""
-    try:
-        from plot_theme.integration import style_axis as shared_style_axis
-
-        shared_style_axis(ax)
-    except ImportError:
-        ax.set_facecolor(Palette.BG_PLOT)
-        ax.tick_params(colors=Palette.FG_DIM, which="both", labelsize=8)
-        for sp in ("bottom", "left"):
-            ax.spines[sp].set_color(Palette.FG_DIM)
-        for sp in ("top", "right"):
-            ax.spines[sp].set_visible(False)
-        ax.grid(True, alpha=0.12, color=Palette.FG_DIM)
+    """Apply the active theme's styling to a matplotlib Axes (from the Palette)."""
+    ax.set_facecolor(Palette.BG_PLOT)
+    ax.tick_params(colors=Palette.FG_DIM, which="both", labelsize=8)
+    for sp in ("bottom", "left"):
+        ax.spines[sp].set_color(Palette.FG_DIM)
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    ax.grid(True, alpha=0.12, color=Palette.FG_DIM)

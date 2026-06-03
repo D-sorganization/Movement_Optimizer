@@ -102,3 +102,16 @@ class TestPlotRenderer:
         ax_shear.plot.assert_called_once()
         ax_shear.axhline.assert_called_once()
         ax_shear.set_title.assert_called_once()
+
+
+class TestPlotSpineLoadsExerciseAlias:
+    def test_bottoms_up_squat_is_aliased_to_squat(self, dummy_result, body):
+        from unittest.mock import MagicMock
+
+        from movement_optimizer.gui.plot_renderer import plot_spine_loads
+
+        ax_comp = MagicMock()
+        ax_shear = MagicMock()
+        plot_spine_loads(ax_comp, ax_shear, dummy_result, body, 60.0, "Bottoms Up Squat")
+        assert ax_comp.plot.called
+        assert ax_shear.plot.called

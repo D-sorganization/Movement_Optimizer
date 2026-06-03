@@ -589,3 +589,15 @@ def test_motion_tab_buttons_and_controls_have_tooltips(qapp) -> None:
     chain = ChainDynamicsTab()
     assert chain._controls["segments"].toolTip()
     assert chain._force_toggles["tension"].toolTip()
+
+
+def test_motion_tab_analysis_helpers_are_safe_without_rollout(qapp) -> None:
+    swingset = SwingsetTab()
+    swingset._rollout = None
+    swingset._populate_analysis_panel()  # None-guard, no error
+
+    chain = ChainDynamicsTab()
+    chain._rollout = None
+    chain._populate_analysis_panel()  # None-guard
+    chain._refresh_overlays()  # None-guard clears overlays
+    assert not chain.canvas._overlay.arrows
