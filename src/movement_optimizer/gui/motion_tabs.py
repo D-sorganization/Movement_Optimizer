@@ -560,7 +560,7 @@ class SwingsetTab(QWidget):
         config = self._config()
         pose = SwingPose(
             swing_angle_rad=0.12,
-            torso_lean_rad=-1.05,
+            torso_lean_rad=0.0,
             hip_angle_rad=0.2,
             knee_angle_rad=-0.2,
             shoulder_angle_rad=-0.35,

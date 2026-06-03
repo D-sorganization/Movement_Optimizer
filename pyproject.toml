@@ -81,6 +81,12 @@ python_functions = "test_*"
 timeout = 60
 timeout_method = "thread"
 
+# This app is built on PyQt6. Pin pytest-qt to the same binding so it never
+# loads PySide6 first -- the two Qt bindings cannot share one process, and a
+# stray PySide6 load makes every PyQt6 import (app code and the shared theme
+# package alike) fail with a Qt DLL error.
+qt_api = "pyqt6"
+
 # Default lane: fast, deterministic, offline.
 # See: D-sorganization/Repository_Management docs/FLEET_TESTING_STANDARDS.md §2
 addopts = """

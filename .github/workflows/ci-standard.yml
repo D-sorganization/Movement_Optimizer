@@ -43,6 +43,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
+      - name: Checkout Tools (shared theme dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: D-sorganization/Tools
+          path: .tools-dep
+          token: ${{ secrets.RUNNER_CHECK_TOKEN }}
+          fetch-depth: 1
       - uses: actions/setup-python@v5
         with:
           cache: 'pip'
@@ -95,6 +102,8 @@ jobs:
           }
           pip_retry install --upgrade pip
           pip_retry install -e ".[dev]"
+          # Shared fleet theme (ud-tools); --no-deps avoids the scipy pin clash.
+          pip_retry install -e ./.tools-dep --no-deps
           pip_retry install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7 pre-commit
           echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
 
@@ -140,6 +149,13 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout Tools (shared theme dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: D-sorganization/Tools
+          path: .tools-dep
+          token: ${{ secrets.RUNNER_CHECK_TOKEN }}
+          fetch-depth: 1
       - uses: actions/setup-python@v5
         with:
           cache: 'pip'
@@ -178,6 +194,8 @@ jobs:
           }
           pip_retry install --upgrade pip
           pip_retry install -e ".[dev]"
+          # Shared fleet theme (ud-tools); --no-deps avoids the scipy pin clash.
+          pip_retry install -e ./.tools-dep --no-deps
           echo "$PWD/.ci-venv/bin" >> "$GITHUB_PATH"
 
       - name: Verify tool_pack entry-point surface (issue #456)

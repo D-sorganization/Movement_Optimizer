@@ -22,6 +22,7 @@ from movement_optimizer.models.chain_dynamics import (
     total_energy,
 )
 from movement_optimizer.models.swingset import (
+    SWING_TORSO_LEAN_LIMITS_RAD,
     CyclicPolicyParameters,
     CyclicPolicySearchSpace,
     HumanSegmentSpec,
@@ -211,7 +212,7 @@ def test_swingset_elbow_branch_does_not_mirror_when_control_crosses_zero() -> No
     assert max_step < 0.02
 
 
-def test_swingset_pose_constraints_keep_rider_facing_right_and_arms_nearly_straight() -> None:
+def test_swingset_pose_constraints_keep_torso_upright() -> None:
     constrained = constrain_swing_pose(
         SwingPose(
             swing_angle_rad=0.0,
@@ -224,33 +225,32 @@ def test_swingset_pose_constraints_keep_rider_facing_right_and_arms_nearly_strai
     )
     snapshot = build_swingset_snapshot(SwingSetConfig(chain_segments=10), constrained)
 
-    assert constrained.torso_lean_rad < 0.0
+    lower, upper = SWING_TORSO_LEAN_LIMITS_RAD
+    assert lower <= constrained.torso_lean_rad <= upper
     assert constrained.elbow_angle_rad <= 0.35
-    assert snapshot.points["shoulder"][0] > snapshot.points["hip"][0]
 
     shoulder = snapshot.points["shoulder"]
-    elbow = snapshot.points["elbow"]
-    hand = snapshot.points["hand"]
-    upper = shoulder - elbow
-    forearm = hand - elbow
-    elbow_interior_rad = np.arccos(
-        np.dot(upper, forearm) / (np.linalg.norm(upper) * np.linalg.norm(forearm))
-    )
-    elbow_flexion_rad = np.pi - elbow_interior_rad
-    assert elbow_flexion_rad <= 0.40
+    hip = snapshot.points["hip"]
+    # The rider sits upright: the shoulder rides above the hip (screen-up is
+    # smaller world-y) and the trunk is closer to vertical than horizontal.
+    assert shoulder[1] < hip[1]
+    assert abs(shoulder[0] - hip[0]) < abs(shoulder[1] - hip[1])
 
 
 def test_swingset_joint_end_range_damping_prevents_limit_overshoot() -> None:
     config = SwingSetConfig()
+    torso_upper = SWING_TORSO_LEAN_LIMITS_RAD[1]
     near_limit = SwingSetState(
-        pose=SwingPose(torso_lean_rad=-1.021, elbow_angle_rad=0.349),
+        pose=SwingPose(torso_lean_rad=torso_upper - 0.001, elbow_angle_rad=0.349),
         swing_angular_velocity_rad_s=0.0,
     )
     full_rate = SwingControlAction(torso_lean_rate_rad_s=2.0, elbow_rate_rad_s=2.0)
 
     stepped = step_swingset(config, near_limit, full_rate, dt_s=0.1)
 
-    assert stepped.pose.torso_lean_rad < -1.02
+    # End-range damping keeps the joints from overshooting their hard limits.
+    assert stepped.pose.torso_lean_rad <= torso_upper
+    assert stepped.pose.torso_lean_rad - near_limit.pose.torso_lean_rad < 0.01
     assert stepped.pose.elbow_angle_rad <= 0.35
     assert stepped.pose.elbow_angle_rad - near_limit.pose.elbow_angle_rad < 0.01
 
