@@ -39,8 +39,13 @@ def _render(draw: Callable[[QPainter], None]) -> QImage:
     image = QImage(_SIZE, _SIZE, QImage.Format.Format_ARGB32)
     image.fill(QColor(0, 0, 0, 0))  # fully transparent (fill(0) would be opaque black)
     painter = QPainter(image)
-    draw(painter)
-    painter.end()
+    try:
+        draw(painter)
+    finally:
+        # Always end the painter -- even when ``draw`` raises (the negative tests
+        # expect a ValueError). A QPainter left active on an image segfaults Qt
+        # when garbage-collected on Linux/CI.
+        painter.end()
     return image
 
 
