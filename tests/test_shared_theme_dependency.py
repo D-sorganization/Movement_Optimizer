@@ -9,6 +9,10 @@ than as an obscure import error deep in the GUI.
 
 from __future__ import annotations
 
+import pytest
+
+pytest.importorskip("shared.python.theme")  # fleet theme only; skip on bare envs
+
 
 def test_shared_theme_public_surface_is_importable() -> None:
     from shared.python.theme import (

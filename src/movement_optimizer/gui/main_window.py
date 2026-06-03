@@ -29,12 +29,11 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QWidget,
 )
-from shared.python.theme import ThemedWindowMixin
 
 from ..comparison import ComparisonStore
 from ..models import BodyModel
 from ..persistence import InvalidStateFileError, load_app_state, save_app_state
-from ..rendering import refresh_palette, restyle_figure
+from ..rendering import ThemedWindowMixin, refresh_palette, restyle_figure
 from ..trajectory import (
     OptimizationResult,
     SolutionCache,

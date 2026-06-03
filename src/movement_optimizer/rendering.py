@@ -18,13 +18,27 @@ from matplotlib.axes import Axes
 from matplotlib.patches import Circle
 from numpy.typing import NDArray
 
-# Movement-Optimizer sources its colours from the fleet shared theme
-# (``ud-tools`` ``shared.python.theme``). This is a hard dependency: a missing
-# install raises ImportError loudly here rather than silently degrading.
-from shared.python.theme import BUILTIN_THEMES, get_theme_manager
-from shared.python.theme.matplotlib_style import apply_plot_theme, get_chart_color
-
 from .constants import BAR_RADIUS_M, LENGTH_FRAC, PLATE_RADIUS_STD_M
+from .theme_bridge import (
+    BUILTIN_THEMES,
+    SHARED_THEME_AVAILABLE,
+    ThemedWindowMixin,
+    apply_plot_theme,
+    get_chart_color,
+    get_theme_manager,
+)
+
+# Re-exported so the rest of the app imports theme helpers from one place; this
+# module bridges to the fleet shared theme (``shared.python.theme``) when it is
+# installed and falls back to bundled fleet colours otherwise.
+__theme_reexports__ = (
+    SHARED_THEME_AVAILABLE,
+    BUILTIN_THEMES,
+    ThemedWindowMixin,
+    apply_plot_theme,
+    get_chart_color,
+    get_theme_manager,
+)
 
 # Neck length as a fraction of body height (used by BodyRenderer)
 NECK_LENGTH_FRAC: float = LENGTH_FRAC["neck"]

@@ -15,10 +15,9 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from shared.python.theme.matplotlib_style import get_chart_color
 
 from ..comparison import comparison_metrics
-from ..rendering import Palette, style_axis
+from ..rendering import Palette, get_chart_color, style_axis
 
 logger = logging.getLogger(__name__)
 

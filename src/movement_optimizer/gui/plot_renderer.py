@@ -5,13 +5,12 @@ from typing import Any
 
 import matplotlib.cm as cm
 import numpy as np
-from shared.python.theme.matplotlib_style import get_chart_color
 
 from ..models import BodyModel
 from ..models.chain_forces import ChainForceHistory
 from ..models.swingset import SWING_POLICY_JOINT_NAMES
 from ..models.swingset_forces import SwingForceHistory
-from ..rendering import Palette
+from ..rendering import Palette, get_chart_color
 from ..spine_loads import NIOSH_COMPRESSION_LIMIT, spinal_compression, spinal_shear
 from ..trajectory import OptimizationResult
 

@@ -9,10 +9,17 @@ Theme menu + live recolouring.
 from __future__ import annotations
 
 import pytest
+
+pytest.importorskip("shared.python.theme")  # fleet theme only; skip on bare envs
+
 from matplotlib.figure import Figure
 from shared.python.theme import BUILTIN_THEMES, ThemeManager, get_theme_manager
 
-from movement_optimizer.rendering import Palette, refresh_palette, restyle_figure
+from movement_optimizer.rendering import (
+    Palette,
+    refresh_palette,
+    restyle_figure,
+)
 
 
 @pytest.fixture()

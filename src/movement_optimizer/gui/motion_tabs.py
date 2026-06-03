@@ -26,7 +26,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from shared.python.theme.matplotlib_style import get_chart_color
 
 from movement_optimizer.models.chain_dynamics import (
     ChainConfig,
@@ -65,7 +64,7 @@ from movement_optimizer.models.swingset_forces import (
     swing_force_field,
     swing_force_history,
 )
-from movement_optimizer.rendering import Palette
+from movement_optimizer.rendering import Palette, get_chart_color
 
 from . import plot_renderer
 from .motion_analysis_panel import MotionAnalysisPanel
