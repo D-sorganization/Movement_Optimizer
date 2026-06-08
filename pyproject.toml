@@ -78,7 +78,10 @@ pythonpath = ["src", "tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-timeout = 60
+# 180s (was 60s): heavy PyQt6 + physics-sim tests run ~20-50s and tip past 60s only
+# under concurrent self-hosted-runner contention (all 3 Python matrix legs share a host).
+# Still catches genuine hangs/infinite loops. See PR #487.
+timeout = 180
 timeout_method = "thread"
 
 # This app is built on PyQt6. Pin pytest-qt to the same binding so it never
