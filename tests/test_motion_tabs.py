@@ -127,7 +127,16 @@ def test_swingset_and_chain_tabs_run_local_simulations(qapp) -> None:
     swingset = SwingsetTab()
     chain = ChainDynamicsTab()
 
-    swingset._controls["policy_steps"].set_value(30)
+    # Keep the iterative optimizer cheap and deterministic for CI: the default
+    # production budget (600 evaluations x ~130-220 simulated steps) takes ~30s
+    # and tips past the 60s pytest-timeout on loaded shared runners. Note that
+    # "policy_steps" has no effect on the iterative path here because "cycles"
+    # drives the rollout length via _steps_for_candidate; constrain budget and
+    # cycles instead. This still exercises the full
+    # _optimize_policy -> optimize_cyclic_policy_iterative -> simulate_swingset
+    # path and produces the asserted "Best height" metric.
+    swingset._controls["budget"].set_value(60)
+    swingset._controls["cycles"].set_value(1)
     swingset._optimize_policy()
     chain._simulate()
 
