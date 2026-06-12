@@ -10,6 +10,12 @@ from __future__ import annotations
 
 import logging
 
+from ..constants import (
+    PROGRESS_EVAL_SCALE,
+    PROGRESS_MAX_PCT,
+    PROGRESS_PHASE_BOUNDARY_EVALS,
+    STALL_HINT_ELAPSED_S,
+)
 from ..models import BodyModel
 from ..trajectory import ProgressReport
 
@@ -47,9 +53,12 @@ def show_idle(sidebar) -> None:
 
 def update_progress(sidebar, report: ProgressReport) -> None:
     n_evals = report.iteration
-    pct = min(95, int(95 * (1 - 1 / (1 + n_evals / 500))))
+    pct = min(
+        PROGRESS_MAX_PCT,
+        int(PROGRESS_MAX_PCT * (1 - 1 / (1 + n_evals / PROGRESS_EVAL_SCALE))),
+    )
     sidebar.progress.setValue(pct)
-    phase = "Converging" if n_evals > 200 else "Exploring"
+    phase = "Converging" if n_evals > PROGRESS_PHASE_BOUNDARY_EVALS else "Exploring"
     sidebar.prog_label.setText(f"{phase}...")
     sidebar.iter_label.setText(f"Evaluations: {report.iteration}")
     sidebar.cost_label.setText(f"Cost: {report.cost:.1f}  (best: {report.best_cost:.1f})")
@@ -61,7 +70,7 @@ def update_progress(sidebar, report: ProgressReport) -> None:
     if report.is_stalled:
         sidebar.stall_label.setText(f"\u26a0 STALLED: {report.stall_reason}")
         sidebar.stall_label.setVisible(True)
-    elif elapsed > 120:
+    elif elapsed > STALL_HINT_ELAPSED_S:
         sidebar.stall_label.setText(
             "\u26a0 Taking longer than expected. Consider cancelling and adjusting parameters."
         )

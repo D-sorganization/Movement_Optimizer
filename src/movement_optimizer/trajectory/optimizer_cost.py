@@ -13,6 +13,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..constants import TV_RATE_WEIGHT_RATIO
+from .tuning import ENDPOINT_ACCEL_WEIGHT_RATIO
 
 __all__ = [
     "compute_balance_cost",
@@ -100,11 +101,12 @@ def compute_endpoint_damping_cost(
     w_col = w[:, np.newaxis]
     w_end_col = w_end[:, np.newaxis]
 
+    a = ENDPOINT_ACCEL_WEIGHT_RATIO
     cost = (
         np.vdot(w_col * qd[:nd], qd[:nd])
         + np.vdot(w_end_col * qd[-nd:], qd[-nd:])
-        + 0.1 * np.vdot(w_col * qdd[:nd], qdd[:nd])
-        + 0.1 * np.vdot(w_end_col * qdd[-nd:], qdd[-nd:])
+        + a * np.vdot(w_col * qdd[:nd], qdd[:nd])
+        + a * np.vdot(w_end_col * qdd[-nd:], qdd[-nd:])
     )
     return weight * float(cost) * dt
 

@@ -34,6 +34,15 @@ DEFAULT_JERK_WEIGHT: float = 0.05
 DEFAULT_TORQUE_RATE_WEIGHT: float = 0.15
 DEFAULT_ENDPOINT_WEIGHT: float = 10.0
 
+# Endpoint damping shape parameters (used by the smoothness cost):
+#  - ACCEL ratio: weight of the endpoint acceleration term relative to the
+#    endpoint velocity term.
+#  - SAMPLE fraction / MIN samples: how many evaluation samples at each end
+#    get endpoint damping: n_damp = max(MIN, int(n_eval * FRACTION)).
+ENDPOINT_ACCEL_WEIGHT_RATIO: float = 0.1
+ENDPOINT_DAMP_SAMPLE_FRACTION: float = 0.125
+ENDPOINT_DAMP_MIN_SAMPLES: int = 2
+
 # Balance constraint weights
 BALANCE_BARRIER_WEIGHT: float = 8000.0
 BALANCE_CENTER_WEIGHT: float = 12.0

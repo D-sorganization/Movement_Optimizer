@@ -44,6 +44,8 @@ from .tuning import (
     DEFAULT_JERK_WEIGHT,
     DEFAULT_N_STARTS,
     DEFAULT_TORQUE_RATE_WEIGHT,
+    ENDPOINT_DAMP_MIN_SAMPLES,
+    ENDPOINT_DAMP_SAMPLE_FRACTION,
     MAX_ITER_PER_START,
 )
 
@@ -142,7 +144,7 @@ class TrajectoryOptimizer:
         self.balance_center_weight = BALANCE_CENTER_WEIGHT
         self._setup_time_grids()
         self.dt = duration / (n_eval - 1)
-        self._n_damp = max(2, n_eval // 8)
+        self._n_damp = max(ENDPOINT_DAMP_MIN_SAMPLES, int(n_eval * ENDPOINT_DAMP_SAMPLE_FRACTION))
         self._damp_weights = 1.0 - np.arange(self._n_damp) / self._n_damp
         self._progress = ProgressTracker(progress_cb=progress_cb)
         self._progress_lock = self._progress.lock()
