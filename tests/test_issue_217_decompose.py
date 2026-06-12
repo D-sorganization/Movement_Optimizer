@@ -421,6 +421,32 @@ class TestCheckSolutionFeasibility:
         _, n_viol = opt._check_solution_feasibility(res, q, com_x)
         assert n_viol > 0
 
+    def test_joint_limit_violation_is_failure(self) -> None:
+        # Issue #492: a finite-cost solution whose spline overshoots the
+        # joint bounds must be reported as infeasible, not success.
+        opt, body = self._make_squat_optimizer()
+        com_x = np.full(20, body.inner_center)
+        q = np.full((20, 3), 999.0)
+        res = self._fake_res(1.0)
+        success, n_viol = opt._check_solution_feasibility(res, q, com_x)
+        assert n_viol > 0
+        assert success is False
+
+    def test_tiny_joint_overshoot_within_tolerance_is_success(self) -> None:
+        # Issue #492: benign sub-tolerance overshoot must not flip success.
+        from movement_optimizer.constants import JOINT_FEASIBILITY_TOL_RAD
+
+        opt, body = self._make_squat_optimizer()
+        com_x = np.full(20, body.inner_center)
+        assert opt.q_bounds is not None
+        upper = opt.q_bounds[:, 1]
+        # Exceed the upper bound by half the tolerance on every joint.
+        q = np.tile(upper + JOINT_FEASIBILITY_TOL_RAD * 0.5, (20, 1))
+        res = self._fake_res(1.0)
+        success, n_viol = opt._check_solution_feasibility(res, q, com_x)
+        assert n_viol == 0
+        assert success is True
+
 
 # ---------------------------------------------------------------------------
 # ExerciseTab._build_grid_axes / _configure_anim_axis / _render_analysis_plots

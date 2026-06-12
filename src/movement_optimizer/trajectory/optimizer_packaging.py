@@ -18,6 +18,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..backend import PhysicsBackend
+from ..constants import COM_FEASIBILITY_TOL_M, JOINT_FEASIBILITY_TOL_RAD
 from .result import OptimizationResult
 
 
@@ -135,7 +136,10 @@ def check_com_feasibility(
     """
     if exercise_type == "bench_press":
         return True
-    in_bounds = bool(np.all(com_x >= inner_heel - 0.005) and np.all(com_x <= inner_toe + 0.005))
+    in_bounds = bool(
+        np.all(com_x >= inner_heel - COM_FEASIBILITY_TOL_M)
+        and np.all(com_x <= inner_toe + COM_FEASIBILITY_TOL_M)
+    )
     if cost_finite and not in_bounds:
         logger.warning(
             "Solution found but COM violated inner BOS: min=%.4f max=%.4f (bounds: [%.4f, %.4f])",
@@ -154,6 +158,8 @@ def count_joint_limit_violations(
     """Count (and warn about) trajectory points that violate joint limits.
 
     Spline overshoot between control points may push q outside q_bounds.
+    A small tolerance (:data:`JOINT_FEASIBILITY_TOL_RAD`) absorbs benign
+    numerical overshoot so only material violations are counted.
     Returns 0 when q_bounds is None.
 
     Preconditions:
@@ -162,8 +168,8 @@ def count_joint_limit_violations(
     """
     if q_bounds is None:
         return 0
-    lower = q_bounds[:, 0]
-    upper = q_bounds[:, 1]
+    lower = q_bounds[:, 0] - JOINT_FEASIBILITY_TOL_RAD
+    upper = q_bounds[:, 1] + JOINT_FEASIBILITY_TOL_RAD
     n_violations = int(np.sum((q < lower) | (q > upper)))
     if n_violations > 0:
         logger.warning(
