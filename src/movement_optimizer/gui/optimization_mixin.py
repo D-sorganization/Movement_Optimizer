@@ -1,13 +1,18 @@
 # Copyright (c) 2026 D-Sorganization. All rights reserved.
+# mypy: disable-error-code="misc,has-type"
+# Mixin pattern: methods annotate self as MainWindow to access its attributes,
+# but mypy cannot verify this pattern without the concrete class in scope.
+# Typing ``self`` as ``MainWindow`` lets mypy resolve every attribute and
+# sibling-mixin method directly, which is why the per-call ``# type: ignore``
+# comments that previously littered this module are no longer required.
 """Mixin for optimization controller logic in the Movement Optimizer GUI."""
 
 from __future__ import annotations
 
 import logging
-import threading
 import traceback
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -19,60 +24,32 @@ from ..trajectory import (
     CancelledError,
     OptimizationResult,
     ProgressReport,
-    SolutionCache,
     TrajectoryOptimizer,
 )
+
+if TYPE_CHECKING:
+    from .main_window import MainWindow
 
 logger = logging.getLogger(__name__)
 
 
 class OptimizationMixin:
-    """Contains logic for preparing and running optimization backgrounds tasks."""
+    """Contains logic for preparing and running optimization background tasks.
 
-    # These attributes are expected to be present on the MainWindow instance.
-    # ``_opt_lock`` is an RLock so the same thread may re-enter critical
-    # sections (e.g. a locked helper calling another locked helper) without
-    # deadlocking. All writes to ``results``/``anim_frames``/``bodies_list``/
-    # ``dynamics_list`` (and corresponding cross-thread reads) must hold this
-    # lock to prevent torn updates between the worker thread and the GUI
-    # main thread.
-    _opt_lock: threading.RLock
-    _opt_running: bool
-    _cache: SolutionCache
-    _cancel_event: threading.Event
-    results: list[OptimizationResult | None]
-    dynamics_list: list[Any]
-    bodies_list: list[BodyModel | None]
-    anim_frames: list[int]
-    EXERCISE_CONFIGS: tuple[tuple[str, str], ...]
-    _last_config: tuple[Any, ...]
-
-    # GUI attributes (provided by MainWindow / ui_builder)
-    sidebar: Any
-    status_label: Any
-    exercise_tabs: list[Any]
-    tabs: Any
-    controls: Any
-    is_playing: bool
-    anim_timer: Any
-    _comparison_store: Any
-
-    # Signals (connected in MainWindow.__init__)
-    _sig_done: Any
-    _sig_cancelled: Any
-    _sig_error: Any
-    _sig_progress: Any
-
-    # Methods defined on MainWindow or sibling mixins
-    _run_exercise: Callable[[int, list[int] | None], None]
-    _stop_anim: Callable[[], None]
+    Threading contract (provided by ``MainWindow``): ``_opt_lock`` is an
+    ``RLock`` so the same thread may re-enter critical sections (e.g. a locked
+    helper calling another locked helper) without deadlocking. All writes to
+    ``results``/``anim_frames``/``bodies_list``/``dynamics_list`` (and the
+    corresponding cross-thread reads) must hold this lock to prevent torn
+    updates between the worker thread and the GUI main thread.
+    """
 
     def __init__(self) -> None:
         """Initialise the next class in the cooperative Qt MRO."""
         super().__init__()
 
     def _snapshot_idx_state(
-        self, idx: int
+        self: MainWindow, idx: int
     ) -> tuple[OptimizationResult | None, int, BodyModel | None, Any]:
         """Return a consistent snapshot of (result, anim_frame, body, dyn) for ``idx``.
 
@@ -88,22 +65,24 @@ class OptimizationMixin:
                 self.dynamics_list[idx],
             )
 
-    def _set_anim_frame(self, idx: int, frame: int) -> None:
+    def _set_anim_frame(self: MainWindow, idx: int, frame: int) -> None:
         """Atomically write ``anim_frames[idx]`` under the optimizer lock."""
         with self._opt_lock:
             self.anim_frames[idx] = frame
 
-    def _resolve_exercise_params(self, idx: int) -> tuple[Any, Any, str, float, float, float]:
-        body = self.sidebar.get_body_model()  # type: ignore[attr-defined]
-        bar, dur, smoothness = self.sidebar.get_optimization_params()  # type: ignore[attr-defined]
+    def _resolve_exercise_params(
+        self: MainWindow, idx: int
+    ) -> tuple[Any, Any, str, float, float, float]:
+        body = self.sidebar.get_body_model()
+        bar, dur, smoothness = self.sidebar.get_optimization_params()
         _, etype = self.EXERCISE_CONFIGS[idx]
 
         factory = EXERCISE_FACTORIES[etype]
         config = factory(body, bar)
         if len(config) == 5:
-            dyn, qs, qe, qb, q_via = config  # type: ignore[misc]
+            dyn, qs, qe, qb, q_via = config
         else:
-            dyn, qs, qe, qb = config  # type: ignore[misc]
+            dyn, qs, qe, qb = config
             q_via = None
 
         _min_durations = {
@@ -122,11 +101,11 @@ class OptimizationMixin:
             self._last_config = (dyn, qs, qe, qb, q_via, etype)
         return body, dyn, etype, bar, dur, smoothness
 
-    def _seg_mults(self) -> dict[str, float]:
-        return self.sidebar.get_segment_multipliers()  # type: ignore[attr-defined]
+    def _seg_mults(self: MainWindow) -> dict[str, float]:
+        return self.sidebar.get_segment_multipliers()
 
     def _run_optimizer(
-        self,
+        self: MainWindow,
         body: Any,
         bar: float,
         dur: float,
@@ -142,13 +121,13 @@ class OptimizationMixin:
         )
         opt = TrajectoryOptimizer(
             body,
-            dyn,  # type: ignore[arg-type]
+            dyn,
             etype,
             bar,
-            qs,  # type: ignore[arg-type]
-            qe,  # type: ignore[arg-type]
-            qb,  # type: ignore[arg-type]
-            q_via=q_via,  # type: ignore[arg-type]
+            qs,
+            qe,
+            qb,
+            q_via=q_via,
             duration=dur,
             n_waypoints=12,
             smoothness=smoothness,
@@ -157,7 +136,7 @@ class OptimizationMixin:
         )
         return opt.optimize()
 
-    def _opt_worker(self, idx: int, then_chain: list[int] | None) -> None:
+    def _opt_worker(self: MainWindow, idx: int, then_chain: list[int] | None) -> None:
         try:
             body, _dyn, etype, bar, dur, smoothness = self._resolve_exercise_params(idx)
             seg_mults = self._seg_mults()
@@ -180,7 +159,7 @@ class OptimizationMixin:
                 with self._opt_lock:
                     self.results[idx] = cached
                     self.anim_frames[idx] = 0
-                self._sig_done.emit(idx, cached, body, bar, then_chain)  # type: ignore[attr-defined]
+                self._sig_done.emit(idx, cached, body, bar, then_chain)
                 return
 
             result = self._run_optimizer(body, bar, dur, smoothness)
@@ -200,9 +179,9 @@ class OptimizationMixin:
                 b_depth,
                 b_height,
             )
-            self._sig_done.emit(idx, result, body, bar, then_chain)  # type: ignore[attr-defined]
+            self._sig_done.emit(idx, result, body, bar, then_chain)
         except CancelledError:
-            self._sig_cancelled.emit()  # type: ignore[attr-defined]
+            self._sig_cancelled.emit()
         except NotImplementedError as exc:
             tb = traceback.format_exc()
             logger.error("Optimisation failed (feature not implemented):\n%s", tb)
@@ -212,7 +191,7 @@ class OptimizationMixin:
                 recoverable=False,
                 suggestion="This exercise type may not be supported yet. Try a different exercise.",
             )
-            self._sig_error.emit(err)  # type: ignore[attr-defined]
+            self._sig_error.emit(err)
         except np.linalg.LinAlgError as exc:
             tb = traceback.format_exc()
             logger.error("Physics computation failed (linear algebra):\n%s", tb)
@@ -224,7 +203,7 @@ class OptimizationMixin:
                     "and try adjusting the segment multipliers."
                 ),
             )
-            self._sig_error.emit(physics_err)  # type: ignore[attr-defined]
+            self._sig_error.emit(physics_err)
         except ValueError as exc:
             tb = traceback.format_exc()
             logger.error("Validation or parameter error during optimisation:\n%s", tb)
@@ -233,7 +212,7 @@ class OptimizationMixin:
                 error_code="VALIDATION_ERROR",
                 suggestion=("Check that all body and exercise parameters are within valid ranges."),
             )
-            self._sig_error.emit(validation_err)  # type: ignore[attr-defined]
+            self._sig_error.emit(validation_err)
         except (RuntimeError, OSError) as exc:
             tb = traceback.format_exc()
             logger.error("Optimisation failed:\n%s", tb)
@@ -244,9 +223,9 @@ class OptimizationMixin:
                     "Try increasing the movement duration or reducing the range of motion."
                 ),
             )
-            self._sig_error.emit(err)  # type: ignore[attr-defined]
+            self._sig_error.emit(err)
 
-    def _make_progress_cb(self) -> Callable[[ProgressReport], None]:
+    def _make_progress_cb(self: MainWindow) -> Callable[[ProgressReport], None]:
         def cb(report: ProgressReport) -> None:
             logger.debug(
                 "iter=%d cost=%.3f best=%.3f improve=%+.3f%% elapsed=%.1fs",
@@ -256,15 +235,15 @@ class OptimizationMixin:
                 report.improvement_pct,
                 report.elapsed_s,
             )
-            self._sig_progress.emit(report)  # type: ignore[attr-defined]
+            self._sig_progress.emit(report)
 
         return cb
 
-    def _update_progress(self, report: ProgressReport) -> None:
-        self.sidebar.update_progress(report)  # type: ignore[attr-defined]
+    def _update_progress(self: MainWindow, report: ProgressReport) -> None:
+        self.sidebar.update_progress(report)
 
     def _on_done(
-        self,
+        self: MainWindow,
         idx: int,
         result: OptimizationResult,
         body: BodyModel,
@@ -273,64 +252,64 @@ class OptimizationMixin:
     ) -> None:
         """Handle successful optimization completion (called from main thread via signal)."""
         try:
-            name = self.EXERCISE_CONFIGS[idx][0]  # type: ignore[attr-defined]
-            _, etype = self.EXERCISE_CONFIGS[idx]  # type: ignore[attr-defined]
+            name = self.EXERCISE_CONFIGS[idx][0]
+            _, etype = self.EXERCISE_CONFIGS[idx]
             self._update_result_summary(name, result, exercise_type=etype)
-            tab = self.exercise_tabs[idx]  # type: ignore[attr-defined]
+            tab = self.exercise_tabs[idx]
             tab.draw_all_plots(result, body, bar, exercise_type=etype)
-            with self._opt_lock:  # type: ignore[attr-defined]
+            with self._opt_lock:
                 dyn = self.dynamics_list[idx]
-            tab.draw_anim_frame(0, result, dyn, body, etype)  # type: ignore[attr-defined]
+            tab.draw_anim_frame(0, result, dyn, body, etype)
             elapsed = result.elapsed_s
             t_str = (
                 f"{elapsed:.1f}s" if elapsed < 60 else f"{int(elapsed // 60)}m {elapsed % 60:.0f}s"
             )
-            self.sidebar.set_progress_done(t_str, result.n_evals)  # type: ignore[attr-defined]
+            self.sidebar.set_progress_done(t_str, result.n_evals)
             self._enable_post_run_buttons()
             if result.success:
-                self.sidebar.clear_stall_message()  # type: ignore[attr-defined]
+                self.sidebar.clear_stall_message()
                 status_msg = f"{name} optimization complete in {t_str}!"
             else:
-                self.sidebar.set_stall_message(  # type: ignore[attr-defined]
+                self.sidebar.set_stall_message(
                     "\u26a0 COM went outside the inner 60% BOS zone. "
                     "Try increasing smoothness or adjusting body parameters."
                 )
                 status_msg = f"{name} done in {t_str} -- WARNING: COM balance violated"
             self._finish_or_chain(then_chain, status_msg)
         except (ValueError, RuntimeError, OSError, AttributeError) as exc:
-            with self._opt_lock:  # type: ignore[attr-defined]
-                self._opt_running = False  # type: ignore[attr-defined]
+            with self._opt_lock:
+                self._opt_running = False
             tb = traceback.format_exc()
             logger.error("Error in _on_done:\n%s", tb)
-            self.sidebar.show_idle()  # type: ignore[attr-defined]
-            self.status_label.setText(f"Render error: {exc}")  # type: ignore[attr-defined]
+            self.sidebar.show_idle()
+            self.status_label.setText(f"Render error: {exc}")
 
-    def _enable_post_run_buttons(self) -> None:
+    def _enable_post_run_buttons(self: MainWindow) -> None:
         """Enable export/save/compare buttons after a successful optimization run."""
-        self.sidebar.enable_post_run_buttons()  # type: ignore[attr-defined]
+        self.sidebar.enable_post_run_buttons()
 
-    def _finish_or_chain(self, then_chain: list[int] | None, status_msg: str) -> None:
+    def _finish_or_chain(self: MainWindow, then_chain: list[int] | None, status_msg: str) -> None:
         """Either chain to the next exercise or finalize the run."""
         if then_chain:
             next_idx = then_chain[0]
             remaining = then_chain[1:] if len(then_chain) > 1 else None
-            self._run_exercise(next_idx, remaining)  # type: ignore[attr-defined]
+            self._run_exercise(next_idx, remaining)
         else:
-            with self._opt_lock:  # type: ignore[attr-defined]
-                self._opt_running = False  # type: ignore[attr-defined]
-            self.sidebar.show_idle()  # type: ignore[attr-defined]
-            self.status_label.setText(status_msg)  # type: ignore[attr-defined]
+            with self._opt_lock:
+                self._opt_running = False
+            self.sidebar.show_idle()
+            self.status_label.setText(status_msg)
 
-    def _on_cancelled(self) -> None:
+    def _on_cancelled(self: MainWindow) -> None:
         """Handle user-requested cancellation (called from main thread via signal)."""
-        with self._opt_lock:  # type: ignore[attr-defined]
-            self._opt_running = False  # type: ignore[attr-defined]
-        self.sidebar.show_idle()  # type: ignore[attr-defined]
-        self.sidebar.set_cancelled()  # type: ignore[attr-defined]
-        self.status_label.setText("Optimization cancelled by user.")  # type: ignore[attr-defined]
+        with self._opt_lock:
+            self._opt_running = False
+        self.sidebar.show_idle()
+        self.sidebar.set_cancelled()
+        self.status_label.setText("Optimization cancelled by user.")
 
     def _update_result_summary(
-        self, name: str, r: OptimizationResult, exercise_type: str = "squat"
+        self: MainWindow, name: str, r: OptimizationResult, exercise_type: str = "squat"
     ) -> None:
         """Build and display the results summary in the sidebar."""
         pk = np.max(np.abs(r.torques), axis=0)
@@ -350,18 +329,16 @@ class OptimizationMixin:
                 f"  COM sway: {r.com_horizontal_range_cm:.1f} cm\n"
                 f"  Balance: {balance_ok}"
             )
-        self.sidebar.set_result_label(  # type: ignore[attr-defined]
-            f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J"
-        )
+        self.sidebar.set_result_label(f"{name} results:\n{joint_lines}\n  Work: {work:>6.0f} J")
 
-    def _on_err(self, err: object) -> None:
+    def _on_err(self: MainWindow, err: object) -> None:
         """Handle optimizer errors (called from main thread via signal)."""
         from PyQt6.QtWidgets import QMessageBox
 
         from ..errors import MovementOptimizerError
 
-        self._opt_running = False  # type: ignore[attr-defined]
-        self.sidebar.show_idle()  # type: ignore[attr-defined]
+        self._opt_running = False
+        self.sidebar.show_idle()
 
         if isinstance(err, MovementOptimizerError):
             title = "Optimization Failed"
@@ -374,7 +351,7 @@ class OptimizationMixin:
             suggestion = ""
             status_text = f"Error: {err}"
 
-        self.status_label.setText(status_text)  # type: ignore[attr-defined]
+        self.status_label.setText(status_text)
 
         body = detail
         if suggestion:
@@ -382,9 +359,9 @@ class OptimizationMixin:
 
         QMessageBox.critical(self, title, body)  # type: ignore[arg-type]
 
-    def _reset(self) -> None:
+    def _reset(self: MainWindow) -> None:
         """Reset to defaults and clear the solution cache."""
-        self._stop_anim()  # type: ignore[attr-defined]
-        self.sidebar.reset_defaults()  # type: ignore[attr-defined]
-        self._cache.clear()  # type: ignore[attr-defined]
-        self.status_label.setText("Defaults restored. Cache cleared.")  # type: ignore[attr-defined]
+        self._stop_anim()
+        self.sidebar.reset_defaults()
+        self._cache.clear()
+        self.status_label.setText("Defaults restored. Cache cleared.")

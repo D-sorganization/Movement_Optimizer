@@ -119,7 +119,7 @@ class MainWindow(
         self._opt_running = False
         # RLock so the same thread may re-enter critical sections without
         # deadlocking when one locked helper calls another locked helper.
-        self._opt_lock = threading.RLock()
+        self._opt_lock: threading.RLock = threading.RLock()
         self._cache = SolutionCache()
         self._comparison_store = ComparisonStore()
         self._last_config: tuple[Any, ...] = ()
