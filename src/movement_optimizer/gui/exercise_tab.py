@@ -15,6 +15,14 @@ from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
 
+from ..constants import (
+    PLOT_GRID_COLS,
+    PLOT_GRID_HEIGHT_RATIOS,
+    PLOT_GRID_HSPACE,
+    PLOT_GRID_MARGINS,
+    PLOT_GRID_ROWS,
+    PLOT_GRID_WSPACE,
+)
 from ..models import BodyModel
 from ..rendering import Palette, style_axis
 from ..trajectory import OptimizationResult
@@ -86,16 +94,13 @@ class ExerciseTab(QWidget):
 
     def _create_axes(self) -> None:
         gs = GridSpec(
-            3,
-            4,
+            PLOT_GRID_ROWS,
+            PLOT_GRID_COLS,
             figure=self.fig,
-            height_ratios=[3, 1, 1],
-            hspace=0.40,
-            wspace=0.40,
-            left=0.06,
-            right=0.97,
-            top=0.93,
-            bottom=0.06,
+            height_ratios=list(PLOT_GRID_HEIGHT_RATIOS),
+            hspace=PLOT_GRID_HSPACE,
+            wspace=PLOT_GRID_WSPACE,
+            **PLOT_GRID_MARGINS,
         )
         self.axes = self._build_grid_axes(gs)
         self._configure_anim_axis(self.axes["anim"])

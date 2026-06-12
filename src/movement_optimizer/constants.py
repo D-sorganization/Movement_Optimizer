@@ -284,6 +284,43 @@ ARM_RADIUS_OF_GYRATION_FRAC: dict[str, float] = {
     "hand": 0.297,
 }
 
+# ------------------------------------------------------------------
+# GUI progress / status presentation constants
+#
+# These govern the optimisation sidebar's progress bar and status text.
+# They are cosmetic (no effect on the physics) but are centralised here so
+# the use sites carry names and rationale instead of bare literals.
+# ------------------------------------------------------------------
+# Progress bar saturates here (never shows 100% until the run actually
+# finishes, to avoid implying completion mid-solve).
+PROGRESS_MAX_PCT: int = 95
+# Evaluation-count scale in the asymptotic progress curve
+# pct = MAX * (1 - 1 / (1 + n_evals / SCALE)); larger => slower fill.
+PROGRESS_EVAL_SCALE: float = 500.0
+# Above this many evaluations the status label switches Exploring->Converging.
+PROGRESS_PHASE_BOUNDARY_EVALS: int = 200
+# Wall-clock seconds after which a non-stalled run shows a "taking longer
+# than expected" hint.
+STALL_HINT_ELAPSED_S: float = 120.0
+
+# ------------------------------------------------------------------
+# Exercise-tab plot layout (matplotlib GridSpec)
+#
+# 3 rows x 4 cols: a tall animation row on top of two analysis rows.
+# Centralised so the layout is tunable in one place.
+# ------------------------------------------------------------------
+PLOT_GRID_ROWS: int = 3
+PLOT_GRID_COLS: int = 4
+PLOT_GRID_HEIGHT_RATIOS: tuple[int, int, int] = (3, 1, 1)
+PLOT_GRID_HSPACE: float = 0.40
+PLOT_GRID_WSPACE: float = 0.40
+PLOT_GRID_MARGINS: dict[str, float] = {
+    "left": 0.06,
+    "right": 0.97,
+    "top": 0.93,
+    "bottom": 0.06,
+}
+
 # numpy compat shim (trapz renamed to trapezoid in numpy 2.0)
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
 if _trapz is None:
