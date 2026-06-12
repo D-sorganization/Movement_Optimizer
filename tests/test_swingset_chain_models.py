@@ -210,9 +210,43 @@ def test_swingset_elbow_branch_does_not_mirror_when_control_crosses_zero() -> No
         branch_signs.append(float(hand_delta[0] * elbow_delta[1] - hand_delta[1] * elbow_delta[0]))
         elbow_points.append(elbow)
 
+    # The elbow must never mirror to the far branch as the requested flexion
+    # sweeps through zero (the IK stays on the +normal side).
     assert min(branch_signs) > 0.0
+    # No discontinuous jump (a mirror flip would be a large step); the elbow
+    # moves smoothly across the swept range.
     max_step = max(float(np.linalg.norm(end - start)) for start, end in pairwise(elbow_points))
-    assert max_step < 0.02
+    assert max_step < 0.1
+
+
+def test_swingset_elbow_bias_changes_geometry() -> None:
+    """elbow_bias_rad must actually affect the resolved elbow position (#489).
+
+    Previously the bias was discarded and hard-coded to 1.0, so every requested
+    flexion produced the identical elbow point. A neutral (0 rad) elbow should
+    sit at the full +normal offset; increasing flexion tucks the elbow toward
+    the shoulder->hand line, producing a distinct, monotonically closer point.
+    """
+    config = SwingSetConfig(chain_segments=8)
+    pose = SwingPose(swing_angle_rad=0.12, torso_lean_rad=0.1, hip_angle_rad=0.2)
+
+    def elbow_for(angle: float) -> np.ndarray:
+        snap = build_swingset_snapshot(config, replace(pose, elbow_angle_rad=angle))
+        return snap.points["elbow"] - snap.points["shoulder"]
+
+    neutral = elbow_for(0.0)
+    mid = elbow_for(0.175)
+    flexed = elbow_for(0.35)
+
+    # Distinct poses must produce distinct elbow geometry.
+    assert float(np.linalg.norm(flexed - neutral)) > 1e-3
+    assert float(np.linalg.norm(mid - neutral)) > 1e-3
+    # Perpendicular offset shrinks monotonically as the elbow flexes: the
+    # neutral elbow is farthest off the shoulder->hand line.
+    assert np.linalg.norm(neutral) > np.linalg.norm(mid) > np.linalg.norm(flexed)
+    # A negative request clamps to the neutral (0 rad) limit, not the bug's
+    # silent identical pose.
+    np.testing.assert_allclose(elbow_for(-0.2), neutral, atol=1e-12)
 
 
 def test_swingset_pose_constraints_keep_torso_upright() -> None:

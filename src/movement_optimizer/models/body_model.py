@@ -253,10 +253,15 @@ class BodyModel:
         )
 
     def _compute_inertias(self) -> None:
-        """Compute segment inertias using radius of gyration + parallel axis theorem.
+        """Compute **centroidal** segment inertias (about each segment COM).
 
         I_com = m * (rho * L)^2          (about segment COM)
-        I_prox = I_com + m * d_com^2     (about proximal joint)
+
+        ``LagrangianDynamics`` adds the parallel-axis term ``m * d_com^2``
+        itself when assembling the diagonal mass matrix, so the values stored
+        here must be the centroidal inertia only. Pre-adding the parallel-axis
+        term here double-counts it and overestimates joint inertia (issue
+        #490).
 
         Radius-of-gyration fractions (rho) from Winter (2009), Table 3.1.
         """
@@ -267,10 +272,8 @@ class BodyModel:
                 RADIUS_OF_GYRATION_FRAC["trunk"],
             ]
         )
-        I_com_squat = self.m_squat * (rho * self.L) ** 2
-        I_com_deadlift = self.m_deadlift * (rho * self.L) ** 2
-        self.I_squat = I_com_squat + self.m_squat * self.d**2
-        self.I_deadlift = I_com_deadlift + self.m_deadlift * self.d**2
+        self.I_squat = self.m_squat * (rho * self.L) ** 2
+        self.I_deadlift = self.m_deadlift * (rho * self.L) ** 2
 
 
 def clamp_joint_angles(

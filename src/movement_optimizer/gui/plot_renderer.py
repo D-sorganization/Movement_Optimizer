@@ -3,7 +3,6 @@
 
 from typing import Any
 
-import matplotlib.cm as cm
 import numpy as np
 
 from ..models import BodyModel
@@ -95,7 +94,9 @@ def plot_power(ax: Any, r: OptimizationResult, labels: tuple = Palette.SEG_LABEL
 def plot_com_path(ax: Any, r: OptimizationResult, body: BodyModel) -> None:
     import matplotlib as mpl
 
-    cmap = mpl.colormaps["viridis"] if hasattr(mpl, "colormaps") else cm.get_cmap("viridis")
+    # matplotlib>=3.7 (see pyproject) always provides the registry-based
+    # ``colormaps`` accessor; ``cm.get_cmap`` was removed in 3.9.
+    cmap = mpl.colormaps["viridis"]
     colors_t = cmap(np.linspace(0.2, 0.95, len(r.t)))
     for i in range(len(r.t) - 1):
         ax.plot(
