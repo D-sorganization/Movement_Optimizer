@@ -390,6 +390,13 @@ class TrajectoryOptimizer:
     def _check_solution_feasibility(self, res: Any, q: NDArray, com_x: NDArray) -> tuple[bool, int]:
         """Assess cost finiteness, COM bounds, and joint-limit violations.
 
+        SLSQP can report ``success`` while sitting on a point that the
+        re-evaluated spline pushes outside the hard constraints (inner-BOS
+        COM bound or joint limits).  A finite-cost-but-infeasible trajectory
+        must NOT be surfaced as a valid lift, so any constraint violation
+        (beyond the documented numerical tolerances) marks the result as
+        unsuccessful.
+
         Args:
             res: SciPy OptimizeResult (provides ``res.fun``).
             q: Joint-angle trajectory, shape (N, 3).
@@ -404,7 +411,8 @@ class TrajectoryOptimizer:
             cost_finite, com_x, self.exercise_type, self.inner_heel, self.inner_toe
         )
         n_viol = count_joint_limit_violations(q, self.q_bounds)
-        return cost_finite and com_in_bounds, n_viol
+        joint_feasible = n_viol == 0
+        return cost_finite and com_in_bounds and joint_feasible, n_viol
 
     def _package_results(
         self, res: Any, elapsed: float = 0.0, n_evals: int = 0

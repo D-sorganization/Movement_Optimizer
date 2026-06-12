@@ -217,6 +217,24 @@ BENCH_PRESS_HILL_OPTIMAL_ANGLES: dict[str, float] = {
 BOS_INNER_FRACTION: float = 0.60
 
 # ------------------------------------------------------------------
+# Post-solve feasibility tolerances
+# ------------------------------------------------------------------
+# After SLSQP reports ``success``, the returned spline is re-evaluated and
+# its kinematics are checked against the hard constraints.  Numerical
+# slack (spline overshoot between control points, solver tolerances) means
+# an exactly-feasible solve can stray a hair outside the bounds, so the
+# post-solve check allows these small margins before declaring the result
+# infeasible.
+#
+# COM_FEASIBILITY_TOL_M: horizontal COM may sit this many metres outside
+#   the inner base-of-support before the trajectory is rejected (5 mm).
+# JOINT_FEASIBILITY_TOL_RAD: joint angles may exceed ``q_bounds`` by this
+#   many radians (≈0.29°) before the trajectory is rejected.  This absorbs
+#   benign cubic-spline overshoot while still catching gross violations.
+COM_FEASIBILITY_TOL_M: float = 0.005
+JOINT_FEASIBILITY_TOL_RAD: float = 0.005
+
+# ------------------------------------------------------------------
 # Trajectory optimisation tuning constants
 # ------------------------------------------------------------------
 
