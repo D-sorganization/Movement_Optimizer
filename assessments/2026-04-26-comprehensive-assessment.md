@@ -1,5 +1,13 @@
 # Comprehensive A-O Health Assessment: Movement-Optimizer
 
+> **HISTORICAL SNAPSHOT (2026-04-26).** This is a point-in-time assessment and is
+> **not kept up to date**. Several findings below have since been resolved or no
+> longer reflect the code, e.g. the `[P1] No lockfile` item (a `uv.lock` /
+> `requirements-lock.txt` now exist) and the `[P0] Bare excepts` item (current
+> `src/` has no bare excepts). Treat the scores and findings as a record of the
+> repo on the date above, not as a current to-do list. The live quality backlog
+> is tracked in GitHub issues under epic #488.
+
 **Date:** 2026-04-26
 **Assessor:** Cline (AI Agent)
 **Repository:** Movement-Optimizer

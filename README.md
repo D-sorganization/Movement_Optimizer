@@ -40,7 +40,7 @@ behavior change.
 - **2D model**: Production-ready sagittal-plane 3-link chain with a disabled placeholder selector reserved for future 3D work
 - **Real-time animation**: Stick-figure visualization with playback controls
 - **Spinal load analysis**: L5/S1 compression and shear estimation with NIOSH limits
-- **Trajectory optimization**: Multi-start parallel L-BFGS-B with COM balance constraints
+- **Trajectory optimization**: Multi-start parallel SLSQP with COM balance constraints
 - **Hill muscle model**: Torque-angle-velocity capacity with sticking-point detection
 - **Trial comparison**: Side-by-side overlay of multiple optimization runs
 - **Export**: CSV data, PNG/PDF plots, animated GIF
@@ -127,7 +127,7 @@ src/movement_optimizer/
     backend.py           # Abstract PhysicsBackend interface
     cli.py               # CLI entry point for batch optimization
     models.py            # BodyModel, LagrangianDynamics, exercise config factories
-    trajectory.py        # TrajectoryOptimizer (multi-start L-BFGS-B)
+    trajectory/          # TrajectoryOptimizer (multi-start SLSQP)
     constants.py         # All physical constants and tuning parameters
     gui/                 # PyQt6 GUI package
         __init__.py      # Re-exports MainWindow
@@ -155,13 +155,40 @@ tests/                   # pytest test suite
 - **No Black**: Formatting is handled exclusively by `ruff format`
 - **DBC (Design by Contract)**: Public methods check preconditions and raise `ValueError`/`TypeError` on violation
 - **Logging over print**: `src/` code uses `logging.getLogger(__name__)`; a pre-commit hook blocks `print()` in `src/`
-- **Thread parallelism**: scipy's L-BFGS-B releases the GIL, enabling real parallelism via `ThreadPoolExecutor`
+- **Thread parallelism**: scipy's SLSQP releases the GIL, enabling real parallelism via `ThreadPoolExecutor`
 
 ### 3D Backend Status
 
 The shipped optimizer is currently 2D-only. The GUI still shows a disabled 3D selector to make
 that roadmap explicit, but the unfinished 3D modules were removed so unsupported paths fail by
 construction instead of drifting into misleading or physically incorrect behavior.
+
+### Rust Accelerator Status
+
+`rust_core/` is a **real, compiled PyO3 extension** (vectorized inverse dynamics and COM
+batch evaluation on the optimizer hot path) — not a placeholder. It is _optional at build
+time_: when the extension is not built, the dynamics transparently fall back to an
+equivalent NumPy implementation, so results are identical and only performance differs.
+Build it with `cd rust_core && maturin develop --release`. A failed extension _load_ on a
+machine that should have it is logged so the silent-fallback case is observable.
+
+## Known Limitations
+
+- **scipy ceiling (`<1.16`).** scipy 1.16 introduced a private-API drift
+  (`scipy.spatial.transform._rigid_transform` importing a `_promote` symbol absent from the
+  bundled `_rotation` extension) that breaks `from scipy.interpolate import CubicSpline` at
+  import time (first seen in #458). The dependency is pinned `>=1.10,<1.16` until this is
+  fixed upstream; lifting the cap is tracked in
+  [#503](https://github.com/D-sorganization/Movement_Optimizer/issues/503).
+- **SLSQP convergence edge cases.** A small number of extreme configurations are known to be
+  numerically unstable for SLSQP on some platforms and may return `success=False`:
+
+  - very long durations (≈30 s movements),
+  - near-zero / zero range-of-motion (identical start and end angles),
+  - very large multi-start counts.
+
+  These are covered by `xfail`-marked tests in `tests/test_edge_cases.py`. If you hit one,
+  reduce the duration / range or use a moderate multi-start count.
 
 ## Development
 

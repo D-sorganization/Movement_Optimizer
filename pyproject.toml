@@ -15,8 +15,9 @@ dependencies = [
     # which imports a private `_promote` symbol that does not exist in the
     # compiled _rotation extension installed alongside, breaking
     # `from scipy.interpolate import CubicSpline` at conftest import time.
-    # Closes #458 (nightly ImportError). Revisit once upstream fixes the
-    # private-API drift.
+    # First seen as the nightly ImportError in #458 (now closed).
+    # Lifting this cap is tracked in #503 — revisit once upstream resolves the
+    # private-API drift. See README "Known limitations".
     "scipy>=1.10,<1.16",
     "matplotlib>=3.7,<4.0",
     "PyQt6>=6.5,<7.0",
@@ -109,6 +110,10 @@ markers = [
   "integration: cross-module / file-system / process boundaries, < 5 s",
   "e2e: full-stack smoke tests; nightly + release gate only",
   "slow: > 1 s wall-clock; deselect with -m 'not slow'",
+  # Reserved gate: no test carries this marker yet, but the default lane and
+  # the nightly workflow (.github/workflows/nightly.yml) deselect it by name,
+  # so the definition must stay for --strict-markers. Apply to any future
+  # heavy real-engine simulation test rather than re-introducing the marker.
   "live_simulation: requires a real physics / math engine; deselect by default",
   "validates_physics: asserts physical correctness against hand-computed reference values (not parity/smoke)",
 
