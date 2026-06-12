@@ -87,6 +87,8 @@ tests/                   # Pytest suite
 - Optimisation uses multi-start search and SciPy-based solvers.
 - GUI state is stored locally and does not require external services.
 - Optional Rust acceleration is an implementation detail, not a hard dependency.
+  When the compiled `rust_core` extension is absent the dynamics fall back to an
+  equivalent NumPy path, so results are identical and only performance differs.
 
 ## 7. Data And Configuration
 
