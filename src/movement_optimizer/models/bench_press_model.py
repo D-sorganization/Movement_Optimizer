@@ -10,6 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..constants import (
+    ARM_RADIUS_OF_GYRATION_FRAC,
     BENCH_FOREARM_FRAC,
     BENCH_PRESS_JOINT_LIMITS,
     BENCH_UPPER_ARM_FRAC,
@@ -62,7 +63,20 @@ class BenchPressModel:
                 0.500 * self.L[2],  # hand COM
             ]
         )
-        self.I = (1.0 / 12.0) * self.m * self.L**2
+        # Centroidal segment inertia (about each segment COM), matching the
+        # convention BodyModel/LagrangianDynamics expect: I_com = m*(rho*L)**2.
+        # LagrangianDynamics adds the parallel-axis term itself, so do NOT
+        # pre-add it here. Previously used the uniform-rod (1/12)*m*L**2
+        # COM-frame value with a generic rod rho; now uses arm-segment
+        # radius-of-gyration fractions from Winter (2009) (issue #490).
+        rho_arm = np.array(
+            [
+                ARM_RADIUS_OF_GYRATION_FRAC["upper_arm"],
+                ARM_RADIUS_OF_GYRATION_FRAC["forearm"],
+                ARM_RADIUS_OF_GYRATION_FRAC["hand"],
+            ]
+        )
+        self.I = self.m * (rho_arm * self.L) ** 2
         self.g = body.g
         # NOTE: BOS bounds are copied for API compatibility but are NOT
         # physically meaningful for bench press.  The lifter is supine on

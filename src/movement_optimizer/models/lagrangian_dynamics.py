@@ -15,6 +15,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..backend import PhysicsBackend
+from ..constants import CORIOLIS_SLOW_LIMIT_RAD_S
 from .body_model import BodyModel, ChainGeometry
 from .lagrangian_balance import _standing_balanced, balance_pose
 from .lagrangian_batch import (
@@ -39,6 +40,14 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
 
     Computes M(q)*qdd + C(q,qd) + G(q) = tau analytically.
 
+    Inertia convention:
+        ``I_segments`` are **centroidal** moments of inertia (about each
+        segment's own COM), i.e. ``I_com = m * (rho * L)**2``. The diagonal
+        mass-matrix construction adds the parallel-axis term ``m * d**2``
+        itself, so callers must NOT pre-add it. Passing proximal-axis inertia
+        (``I_com + m * d**2``) double-counts the parallel-axis term and
+        overestimates the diagonal inertia (issue #490).
+
     Preconditions:
         body is a valid BodyModel
         m_segments, I_segments are length-3 arrays
@@ -49,6 +58,10 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         inverse dynamics is O(N) time and O(N) memory for ``N`` trajectory
         samples because each sample is evaluated independently.
     """
+
+    # Process-wide latch so the "Rust accelerator unavailable" warning is
+    # emitted at most once per run regardless of how many instances exist.
+    _warned_rust_fallback: bool = False
 
     def __init__(
         self,
@@ -64,7 +77,9 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         Parameters:
             body: Anthropometric model (used for g, BOS, and default geometry).
             m_segments: Length-3 array of segment masses (kg).
-            I_segments: Length-3 array of segment moments of inertia (kg·m²).
+            I_segments: Length-3 array of **centroidal** segment moments of
+                inertia (about each segment COM, kg·m²). The parallel-axis
+                term is added internally; do not pre-add it.
             load_mass: Mass of the external load at the chain tip (kg).
             chain_geometry: Optional ChainGeometry providing segment lengths,
                 COM distances, and joint names for non-leg kinematic chains
@@ -83,6 +98,9 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         self.m_load = load_mass
         self.g = body.g
         self.supine = supine
+        # Emit the "fast movement" Coriolis warning at most once per instance to
+        # avoid flooding logs during an optimization sweep (issue #491).
+        self._warned_fast_coriolis = False
 
         L, d = self._init_chain_geometry(body, chain_geometry)
         self._init_coupling_coefficients(m_segments, load_mass, L, d)
@@ -211,6 +229,23 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         C[2] = -self._a02 * s02 * qd[0] ** 2 - self._a12 * s12 * qd[1] ** 2
         return C
 
+    def _check_coriolis_slow_assumption(self, max_abs_qd: float) -> None:
+        """Warn once if joint speed exceeds the slow-movement Coriolis assumption.
+
+        The Coriolis model omits cross-velocity terms (see ``_coriolis_vector``).
+        Above ``CORIOLIS_SLOW_LIMIT_RAD_S`` those terms can be material and the
+        reported torques may be underestimated (issue #491).
+        """
+        if max_abs_qd > CORIOLIS_SLOW_LIMIT_RAD_S and not self._warned_fast_coriolis:
+            self._warned_fast_coriolis = True
+            logger.warning(
+                "max |qd| = %.2f rad/s exceeds slow-movement assumption "
+                "(%.2f rad/s); Coriolis cross-velocity terms are omitted, joint "
+                "torques may be underestimated",
+                max_abs_qd,
+                CORIOLIS_SLOW_LIMIT_RAD_S,
+            )
+
     def _gravity_vector(self, q: NDArray) -> NDArray:
         """Compute the gravity loading vector G(q).
 
@@ -237,6 +272,8 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
         q0, q1, q2 = q
         qd0, qd1, qd2 = qd
         qdd0, qdd1, qdd2 = qdd
+
+        self._check_coriolis_slow_assumption(max(abs(qd0), abs(qd1), abs(qd2)))
 
         c01 = math.cos(q0 - q1)
         c02 = math.cos(q0 - q2)
@@ -361,10 +398,18 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
 
         Tries the Rust accelerator; falls back to _numpy_inverse_dynamics_batch.
 
+        Preconditions:
+            q, qd, qdd are all finite. A non-finite input (e.g. a NaN from a
+            degenerate spline evaluation) is rejected with a ``ValueError``
+            naming the offending array rather than silently propagating NaN
+            torques into the cost (issue #499).
+
         Complexity:
             O(N) time and O(N) output memory for ``N`` trajectory samples.  The
             Rust and NumPy paths have the same asymptotic complexity.
         """
+        self._require_finite_batch_inputs(q, qd, qdd)
+        self._check_coriolis_slow_assumption(float(np.max(np.abs(qd))) if qd.size else 0.0)
         try:
             from movement_optimizer_core import inverse_dynamics_batch_rs  # type: ignore[import-not-found]  # noqa: I001
 
@@ -383,10 +428,34 @@ class LagrangianDynamics(LagrangianKinematicsMixin, PhysicsBackend):
                 self._g2,
             )
         except ImportError:
-            logger.debug(
-                "Rust accelerator unavailable; falling back to NumPy batch inverse dynamics"
-            )
+            # The Rust accelerator is optional, but on a host where it *should*
+            # be installed a failed import is a real (silent) performance and
+            # parity regression — surface it at WARNING, once per process
+            # (issue #494).
+            if not LagrangianDynamics._warned_rust_fallback:
+                LagrangianDynamics._warned_rust_fallback = True
+                logger.warning(
+                    "Rust accelerator (movement_optimizer_core) unavailable; "
+                    "using NumPy batch inverse dynamics. Build with "
+                    "`maturin develop --release` for the accelerated path."
+                )
         return self._numpy_inverse_dynamics_batch(q, qd, qdd)
+
+    @staticmethod
+    def _require_finite_batch_inputs(q: NDArray, qd: NDArray, qdd: NDArray) -> None:
+        """Reject non-finite batch inputs with a clear, located error.
+
+        Performs one cheap ``np.isfinite(...).all()`` check per array so a NaN
+        introduced upstream fails loudly at the dynamics boundary instead of
+        propagating into NaN torques and a spurious infinite cost (issue #499).
+        """
+        for name, arr in (("q", q), ("qd", qd), ("qdd", qdd)):
+            if not np.isfinite(arr).all():
+                bad = int(np.count_nonzero(~np.isfinite(arr)))
+                raise ValueError(
+                    f"inverse_dynamics_batch received {bad} non-finite value(s) "
+                    f"in '{name}'; refusing to compute NaN torques"
+                )
 
 
 # Kinematic methods (com_x_batch, forward_kinematics, bar_position,

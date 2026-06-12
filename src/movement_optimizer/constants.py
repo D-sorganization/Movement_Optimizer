@@ -247,6 +247,25 @@ RADIUS_OF_GYRATION_FRAC: dict[str, float] = {
     "trunk": 0.496,
 }
 
+# ------------------------------------------------------------------
+# Dynamics simplification guards
+# ------------------------------------------------------------------
+# The analytic Coriolis vector keeps only centrifugal (qd_j^2) terms and omits
+# the cross-velocity Coriolis terms (qd_i*qd_j, i != j). That is acceptable for
+# slow barbell work but underestimates torque for fast lifts. When any joint
+# speed exceeds this threshold the dynamics logs a one-time warning so callers
+# know the omitted terms may be material (issue #491).
+CORIOLIS_SLOW_LIMIT_RAD_S: float = 2.0
+
+# Radius-of-gyration fractions for the arm chain (about each segment COM),
+# used by BenchPressModel so its inertia convention matches BodyModel
+# (centroidal I_com = m * (rho * L)^2). Winter (2009), Table 3.1.
+ARM_RADIUS_OF_GYRATION_FRAC: dict[str, float] = {
+    "upper_arm": 0.322,
+    "forearm": 0.303,
+    "hand": 0.297,
+}
+
 # numpy compat shim (trapz renamed to trapezoid in numpy 2.0)
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
 if _trapz is None:

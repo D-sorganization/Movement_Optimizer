@@ -110,6 +110,7 @@ markers = [
   "e2e: full-stack smoke tests; nightly + release gate only",
   "slow: > 1 s wall-clock; deselect with -m 'not slow'",
   "live_simulation: requires a real physics / math engine; deselect by default",
+  "validates_physics: asserts physical correctness against hand-computed reference values (not parity/smoke)",
 
   # ---- environment markers ----
   "requires_network: needs real outbound network; deselect by default",

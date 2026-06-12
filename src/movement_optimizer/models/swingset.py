@@ -46,6 +46,10 @@ SWING_HIP_LIMITS_RAD: Final[tuple[float, float]] = (-0.15, 1.25)
 SWING_KNEE_LIMITS_RAD: Final[tuple[float, float]] = (-1.35, 0.10)
 SWING_SHOULDER_LIMITS_RAD: Final[tuple[float, float]] = (-0.45, 0.25)
 SWING_ELBOW_LIMITS_RAD: Final[tuple[float, float]] = (0.0, 0.35)
+# Minimum perpendicular elbow-offset factor at full elbow flexion. A neutral
+# elbow uses the full geometric offset (1.0); a fully flexed elbow tucks toward
+# the shoulder->hand line down to this factor. See ``_elbow_offset_bias`` (#489).
+ELBOW_OFFSET_BIAS_MIN: Final[float] = 0.35
 SWING_POLICY_JOINT_NAMES: Final[tuple[str, ...]] = (
     "torso",
     "hip",
@@ -465,9 +469,33 @@ def _arm_elbow_point(
     )
     height = np.sqrt(max(upper_length**2 - along**2, 0.0))
     normal = np.asarray([-unit[1], unit[0]], dtype=np.float64)
-    _ = constrain_swing_pose(SwingPose(elbow_angle_rad=elbow_bias_rad)).elbow_angle_rad
-    bias = 1.0
+    bias = _elbow_offset_bias(elbow_bias_rad)
     return shoulder + along * unit + bias * height * normal
+
+
+def _elbow_offset_bias(elbow_bias_rad: float) -> float:
+    """Map a requested elbow flexion to the perpendicular offset factor.
+
+    The two-link IK places the elbow off the shoulder->hand line by
+    ``bias * height * normal``. ``elbow_bias_rad`` (the rider's requested elbow
+    flexion) is first clamped to the realistic swing ROM
+    (``SWING_ELBOW_LIMITS_RAD``) and then mapped to a factor in
+    ``[ELBOW_OFFSET_BIAS_MIN, 1.0]``: a neutral (0 rad) elbow sits at the full
+    geometric ``+normal`` offset, while a fully flexed elbow tucks toward the
+    shoulder->hand line. Previously this factor was hard-coded to ``1.0`` so the
+    parameter had no effect (issue #489).
+
+    Preconditions:
+        ``elbow_bias_rad`` is finite.
+    """
+
+    clamped = constrain_swing_pose(SwingPose(elbow_angle_rad=elbow_bias_rad)).elbow_angle_rad
+    lower, upper = SWING_ELBOW_LIMITS_RAD
+    span = upper - lower
+    if span <= 0.0:
+        return 1.0
+    flex_fraction = (clamped - lower) / span
+    return 1.0 - (1.0 - ELBOW_OFFSET_BIAS_MIN) * flex_fraction
 
 
 def _center_of_mass(
