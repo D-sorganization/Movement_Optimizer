@@ -267,4 +267,31 @@ jobs:
       - name: Run Rust Tests
         if: steps.rust-changes.outputs.has_rust == 'true'
         run: cd rust_core && cargo test
+
+      # Build the maturin extension and assert the Rust hot path matches the
+      # NumPy reference to tight tolerance (issue #494). Without this, a Rust
+      # change that compiles but produces different torques would ship silently
+      # because the Python test job never imports the compiled extension.
+      - name: Set up Python for parity test
+        if: steps.rust-changes.outputs.has_rust == 'true'
+        uses: actions/setup-python@v5
+        with:
+          cache: 'pip'
+          python-version: "3.12"
+
+      - name: Build extension and run Rust/NumPy parity test
+        if: steps.rust-changes.outputs.has_rust == 'true'
+        run: |
+          python -m venv .rust-venv
+          . .rust-venv/bin/activate
+          export PIP_NO_CACHE_DIR=1
+          export PIP_DEFAULT_TIMEOUT=120
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" maturin
+          # Build and install the compiled accelerator into this venv so the
+          # parity test runs (it skips itself when the extension is absent).
+          # maturin uses rust_core/pyproject.toml, so build from that directory.
+          (cd rust_core && maturin develop --release)
+          python -c "import movement_optimizer_core; print('Rust accelerator imported OK')"
+          python -m pytest tests/test_rust_parity.py -v --tb=short
     needs: pick-runner
