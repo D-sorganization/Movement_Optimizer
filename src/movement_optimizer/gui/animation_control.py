@@ -12,8 +12,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..models import BodyModel
+
 if TYPE_CHECKING:
     from .main_window import MainWindow
+
+
+def _require_body_for_animation(body: BodyModel | None) -> BodyModel:
+    if body is None:
+        raise ValueError("DbC Blocked: animation frame requires a body model.")
+    return body
 
 
 class AnimationControlMixin:
@@ -47,8 +55,7 @@ class AnimationControlMixin:
             return
 
         _, etype = self.EXERCISE_CONFIGS[idx]
-        if body is None:
-            raise ValueError("DbC Blocked: Precondition failed.")
+        body = _require_body_for_animation(body)
         self.exercise_tabs[idx].draw_anim_frame(
             fi,
             r,
@@ -77,6 +84,7 @@ class AnimationControlMixin:
         new_frame = (fi + 1) % n
         self._set_anim_frame(idx, new_frame)
         _, etype = self.EXERCISE_CONFIGS[idx]
+        body = _require_body_for_animation(body)
         self.exercise_tabs[idx].draw_anim_frame(
             new_frame,
             r,
@@ -100,6 +108,7 @@ class AnimationControlMixin:
         new_frame = (fi - 1) % n
         self._set_anim_frame(idx, new_frame)
         _, etype = self.EXERCISE_CONFIGS[idx]
+        body = _require_body_for_animation(body)
         self.exercise_tabs[idx].draw_anim_frame(
             new_frame,
             r,
@@ -116,6 +125,7 @@ class AnimationControlMixin:
         self._stop_anim()
         self._set_anim_frame(idx, 0)
         _, etype = self.EXERCISE_CONFIGS[idx]
+        body = _require_body_for_animation(body)
         self.exercise_tabs[idx].draw_anim_frame(
             0,
             r,
@@ -134,6 +144,7 @@ class AnimationControlMixin:
         last_frame = n - 1
         self._set_anim_frame(idx, last_frame)
         _, etype = self.EXERCISE_CONFIGS[idx]
+        body = _require_body_for_animation(body)
         self.exercise_tabs[idx].draw_anim_frame(
             last_frame,
             r,
